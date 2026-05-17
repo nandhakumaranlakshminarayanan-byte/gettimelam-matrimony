@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 
 const LoginModal = ({ onClose, onSwitchToRegister }) => {
     const { login } = useAuth();
+    const [activeTab, setActiveTab] = useState('member'); // ✅ Added tab state
     const [form, setForm] = useState({ mobile: '', password: '' });
     const [loading, setLoading] = useState(false);
 
@@ -15,7 +16,7 @@ const LoginModal = ({ onClose, onSwitchToRegister }) => {
         e.preventDefault();
         setLoading(true);
         try {
-            await login(form);
+            await login({ ...form, role: activeTab }); // ✅ Pass role to login
             toast.success('Welcome back! 🎊');
             onClose();
         } catch (error) {
@@ -33,16 +34,49 @@ const LoginModal = ({ onClose, onSwitchToRegister }) => {
                 <div style={styles.header}>
                     <div>
                         <h2 style={styles.title}>Welcome Back 👋</h2>
-                        <p style={styles.subtitle}>Login to find your perfect match</p>
+                        <p style={styles.subtitle}>
+                            {activeTab === 'member'
+                                ? 'Login to find your perfect match'
+                                : 'Login to manage your services'}
+                        </p>
                     </div>
                     <button style={styles.closeBtn} onClick={onClose}>✕</button>
                 </div>
 
-                {/* Tabs */}
+                {/* ✅ Tabs - now clickable with active state */}
                 <div style={styles.tabs}>
-                    <div style={{ ...styles.tab, ...styles.tabActive }}>Member Login</div>
-                    <div style={styles.tab}>Service Provider</div>
+                    <div
+                        style={{
+                            ...styles.tab,
+                            ...(activeTab === 'member' ? styles.tabActive : {})
+                        }}
+                        onClick={() => {
+                            setActiveTab('member');
+                            setForm({ mobile: '', password: '' });
+                        }}
+                    >
+                        Member Login
+                    </div>
+                    <div
+                        style={{
+                            ...styles.tab,
+                            ...(activeTab === 'service' ? styles.tabActive : {})
+                        }}
+                        onClick={() => {
+                            setActiveTab('service');
+                            setForm({ mobile: '', password: '' });
+                        }}
+                    >
+                        Service Provider
+                    </div>
                 </div>
+
+                {/* ✅ Show different hint based on tab */}
+                {activeTab === 'service' && (
+                    <div style={styles.serviceNotice}>
+                        🏪 Logging in as a Wedding Service Provider
+                    </div>
+                )}
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} style={styles.form}>
@@ -160,7 +194,7 @@ const styles = {
         display: 'flex',
         border: '1.5px solid #E8D5C4',
         borderRadius: '10px',
-        marginBottom: '24px',
+        marginBottom: '16px',
         overflow: 'hidden'
     },
     tab: {
@@ -171,11 +205,23 @@ const styles = {
         fontWeight: '500',
         cursor: 'pointer',
         color: '#7A6055',
-        background: '#fff'
+        background: '#fff',
+        transition: 'all 0.2s ease',
+        userSelect: 'none'
     },
     tabActive: {
         background: '#8B1A1A',
         color: '#fff'
+    },
+    serviceNotice: {
+        background: '#FFF8F0',
+        border: '1px solid #E8D5C4',
+        borderRadius: '8px',
+        padding: '10px 14px',
+        fontSize: '13px',
+        color: '#7A6055',
+        marginBottom: '16px',
+        textAlign: 'center'
     },
     form: {},
     formGroup: {

@@ -5,7 +5,10 @@ import toast from 'react-hot-toast';
 const RegisterModal = ({ onClose, onSwitchToLogin }) => {
     const { register } = useAuth();
     const [loading, setLoading] = useState(false);
-    const [form, setForm] = useState({
+    const [activeTab, setActiveTab] = useState('member'); // ✅ Tab state
+
+    // Member form state
+    const [memberForm, setMemberForm] = useState({
         profileFor: 'Myself',
         gender: 'Female',
         name: '',
@@ -16,20 +19,47 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
         motherTongue: 'Tamil'
     });
 
-    const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
+    // Service Provider form state
+    const [vendorForm, setVendorForm] = useState({
+        businessName: '',
+        ownerName: '',
+        mobile: '',
+        email: '',
+        password: '',
+        category: 'Wedding Hall/Venue',
+        city: '',
+        district: '',
+    });
+
+    const handleMemberChange = (e) => {
+        setMemberForm({ ...memberForm, [e.target.name]: e.target.value });
+    };
+
+    const handleVendorChange = (e) => {
+        setVendorForm({ ...vendorForm, [e.target.name]: e.target.value });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (form.password.length < 6) {
-            toast.error('Password must be at least 6 characters!');
-            return;
-        }
         setLoading(true);
         try {
-            await register(form);
-            toast.success('Registration successful! Welcome to Gettimelam! 🎊');
+            if (activeTab === 'member') {
+                if (memberForm.password.length < 6) {
+                    toast.error('Password must be at least 6 characters!');
+                    setLoading(false);
+                    return;
+                }
+                await register({ ...memberForm, role: 'member' });
+                toast.success('Welcome to Gettimelam! 🎊');
+            } else {
+                if (vendorForm.password.length < 6) {
+                    toast.error('Password must be at least 6 characters!');
+                    setLoading(false);
+                    return;
+                }
+                await register({ ...vendorForm, role: 'vendor' });
+                toast.success('Service Provider registered! 🎊');
+            }
             onClose();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Registration failed!');
@@ -37,6 +67,27 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
             setLoading(false);
         }
     };
+
+    const serviceCategories = [
+        'Wedding Hall/Venue',
+        'Event Decoration',
+        'Catering',
+        'Wedding Rentals',
+        'Photography',
+        'Videography',
+        'DJ & Entertainment',
+        'Choreography',
+        'Bridal Makeup & Hair',
+        'Mehndi Artist',
+        'Bridal Styling',
+        'Wedding Planner',
+        'Travel & Accommodation',
+        'Officiant/Priest',
+        'Security & Valet',
+        'Wedding Cake',
+        'Favors & Gifts',
+        'Stationery & Cards',
+    ];
 
     return (
         <div style={styles.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -46,148 +97,294 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
                 <div style={styles.header}>
                     <div>
                         <h2 style={styles.title}>Register Free 🎊</h2>
-                        <p style={styles.subtitle}>Find your perfect life partner today</p>
+                        <p style={styles.subtitle}>
+                            {activeTab === 'member'
+                                ? 'Find your perfect life partner today'
+                                : 'List your wedding services on Gettimelam'}
+                        </p>
                     </div>
                     <button style={styles.closeBtn} onClick={onClose}>✕</button>
                 </div>
 
-                {/* Tabs */}
+                {/* ✅ Tabs - now clickable */}
                 <div style={styles.tabs}>
-                    <div style={{ ...styles.tab, ...styles.tabActive }}>I'm Looking for a Match</div>
-                    <div style={styles.tab}>Service Provider</div>
+                    <div
+                        style={{
+                            ...styles.tab,
+                            ...(activeTab === 'member' ? styles.tabActive : {})
+                        }}
+                        onClick={() => setActiveTab('member')}
+                    >
+                        I'm Looking for a Match
+                    </div>
+                    <div
+                        style={{
+                            ...styles.tab,
+                            ...(activeTab === 'vendor' ? styles.tabActive : {})
+                        }}
+                        onClick={() => setActiveTab('vendor')}
+                    >
+                        Service Provider
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit}>
-
-                    {/* Profile For + Gender */}
-                    <div style={styles.grid2}>
-                        <div style={styles.formGroup}>
-                            <label style={styles.label}>Profile For</label>
-                            <select
-                                name="profileFor"
-                                value={form.profileFor}
-                                onChange={handleChange}
-                                style={styles.input}
-                            >
-                                {['Myself', 'Son', 'Daughter', 'Brother', 'Sister', 'Relative', 'Friend'].map(o => (
-                                    <option key={o}>{o}</option>
-                                ))}
-                            </select>
+                {/* ✅ MEMBER FORM */}
+                {activeTab === 'member' && (
+                    <form onSubmit={handleSubmit}>
+                        <div style={styles.grid2}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Profile For</label>
+                                <select
+                                    name="profileFor"
+                                    value={memberForm.profileFor}
+                                    onChange={handleMemberChange}
+                                    style={styles.input}
+                                >
+                                    {['Myself', 'Son', 'Daughter', 'Brother', 'Sister', 'Relative', 'Friend'].map(o => (
+                                        <option key={o}>{o}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Gender</label>
+                                <select
+                                    name="gender"
+                                    value={memberForm.gender}
+                                    onChange={handleMemberChange}
+                                    style={styles.input}
+                                >
+                                    <option>Male</option>
+                                    <option>Female</option>
+                                </select>
+                            </div>
                         </div>
-                        <div style={styles.formGroup}>
-                            <label style={styles.label}>Gender</label>
-                            <select
-                                name="gender"
-                                value={form.gender}
-                                onChange={handleChange}
-                                style={styles.input}
-                            >
-                                <option>Male</option>
-                                <option>Female</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    {/* Name */}
-                    <div style={styles.formGroup}>
-                        <label style={styles.label}>Full Name *</label>
-                        <input
-                            name="name"
-                            type="text"
-                            placeholder="Enter full name"
-                            value={form.name}
-                            onChange={handleChange}
-                            style={styles.input}
-                            required
-                        />
-                    </div>
-
-                    {/* DOB + Mother Tongue */}
-                    <div style={styles.grid2}>
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Date of Birth *</label>
+                            <label style={styles.label}>Full Name *</label>
                             <input
-                                name="dateOfBirth"
-                                type="date"
-                                value={form.dateOfBirth}
-                                onChange={handleChange}
+                                name="name"
+                                type="text"
+                                placeholder="Enter full name"
+                                value={memberForm.name}
+                                onChange={handleMemberChange}
                                 style={styles.input}
                                 required
                             />
                         </div>
+
+                        <div style={styles.grid2}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Date of Birth *</label>
+                                <input
+                                    name="dateOfBirth"
+                                    type="date"
+                                    value={memberForm.dateOfBirth}
+                                    onChange={handleMemberChange}
+                                    style={styles.input}
+                                    required
+                                />
+                            </div>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Mother Tongue</label>
+                                <select
+                                    name="motherTongue"
+                                    value={memberForm.motherTongue}
+                                    onChange={handleMemberChange}
+                                    style={styles.input}
+                                >
+                                    {['Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Hindi', 'English'].map(o => (
+                                        <option key={o}>{o}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>Mother Tongue</label>
+                            <label style={styles.label}>Mobile Number *</label>
+                            <input
+                                name="mobile"
+                                type="tel"
+                                placeholder="+91 99999 99999"
+                                value={memberForm.mobile}
+                                onChange={handleMemberChange}
+                                style={styles.input}
+                                required
+                            />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Email Address *</label>
+                            <input
+                                name="email"
+                                type="email"
+                                placeholder="your@email.com"
+                                value={memberForm.email}
+                                onChange={handleMemberChange}
+                                style={styles.input}
+                                required
+                            />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Password *</label>
+                            <input
+                                name="password"
+                                type="password"
+                                placeholder="Min 6 characters"
+                                value={memberForm.password}
+                                onChange={handleMemberChange}
+                                style={styles.input}
+                                required
+                            />
+                        </div>
+
+                        <p style={styles.terms}>
+                            By registering you agree to our{' '}
+                            <a href="/terms" style={styles.termsLink}>Terms & Conditions</a>
+                            {' '}and{' '}
+                            <a href="/privacy" style={styles.termsLink}>Privacy Policy</a>
+                        </p>
+
+                        <button
+                            type="submit"
+                            style={{ ...styles.submitBtn, opacity: loading ? 0.7 : 1 }}
+                            disabled={loading}
+                        >
+                            {loading ? '⏳ Registering...' : '🎊 Register & Get Started'}
+                        </button>
+                    </form>
+                )}
+
+                {/* ✅ VENDOR / SERVICE PROVIDER FORM */}
+                {activeTab === 'vendor' && (
+                    <form onSubmit={handleSubmit}>
+
+                        <div style={styles.vendorNotice}>
+                            🏪 Register your wedding business and get discovered by thousands of families!
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Business Name *</label>
+                            <input
+                                name="businessName"
+                                type="text"
+                                placeholder="e.g. Sri Murugan Photography"
+                                value={vendorForm.businessName}
+                                onChange={handleVendorChange}
+                                style={styles.input}
+                                required
+                            />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Owner / Contact Person Name *</label>
+                            <input
+                                name="ownerName"
+                                type="text"
+                                placeholder="Enter your full name"
+                                value={vendorForm.ownerName}
+                                onChange={handleVendorChange}
+                                style={styles.input}
+                                required
+                            />
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Service Category *</label>
                             <select
-                                name="motherTongue"
-                                value={form.motherTongue}
-                                onChange={handleChange}
+                                name="category"
+                                value={vendorForm.category}
+                                onChange={handleVendorChange}
                                 style={styles.input}
                             >
-                                {['Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Hindi', 'English'].map(o => (
-                                    <option key={o}>{o}</option>
+                                {serviceCategories.map(cat => (
+                                    <option key={cat}>{cat}</option>
                                 ))}
                             </select>
                         </div>
-                    </div>
 
-                    {/* Mobile */}
-                    <div style={styles.formGroup}>
-                        <label style={styles.label}>Mobile Number *</label>
-                        <input
-                            name="mobile"
-                            type="tel"
-                            placeholder="+91 99999 99999"
-                            value={form.mobile}
-                            onChange={handleChange}
-                            style={styles.input}
-                            required
-                        />
-                    </div>
+                        <div style={styles.grid2}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>City *</label>
+                                <input
+                                    name="city"
+                                    type="text"
+                                    placeholder="e.g. Chennai"
+                                    value={vendorForm.city}
+                                    onChange={handleVendorChange}
+                                    style={styles.input}
+                                    required
+                                />
+                            </div>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>District *</label>
+                                <input
+                                    name="district"
+                                    type="text"
+                                    placeholder="e.g. Coimbatore"
+                                    value={vendorForm.district}
+                                    onChange={handleVendorChange}
+                                    style={styles.input}
+                                    required
+                                />
+                            </div>
+                        </div>
 
-                    {/* Email */}
-                    <div style={styles.formGroup}>
-                        <label style={styles.label}>Email Address *</label>
-                        <input
-                            name="email"
-                            type="email"
-                            placeholder="your@email.com"
-                            value={form.email}
-                            onChange={handleChange}
-                            style={styles.input}
-                            required
-                        />
-                    </div>
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Mobile Number *</label>
+                            <input
+                                name="mobile"
+                                type="tel"
+                                placeholder="+91 99999 99999"
+                                value={vendorForm.mobile}
+                                onChange={handleVendorChange}
+                                style={styles.input}
+                                required
+                            />
+                        </div>
 
-                    {/* Password */}
-                    <div style={styles.formGroup}>
-                        <label style={styles.label}>Password *</label>
-                        <input
-                            name="password"
-                            type="password"
-                            placeholder="Create a strong password (min 6 chars)"
-                            value={form.password}
-                            onChange={handleChange}
-                            style={styles.input}
-                            required
-                        />
-                    </div>
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Email Address *</label>
+                            <input
+                                name="email"
+                                type="email"
+                                placeholder="business@email.com"
+                                value={vendorForm.email}
+                                onChange={handleVendorChange}
+                                style={styles.input}
+                                required
+                            />
+                        </div>
 
-                    <p style={styles.terms}>
-                        By registering you agree to our{' '}
-                        <a href="/terms" style={styles.termsLink}>Terms & Conditions</a>
-                        {' '}and{' '}
-                        <a href="/privacy" style={styles.termsLink}>Privacy Policy</a>
-                    </p>
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Password *</label>
+                            <input
+                                name="password"
+                                type="password"
+                                placeholder="Min 6 characters"
+                                value={vendorForm.password}
+                                onChange={handleVendorChange}
+                                style={styles.input}
+                                required
+                            />
+                        </div>
 
-                    <button
-                        type="submit"
-                        style={{ ...styles.submitBtn, opacity: loading ? 0.7 : 1 }}
-                        disabled={loading}
-                    >
-                        {loading ? '⏳ Registering...' : '🎊 Register & Get Started'}
-                    </button>
+                        <p style={styles.terms}>
+                            By registering you agree to our{' '}
+                            <a href="/terms" style={styles.termsLink}>Terms & Conditions</a>
+                            {' '}and{' '}
+                            <a href="/privacy" style={styles.termsLink}>Privacy Policy</a>
+                        </p>
 
-                </form>
+                        <button
+                            type="submit"
+                            style={{ ...styles.submitBtn, opacity: loading ? 0.7 : 1 }}
+                            disabled={loading}
+                        >
+                            {loading ? '⏳ Registering...' : '🏪 Register My Business'}
+                        </button>
+                    </form>
+                )}
 
                 <p style={styles.switchText}>
                     Already a member?{' '}
@@ -260,11 +457,24 @@ const styles = {
         fontWeight: '500',
         cursor: 'pointer',
         color: '#7A6055',
-        background: '#fff'
+        background: '#fff',
+        transition: 'all 0.2s ease',
+        userSelect: 'none'
     },
     tabActive: {
         background: '#8B1A1A',
         color: '#fff'
+    },
+    vendorNotice: {
+        background: '#FFF8F0',
+        border: '1px solid #E8D5C4',
+        borderRadius: '8px',
+        padding: '12px 14px',
+        fontSize: '13px',
+        color: '#7A6055',
+        marginBottom: '20px',
+        textAlign: 'center',
+        lineHeight: 1.5
     },
     grid2: {
         display: 'grid',

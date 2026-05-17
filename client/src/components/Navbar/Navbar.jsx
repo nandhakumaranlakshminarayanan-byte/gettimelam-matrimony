@@ -7,17 +7,26 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
     const navigate = useNavigate();
     const [browseOpen, setBrowseOpen] = useState(false);
 
+    // Route to correct dashboard based on role
+    const handleDashboard = () => {
+        if (user?.role === 'vendor') navigate('/vendor-dashboard');
+        else if (user?.role === 'admin') navigate('/admin');
+        else navigate('/dashboard');
+    };
+
+    const getDashboardLabel = () => {
+        if (user?.role === 'vendor') return '🏪 My Business';
+        if (user?.role === 'admin') return '⚙️ Admin Panel';
+        return 'Dashboard';
+    };
+
     return (
         <nav style={styles.nav}>
             <div style={styles.inner}>
 
                 {/* LOGO */}
                 <div style={styles.logo} onClick={() => navigate('/')}>
-                    <img
-                        src="/logo.png"
-                        alt="Gettimelam Matrimony"
-                        style={styles.logoImg}
-                    />
+                    <img src="/logo.png" alt="Gettimelam Matrimony" style={styles.logoImg} />
                 </div>
 
                 {/* NAV LINKS */}
@@ -48,9 +57,7 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
                                 {[
                                     { label: 'By Location', query: '' },
                                     { label: 'By Profession', query: '' },
-                                    { label: 'By Education', query: '' },
                                     { label: 'Divorced', query: '?maritalStatus=Divorced' },
-                                    { label: 'Second Marriage', query: '?maritalStatus=Divorced' },
                                 ].map(item => (
                                     <span
                                         key={item.label}
@@ -67,7 +74,6 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
                     <span style={styles.link} onClick={() => navigate('/services')}>Wedding Services</span>
                     <span style={styles.link} onClick={() => navigate('/horoscope')}>Horoscope</span>
                     <span style={styles.link} onClick={() => navigate('/plans')}>Plans</span>
-                    <span style={styles.link} onClick={() => navigate('/blog')}>Blog</span>
                     <span style={styles.link} onClick={() => navigate('/contact')}>Contact</span>
                 </div>
 
@@ -80,17 +86,13 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
 
                     {user ? (
                         <div style={styles.userMenu}>
-                            <span style={styles.userName}>👤 {user.name}</span>
-                            <button
-                                style={styles.btnOutline}
-                                onClick={() => navigate('/dashboard')}
-                            >
-                                Dashboard
+                            <span style={styles.userName}>
+                                {user.role === 'vendor' ? '🏪' : '👤'} {user.name || user.businessName}
+                            </span>
+                            <button style={styles.btnOutline} onClick={handleDashboard}>
+                                {getDashboardLabel()}
                             </button>
-                            <button
-                                style={styles.btnPrimary}
-                                onClick={() => { logout(); navigate('/'); }}
-                            >
+                            <button style={styles.btnPrimary} onClick={() => { logout(); navigate('/'); }}>
                                 Logout
                             </button>
                         </div>
@@ -101,7 +103,6 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
                         </>
                     )}
                 </div>
-
             </div>
         </nav>
     );
@@ -125,104 +126,44 @@ const styles = {
         justifyContent: 'space-between',
         height: '80px'
     },
-    logo: {
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center'
-    },
-    logoImg: {
-        height: '80px',
-        objectFit: 'contain'
-    },
-    links: {
-        display: 'flex',
-        gap: '2px',
-        alignItems: 'center'
-    },
+    logo: { cursor: 'pointer', display: 'flex', alignItems: 'center' },
+    logoImg: { height: '80px', objectFit: 'contain' },
+    links: { display: 'flex', gap: '2px', alignItems: 'center' },
     link: {
-        fontSize: '13px',
-        fontWeight: '500',
-        color: '#7A6055',
-        textDecoration: 'none',
-        padding: '8px 10px',
-        borderRadius: '8px',
-        cursor: 'pointer',
-        transition: 'all 0.2s'
+        fontSize: '13px', fontWeight: '500', color: '#7A6055',
+        padding: '8px 10px', borderRadius: '8px', cursor: 'pointer'
     },
-    dropdown: {
-        position: 'relative'
-    },
+    dropdown: { position: 'relative' },
     dropMenu: {
-        position: 'absolute',
-        top: '100%',
-        left: 0,
-        background: '#fff',
-        borderRadius: '12px',
+        position: 'absolute', top: '100%', left: 0,
+        background: '#fff', borderRadius: '12px',
         boxShadow: '0 8px 32px rgba(139,26,26,0.15)',
-        border: '1px solid #E8D5C4',
-        padding: '8px',
-        minWidth: '200px',
-        zIndex: 200
+        border: '1px solid #E8D5C4', padding: '8px',
+        minWidth: '200px', zIndex: 200
     },
     dropItem: {
-        display: 'block',
-        padding: '9px 14px',
-        fontSize: '13px',
-        color: '#2C1810',
-        textDecoration: 'none',
-        borderRadius: '8px',
-        cursor: 'pointer',
-        transition: 'background 0.2s'
+        display: 'block', padding: '9px 14px', fontSize: '13px',
+        color: '#2C1810', borderRadius: '8px', cursor: 'pointer'
     },
-    dropDivider: {
-        height: '1px',
-        background: '#E8D5C4',
-        margin: '6px 0'
-    },
-    actions: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px'
-    },
+    dropDivider: { height: '1px', background: '#E8D5C4', margin: '6px 0' },
+    actions: { display: 'flex', alignItems: 'center', gap: '8px' },
     langSelect: {
-        padding: '6px 10px',
-        border: '1.5px solid #E8D5C4',
-        borderRadius: '8px',
-        fontSize: '13px',
-        color: '#7A6055',
-        background: '#FFFDF9',
-        cursor: 'pointer'
+        padding: '6px 10px', border: '1.5px solid #E8D5C4',
+        borderRadius: '8px', fontSize: '13px', color: '#7A6055',
+        background: '#FFFDF9', cursor: 'pointer'
     },
     btnOutline: {
-        padding: '8px 14px',
-        borderRadius: '8px',
-        fontSize: '13px',
-        fontWeight: '500',
-        background: 'transparent',
-        border: '1.5px solid #8B1A1A',
-        color: '#8B1A1A',
-        cursor: 'pointer'
+        padding: '8px 14px', borderRadius: '8px', fontSize: '13px',
+        fontWeight: '500', background: 'transparent',
+        border: '1.5px solid #8B1A1A', color: '#8B1A1A', cursor: 'pointer'
     },
     btnPrimary: {
-        padding: '8px 14px',
-        borderRadius: '8px',
-        fontSize: '13px',
-        fontWeight: '500',
-        background: '#8B1A1A',
-        border: 'none',
-        color: '#fff',
-        cursor: 'pointer'
+        padding: '8px 14px', borderRadius: '8px', fontSize: '13px',
+        fontWeight: '500', background: '#8B1A1A', border: 'none',
+        color: '#fff', cursor: 'pointer'
     },
-    userMenu: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px'
-    },
-    userName: {
-        fontSize: '13px',
-        fontWeight: '600',
-        color: '#8B1A1A'
-    }
+    userMenu: { display: 'flex', alignItems: 'center', gap: '8px' },
+    userName: { fontSize: '13px', fontWeight: '600', color: '#8B1A1A' }
 };
 
 export default Navbar;
