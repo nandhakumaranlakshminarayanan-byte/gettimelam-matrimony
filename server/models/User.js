@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-    // ── Common fields (both member & vendor) ──
+    // ── Common fields ──
     role: {
         type: String,
-        enum: ['member', 'vendor', 'admin'],
+        enum: ['member', 'service', 'admin'],
         default: 'member'
     },
     email: { type: String, required: true, unique: true },
@@ -32,22 +32,22 @@ const userSchema = new mongoose.Schema({
     plan: { type: String, default: 'free' },
     isVerified: { type: Boolean, default: false },
 
-    // ── Vendor-only fields ──
+    // ── Service Provider-only fields ──
     businessName: {
         type: String,
-        required: function () { return this.role === 'vendor'; }
+        required: function () { return this.role === 'service'; }
     },
     ownerName: {
         type: String,
-        required: function () { return this.role === 'vendor'; }
+        required: function () { return this.role === 'service'; }
     },
     category: {
         type: String,
-        required: function () { return this.role === 'vendor'; }
+        required: function () { return this.role === 'service'; }
     },
     city: { type: String },
     district: { type: String },
-    isApproved: { type: Boolean, default: false }, // Admin approves vendor
+    isApproved: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
 
 }, { timestamps: true });

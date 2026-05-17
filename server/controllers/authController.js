@@ -30,7 +30,6 @@ const registerUser = async (req, res) => {
         let userData = { role, password: hashedPassword };
 
         if (role === 'member') {
-            // Validate required member fields
             const { name, email, mobile, gender, profileFor, dateOfBirth, motherTongue } = req.body;
             if (!name || !email || !mobile || !gender) {
                 return res.status(400).json({
@@ -38,18 +37,9 @@ const registerUser = async (req, res) => {
                     message: 'Name, email, mobile and gender are required for member registration'
                 });
             }
-            userData = {
-                ...userData,
-                name,
-                email,
-                mobile,
-                gender,
-                profileFor,
-                dateOfBirth,
-                motherTongue
-            };
-        } else if (role === 'vendor') {
-            // Validate required vendor fields
+            userData = { ...userData, name, email, mobile, gender, profileFor, dateOfBirth, motherTongue };
+
+        } else if (role === 'service') {
             const { businessName, ownerName, email, mobile, category, city, district } = req.body;
             if (!businessName || !ownerName || !email || !mobile || !category) {
                 return res.status(400).json({
@@ -57,16 +47,8 @@ const registerUser = async (req, res) => {
                     message: 'Business name, owner name, email, mobile and category are required'
                 });
             }
-            userData = {
-                ...userData,
-                businessName,
-                ownerName,
-                email,
-                mobile,
-                category,
-                city,
-                district
-            };
+            userData = { ...userData, businessName, ownerName, email, mobile, category, city, district };
+
         } else {
             return res.status(400).json({ success: false, message: 'Invalid role' });
         }
@@ -91,13 +73,15 @@ const registerUser = async (req, res) => {
             responseUser.ownerName = user.ownerName;
             responseUser.category = user.category;
             responseUser.isApproved = user.isApproved;
+            responseUser.city = user.city;
+            responseUser.district = user.district;
         }
 
         res.status(201).json({
             success: true,
             message: role === 'member'
-                ? 'Registration successful! Welcome to Gettimelam 🎊'
-                : 'Business registered! Our team will verify and approve your listing shortly.',
+                ? 'Registration successful! Welcome to Gettimelam!'
+                : 'Service Provider registered! Our team will verify and approve your listing shortly.',
             token: generateToken(user._id),
             user: responseUser
         });
@@ -113,11 +97,9 @@ const loginUser = async (req, res) => {
     try {
         const { mobile, password, role } = req.body;
 
-        // Find user — optionally filter by role
-        const query = { mobile };
-        if (role && role !== 'any') query.role = role;
+        // ── Search by mobile ONLY ──
+        const user = await User.findOne({ mobile });
 
-        const user = await User.findOne(query);
         if (!user) {
             return res.status(401).json({
                 success: false,
@@ -125,11 +107,33 @@ const loginUser = async (req, res) => {
             });
         }
 
+        // ── Auto-fix old roles ──
+        if (user.role === 'user') {
+            await User.findByIdAndUpdate(user._id, { role: 'member' });
+            user.role = 'member';
+        }
+        if (user.role === 'vendor') {
+            await User.findByIdAndUpdate(user._id, { role: 'service' });
+            user.role = 'service';
+        }
+
+        // ── Check role tab mismatch ──
+        if (role && role !== 'any' && user.role !== 'admin') {
+            if (user.role !== role) {
+                const correctTab = user.role === 'service' ? 'Service Provider' : 'Member Login';
+                return res.status(401).json({
+                    success: false,
+                    message: `Please use the "${correctTab}" tab to login.`
+                });
+            }
+        }
+
+        // ── Check password ──
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(401).json({
                 success: false,
-                message: 'Incorrect password'
+                message: 'Incorrect password. Please try again.'
             });
         }
 
@@ -146,12 +150,13 @@ const loginUser = async (req, res) => {
             responseUser.gender = user.gender;
             responseUser.isPremium = user.isPremium;
             responseUser.plan = user.plan;
-        } else if (user.role === 'vendor') {
+        } else if (user.role === 'service') {
             responseUser.businessName = user.businessName;
             responseUser.ownerName = user.ownerName;
             responseUser.category = user.category;
             responseUser.isApproved = user.isApproved;
             responseUser.city = user.city;
+            responseUser.district = user.district;
         } else if (user.role === 'admin') {
             responseUser.name = user.name;
         }

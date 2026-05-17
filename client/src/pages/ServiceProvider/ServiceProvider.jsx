@@ -6,7 +6,7 @@ import Footer from '../../components/Footer/Footer';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const VendorDashboard = () => {
+const ServiceProvider = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
@@ -14,6 +14,9 @@ const VendorDashboard = () => {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(false);
     const [showAddService, setShowAddService] = useState(false);
+    const [selectedService, setSelectedService] = useState(null);
+    const [availability, setAvailability] = useState([]);
+    const [calendarMonth, setCalendarMonth] = useState(new Date());
     const [serviceForm, setServiceForm] = useState({
         businessName: user?.businessName || '',
         ownerName: user?.ownerName || '',
@@ -32,7 +35,7 @@ const VendorDashboard = () => {
 
     useEffect(() => {
         if (!user) { navigate('/'); return; }
-        if (user.role !== 'vendor') { navigate('/dashboard'); return; }
+        if (user.role !== 'service') { navigate('/dashboard'); return; }
         fetchMyServices();
         fetchMyBookings();
     }, [user]);
@@ -78,6 +81,88 @@ const VendorDashboard = () => {
             setLoading(false);
         }
     };
+
+    // ── Calendar functions ──
+    const loadAvailability = async (service) => {
+        setSelectedService(service);
+        try {
+            const res = await axios.get(`http://localhost:5000/api/services/${service._id}/availability`);
+            setAvailability(res.data.availability || []);
+        } catch (err) {
+            setAvailability([]);
+        }
+    };
+
+    // ✅ Timezone-safe date comparison
+    const toLocalDateStr = (date) => {
+        return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    };
+
+    const getDateStatus = (date) => {
+        const dStr = toLocalDateStr(date);
+        const found = availability.find(a => {
+            const aDate = new Date(a.date);
+            const aStr = `${aDate.getUTCFullYear()}-${aDate.getUTCMonth()}-${aDate.getUTCDate()}`;
+            return aStr === dStr;
+        });
+        return found ? found.status : 'available';
+    };
+
+    const toggleDateStatus = async (date) => {
+        const current = getDateStatus(date);
+        const next = current === 'available' ? 'blocked'
+            : current === 'blocked' ? 'booked'
+                : 'available';
+
+        // ✅ Fix timezone offset — use local date string
+        const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+        const dateStr = localDate.toISOString().split('T')[0];
+        const dStr = toLocalDateStr(date);
+
+        const exists = availability.find(a => {
+            const aDate = new Date(a.date);
+            const aStr = `${aDate.getUTCFullYear()}-${aDate.getUTCMonth()}-${aDate.getUTCDate()}`;
+            return aStr === dStr;
+        });
+
+        let newAvailability;
+        if (exists) {
+            newAvailability = availability.map(a => {
+                const aDate = new Date(a.date);
+                const aStr = `${aDate.getUTCFullYear()}-${aDate.getUTCMonth()}-${aDate.getUTCDate()}`;
+                return aStr === dStr ? { ...a, status: next } : a;
+            });
+        } else {
+            newAvailability = [...availability, { date: dateStr, status: next }];
+        }
+
+        setAvailability(newAvailability);
+
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(
+                `http://localhost:5000/api/services/${selectedService._id}/availability`,
+                { availability: newAvailability },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            toast.success(`Date marked as ${next}!`);
+        } catch (err) {
+            toast.error('Failed to update availability');
+        }
+    };
+
+    const getDaysInMonth = (date) => {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        return { firstDay, daysInMonth, year, month };
+    };
+
+    const { firstDay, daysInMonth, year, month } = getDaysInMonth(calendarMonth);
+
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
 
     const tabs = [
         { id: 'overview', label: '🏠 Overview' },
@@ -149,7 +234,6 @@ const VendorDashboard = () => {
                                     <strong>⏳ Your account is pending admin approval.</strong>
                                     <p style={{ fontSize: '13px', marginTop: '4px', color: '#7A6055' }}>
                                         Our team will review and approve your listing within 24 hours.
-                                        You'll be notified once approved.
                                     </p>
                                 </div>
                             )}
@@ -169,21 +253,19 @@ const VendorDashboard = () => {
                                 ))}
                             </div>
 
-                            <div style={styles.quickActions}>
-                                <h3 style={styles.sectionTitle}>Quick Actions</h3>
-                                <div style={styles.actionGrid}>
-                                    {[
-                                        { icon: '➕', label: 'Add New Service', action: () => { setActiveTab('services'); setShowAddService(true); } },
-                                        { icon: '🗓️', label: 'Set Availability', action: () => setActiveTab('calendar') },
-                                        { icon: '📅', label: 'View Bookings', action: () => setActiveTab('bookings') },
-                                        { icon: '⚙️', label: 'Account Settings', action: () => setActiveTab('settings') },
-                                    ].map(a => (
-                                        <div key={a.label} style={styles.actionCard} onClick={a.action}>
-                                            <div style={{ fontSize: '28px', marginBottom: '8px' }}>{a.icon}</div>
-                                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#2C1810' }}>{a.label}</div>
-                                        </div>
-                                    ))}
-                                </div>
+                            <h3 style={styles.sectionTitle}>Quick Actions</h3>
+                            <div style={styles.actionGrid}>
+                                {[
+                                    { icon: '➕', label: 'Add New Service', action: () => { setActiveTab('services'); setShowAddService(true); } },
+                                    { icon: '🗓️', label: 'Set Availability', action: () => setActiveTab('calendar') },
+                                    { icon: '📅', label: 'View Bookings', action: () => setActiveTab('bookings') },
+                                    { icon: '⚙️', label: 'Settings', action: () => setActiveTab('settings') },
+                                ].map(a => (
+                                    <div key={a.label} style={styles.actionCard} onClick={a.action}>
+                                        <div style={{ fontSize: '28px', marginBottom: '8px' }}>{a.icon}</div>
+                                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#2C1810' }}>{a.label}</div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
@@ -272,15 +354,20 @@ const VendorDashboard = () => {
                                             <div style={styles.serviceRowInfo}>
                                                 <div style={styles.serviceRowName}>{s.businessName}</div>
                                                 <div style={styles.serviceRowMeta}>{s.category} • {s.city}</div>
-                                                <div style={styles.serviceRowMeta}>₹{s.priceMin} – ₹{s.priceMax}</div>
+                                                <div style={styles.serviceRowMeta}>
+                                                    {s.priceMin && s.priceMax ? `Rs.${s.priceMin} - Rs.${s.priceMax}` : s.price || 'Price not set'}
+                                                </div>
                                             </div>
                                             <div style={styles.serviceRowActions}>
                                                 <span style={{ ...styles.statusPill, background: s.isVerified ? '#E8F5E9' : '#FFF8E1', color: s.isVerified ? '#2E7D32' : '#F57F17' }}>
                                                     {s.isVerified ? '✅ Verified' : '⏳ Pending'}
                                                 </span>
-                                                <span style={{ ...styles.statusPill, background: s.isActive ? '#E3F2FD' : '#FFEBEE', color: s.isActive ? '#1565C0' : '#C62828' }}>
-                                                    {s.isActive ? '🟢 Active' : '🔴 Inactive'}
-                                                </span>
+                                                <button
+                                                    style={{ ...styles.addBtn, padding: '6px 14px', fontSize: '12px' }}
+                                                    onClick={() => { setActiveTab('calendar'); loadAvailability(s); }}
+                                                >
+                                                    🗓️ Calendar
+                                                </button>
                                             </div>
                                         </div>
                                     ))}
@@ -308,7 +395,10 @@ const VendorDashboard = () => {
                                                 <div style={styles.serviceRowMeta}>
                                                     📅 {new Date(b.eventDate).toLocaleDateString('en-IN')} • {b.eventType}
                                                 </div>
-                                                <div style={styles.serviceRowMeta}>👥 {b.guestCount} guests</div>
+                                                <div style={styles.serviceRowMeta}>👥 {b.guestCount || 0} guests</div>
+                                                {b.specialRequirements && (
+                                                    <div style={styles.serviceRowMeta}>📝 {b.specialRequirements}</div>
+                                                )}
                                             </div>
                                             <span style={{
                                                 ...styles.statusPill,
@@ -324,42 +414,135 @@ const VendorDashboard = () => {
                         </div>
                     )}
 
-                    {/* CALENDAR */}
+                    {/* AVAILABILITY CALENDAR */}
                     {activeTab === 'calendar' && (
                         <div>
                             <h2 style={styles.pageTitle}>🗓️ Availability Calendar</h2>
-                            <div style={styles.calendarInfo}>
-                                <p style={{ color: '#7A6055', fontSize: '14px', marginBottom: '16px' }}>
-                                    Mark your available and blocked dates so customers can check before booking.
-                                </p>
-                                {services.length === 0 ? (
-                                    <div style={styles.empty}>
-                                        <div style={{ fontSize: '52px', marginBottom: '12px' }}>🗓️</div>
-                                        <h3>Add a service first</h3>
-                                        <p style={{ color: '#7A6055' }}>You need to list a service before setting availability</p>
-                                        <button style={styles.addBtn} onClick={() => setActiveTab('services')}>
-                                            Add Service
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <p style={{ color: '#8B1A1A', fontWeight: '600', marginBottom: '12px' }}>
-                                            Select your service to manage its calendar:
-                                        </p>
-                                        {services.map(s => (
-                                            <div key={s._id} style={styles.serviceRow}>
-                                                <div style={styles.serviceRowInfo}>
-                                                    <div style={styles.serviceRowName}>{s.businessName}</div>
-                                                    <div style={styles.serviceRowMeta}>{s.category} • {s.city}</div>
+
+                            {services.length === 0 ? (
+                                <div style={styles.empty}>
+                                    <div style={{ fontSize: '52px', marginBottom: '12px' }}>🗓️</div>
+                                    <h3>Add a service first</h3>
+                                    <p style={{ color: '#7A6055' }}>List a service before setting availability</p>
+                                    <button style={styles.addBtn} onClick={() => setActiveTab('services')}>
+                                        Add Service
+                                    </button>
+                                </div>
+                            ) : (
+                                <div>
+                                    {!selectedService ? (
+                                        <div>
+                                            <p style={{ color: '#7A6055', marginBottom: '16px', fontSize: '14px' }}>
+                                                Select a service to manage its availability calendar:
+                                            </p>
+                                            {services.map(s => (
+                                                <div key={s._id} style={styles.serviceRow}>
+                                                    <div style={styles.serviceRowInfo}>
+                                                        <div style={styles.serviceRowName}>{s.businessName}</div>
+                                                        <div style={styles.serviceRowMeta}>{s.category} • {s.city}</div>
+                                                    </div>
+                                                    <button style={styles.addBtn} onClick={() => loadAvailability(s)}>
+                                                        🗓️ Manage Calendar
+                                                    </button>
                                                 </div>
-                                                <button style={styles.addBtn} onClick={() => toast.success('Calendar editor coming in next update!')}>
-                                                    🗓️ Manage Calendar
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <div style={styles.calendarHeader}>
+                                                <button style={styles.backBtn} onClick={() => setSelectedService(null)}>
+                                                    ← Back to Services
                                                 </button>
+                                                <div style={styles.calendarServiceName}>
+                                                    {selectedService.businessName}
+                                                </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+
+                                            {/* Legend */}
+                                            <div style={styles.legend}>
+                                                {[
+                                                    { color: '#E8F5E9', border: '#A5D6A7', label: 'Available' },
+                                                    { color: '#FFEBEE', border: '#EF9A9A', label: 'Blocked' },
+                                                    { color: '#FFF8E1', border: '#FFE082', label: 'Booked' },
+                                                ].map(l => (
+                                                    <div key={l.label} style={styles.legendItem}>
+                                                        <div style={{ width: '16px', height: '16px', borderRadius: '4px', background: l.color, border: `1px solid ${l.border}`, marginRight: '6px' }} />
+                                                        <span style={{ fontSize: '12px', color: '#7A6055' }}>{l.label}</span>
+                                                    </div>
+                                                ))}
+                                                <span style={{ fontSize: '12px', color: '#7A6055', marginLeft: '8px' }}>
+                                                    (Click a date to toggle status)
+                                                </span>
+                                            </div>
+
+                                            {/* Month navigation */}
+                                            <div style={styles.monthNav}>
+                                                <button style={styles.navBtn} onClick={() => setCalendarMonth(new Date(year, month - 1))}>←</button>
+                                                <span style={styles.monthLabel}>{monthNames[month]} {year}</span>
+                                                <button style={styles.navBtn} onClick={() => setCalendarMonth(new Date(year, month + 1))}>→</button>
+                                            </div>
+
+                                            {/* Calendar grid */}
+                                            <div style={styles.calendarGrid}>
+                                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                                                    <div key={d} style={styles.dayHeader}>{d}</div>
+                                                ))}
+                                                {Array.from({ length: firstDay }).map((_, i) => (
+                                                    <div key={`empty-${i}`} style={styles.emptyCell} />
+                                                ))}
+                                                {Array.from({ length: daysInMonth }).map((_, i) => {
+                                                    const date = new Date(year, month, i + 1);
+                                                    const status = getDateStatus(date);
+                                                    const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
+                                                    const isToday = date.toDateString() === new Date().toDateString();
+                                                    const cellColors = {
+                                                        available: { bg: '#E8F5E9', border: '#A5D6A7', text: '#2E7D32' },
+                                                        blocked: { bg: '#FFEBEE', border: '#EF9A9A', text: '#C62828' },
+                                                        booked: { bg: '#FFF8E1', border: '#FFE082', text: '#F57F17' },
+                                                    };
+                                                    const colors = isPast
+                                                        ? { bg: '#F5F5F5', border: '#E0E0E0', text: '#BDBDBD' }
+                                                        : cellColors[status];
+                                                    return (
+                                                        <div
+                                                            key={i}
+                                                            style={{
+                                                                ...styles.dayCell,
+                                                                background: colors.bg,
+                                                                border: `1px solid ${colors.border}`,
+                                                                color: colors.text,
+                                                                cursor: isPast ? 'not-allowed' : 'pointer',
+                                                                fontWeight: isToday ? '800' : '500',
+                                                                outline: isToday ? '2px solid #8B1A1A' : 'none',
+                                                            }}
+                                                            onClick={() => !isPast && toggleDateStatus(date)}
+                                                        >
+                                                            {i + 1}
+                                                            {isToday && <div style={{ fontSize: '8px', marginTop: '2px' }}>TODAY</div>}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            {/* Summary */}
+                                            <div style={styles.calendarSummary}>
+                                                <div style={styles.summaryItem}>
+                                                    <strong style={{ color: '#C62828' }}>
+                                                        {availability.filter(a => a.status === 'blocked').length}
+                                                    </strong>
+                                                    <span> Blocked dates</span>
+                                                </div>
+                                                <div style={styles.summaryItem}>
+                                                    <strong style={{ color: '#F57F17' }}>
+                                                        {availability.filter(a => a.status === 'booked').length}
+                                                    </strong>
+                                                    <span> Booked dates</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -378,7 +561,7 @@ const VendorDashboard = () => {
                                         { label: 'Category', value: user?.category },
                                         { label: 'City', value: user?.city },
                                         { label: 'District', value: user?.district },
-                                        { label: 'Status', value: user?.isApproved ? '✅ Approved' : '⏳ Pending' },
+                                        { label: 'Status', value: user?.isApproved ? '✅ Approved' : '⏳ Pending Approval' },
                                     ].map(item => (
                                         <div key={item.label} style={styles.profileField}>
                                             <span style={styles.fieldLabel}>{item.label}</span>
@@ -405,16 +588,9 @@ const VendorDashboard = () => {
 };
 
 const styles = {
-    container: {
-        maxWidth: '1200px', margin: '0 auto', padding: '32px 24px',
-        display: 'grid', gridTemplateColumns: '260px 1fr',
-        gap: '24px', alignItems: 'start'
-    },
+    container: { maxWidth: '1200px', margin: '0 auto', padding: '32px 24px', display: 'grid', gridTemplateColumns: '260px 1fr', gap: '24px', alignItems: 'start' },
     sidebar: {},
-    vendorCard: {
-        background: '#fff', borderRadius: '16px', padding: '24px',
-        textAlign: 'center', boxShadow: '0 4px 24px rgba(139,26,26,0.08)', marginBottom: '16px'
-    },
+    vendorCard: { background: '#fff', borderRadius: '16px', padding: '24px', textAlign: 'center', boxShadow: '0 4px 24px rgba(139,26,26,0.08)', marginBottom: '16px' },
     vendorIcon: { fontSize: '52px', marginBottom: '8px' },
     vendorName: { fontFamily: "'Playfair Display', serif", fontSize: '17px', fontWeight: '700', color: '#1A0A0A', marginBottom: '4px' },
     vendorSub: { fontSize: '12px', color: '#8B1A1A', fontWeight: '600', marginBottom: '4px' },
@@ -432,45 +608,42 @@ const styles = {
     statValue: { fontFamily: "'Playfair Display', serif", fontSize: '28px', fontWeight: '700', color: '#8B1A1A', marginBottom: '4px' },
     statLabel: { fontSize: '12px', color: '#7A6055' },
     sectionTitle: { fontFamily: "'Playfair Display', serif", fontSize: '20px', color: '#1A0A0A', marginBottom: '16px' },
-    quickActions: { marginTop: '8px' },
-    actionGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' },
-    actionCard: {
-        background: '#FDF5EE', borderRadius: '12px', padding: '20px',
-        textAlign: 'center', cursor: 'pointer', border: '1px solid #E8D5C4',
-        transition: 'all 0.2s'
-    },
+    actionGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' },
+    actionCard: { background: '#FDF5EE', borderRadius: '12px', padding: '20px', textAlign: 'center', cursor: 'pointer', border: '1px solid #E8D5C4' },
     tabHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
-    addBtn: {
-        padding: '10px 20px', background: '#8B1A1A', color: '#fff',
-        border: 'none', borderRadius: '8px', fontSize: '13px',
-        fontWeight: '600', cursor: 'pointer'
-    },
+    addBtn: { padding: '10px 20px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
     formBox: { background: '#FFFDF9', border: '1px solid #E8D5C4', borderRadius: '12px', padding: '24px', marginBottom: '24px' },
     formTitle: { fontSize: '16px', fontWeight: '700', color: '#8B1A1A', marginBottom: '16px' },
     formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
     formGroup: { marginBottom: '16px' },
     label: { display: 'block', fontSize: '11px', fontWeight: '600', color: '#7A6055', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-    input: {
-        width: '100%', padding: '11px 14px', border: '1.5px solid #E8D5C4',
-        borderRadius: '8px', fontSize: '14px', color: '#2C1810',
-        background: '#fff', outline: 'none', fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box'
-    },
+    input: { width: '100%', padding: '11px 14px', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '14px', color: '#2C1810', background: '#fff', outline: 'none', fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box' },
     servicesList: { display: 'flex', flexDirection: 'column', gap: '12px' },
-    serviceRow: {
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '16px 20px', background: '#FDF5EE', borderRadius: '12px', border: '1px solid #E8D5C4'
-    },
+    serviceRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: '#FDF5EE', borderRadius: '12px', border: '1px solid #E8D5C4' },
     serviceRowInfo: {},
     serviceRowName: { fontWeight: '700', color: '#1A0A0A', fontSize: '15px', marginBottom: '4px' },
     serviceRowMeta: { fontSize: '12px', color: '#7A6055' },
-    serviceRowActions: { display: 'flex', gap: '8px' },
+    serviceRowActions: { display: 'flex', gap: '8px', alignItems: 'center' },
     statusPill: { padding: '5px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: '600' },
     empty: { textAlign: 'center', padding: '60px 20px' },
-    calendarInfo: {},
+    calendarHeader: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' },
+    backBtn: { padding: '8px 16px', background: 'transparent', border: '1.5px solid #8B1A1A', color: '#8B1A1A', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
+    calendarServiceName: { fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: '700', color: '#1A0A0A' },
+    legend: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' },
+    legendItem: { display: 'flex', alignItems: 'center' },
+    monthNav: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginBottom: '16px' },
+    navBtn: { padding: '8px 16px', background: '#FDF0F0', border: '1px solid #E8D5C4', borderRadius: '8px', fontSize: '16px', cursor: 'pointer', color: '#8B1A1A', fontWeight: '700' },
+    monthLabel: { fontFamily: "'Playfair Display', serif", fontSize: '20px', fontWeight: '700', color: '#1A0A0A', minWidth: '180px', textAlign: 'center' },
+    calendarGrid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '16px' },
+    dayHeader: { textAlign: 'center', fontSize: '11px', fontWeight: '700', color: '#7A6055', padding: '8px 0', textTransform: 'uppercase' },
+    emptyCell: { height: '48px' },
+    dayCell: { height: '48px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', fontSize: '14px', transition: 'all 0.15s', userSelect: 'none' },
+    calendarSummary: { display: 'flex', gap: '24px', padding: '16px', background: '#F8F9FA', borderRadius: '10px', fontSize: '14px', color: '#7A6055' },
+    summaryItem: { display: 'flex', gap: '4px', alignItems: 'center' },
     profileView: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' },
     profileField: { display: 'flex', flexDirection: 'column', padding: '12px 16px', borderBottom: '1px solid #F5EAE0' },
     fieldLabel: { fontSize: '11px', fontWeight: '600', color: '#7A6055', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' },
     fieldValue: { fontSize: '14px', color: '#2C1810', fontWeight: '500' },
 };
 
-export default VendorDashboard;
+export default ServiceProvider;

@@ -25,18 +25,18 @@ const adminOnly = (req, res, next) => {
 router.get('/stats', protect, adminOnly, getStats);
 router.get('/analytics', protect, adminOnly, getAnalytics);
 
-// ── Users (members only) ──
+// ── Members ──
 router.get('/users', protect, adminOnly, getAllUsers);
 router.put('/users/:id/toggle-premium', protect, adminOnly, togglePremium);
 router.delete('/users/:id', protect, adminOnly, deleteUser);
 
-// ── Vendors ──
+// ── Service Providers ──
 router.get('/vendors', protect, adminOnly, async (req, res) => {
     try {
-        const vendors = await User.find({ role: 'vendor' })
+        const providers = await User.find({ role: 'service' })
             .select('-password')
             .sort({ createdAt: -1 });
-        res.json({ success: true, count: vendors.length, vendors });
+        res.json({ success: true, count: providers.length, vendors: providers });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -44,15 +44,15 @@ router.get('/vendors', protect, adminOnly, async (req, res) => {
 
 router.put('/vendors/:id/approve', protect, adminOnly, async (req, res) => {
     try {
-        const vendor = await User.findByIdAndUpdate(
+        const provider = await User.findByIdAndUpdate(
             req.params.id,
             { isApproved: true, isActive: true },
             { new: true }
         ).select('-password');
-        if (!vendor) {
-            return res.status(404).json({ success: false, message: 'Vendor not found' });
+        if (!provider) {
+            return res.status(404).json({ success: false, message: 'Service provider not found' });
         }
-        res.json({ success: true, message: '✅ Vendor approved!', vendor });
+        res.json({ success: true, message: 'Service provider approved!', vendor: provider });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -60,15 +60,15 @@ router.put('/vendors/:id/approve', protect, adminOnly, async (req, res) => {
 
 router.put('/vendors/:id/reject', protect, adminOnly, async (req, res) => {
     try {
-        const vendor = await User.findByIdAndUpdate(
+        const provider = await User.findByIdAndUpdate(
             req.params.id,
             { isApproved: false, isActive: false },
             { new: true }
         ).select('-password');
-        if (!vendor) {
-            return res.status(404).json({ success: false, message: 'Vendor not found' });
+        if (!provider) {
+            return res.status(404).json({ success: false, message: 'Service provider not found' });
         }
-        res.json({ success: true, message: '❌ Vendor rejected!', vendor });
+        res.json({ success: true, message: 'Service provider rejected!', vendor: provider });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -77,7 +77,7 @@ router.put('/vendors/:id/reject', protect, adminOnly, async (req, res) => {
 router.delete('/vendors/:id', protect, adminOnly, async (req, res) => {
     try {
         await User.findByIdAndDelete(req.params.id);
-        res.json({ success: true, message: 'Vendor deleted!' });
+        res.json({ success: true, message: 'Service provider deleted!' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

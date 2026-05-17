@@ -7,15 +7,15 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
     const navigate = useNavigate();
     const [browseOpen, setBrowseOpen] = useState(false);
 
-    // Route to correct dashboard based on role
+    // ✅ Route to correct dashboard based on role
     const handleDashboard = () => {
-        if (user?.role === 'vendor') navigate('/vendor-dashboard');
+        if (user?.role === 'service') navigate('/service-provider'); // ✅ fixed
         else if (user?.role === 'admin') navigate('/admin');
         else navigate('/dashboard');
     };
 
     const getDashboardLabel = () => {
-        if (user?.role === 'vendor') return '🏪 My Business';
+        if (user?.role === 'service') return '🏪 My Business';
         if (user?.role === 'admin') return '⚙️ Admin Panel';
         return 'Dashboard';
     };
@@ -87,7 +87,7 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
                     {user ? (
                         <div style={styles.userMenu}>
                             <span style={styles.userName}>
-                                {user.role === 'vendor' ? '🏪' : '👤'} {user.name || user.businessName}
+                                {user.role === 'service' ? '🏪' : '👤'} {user.name || user.businessName}
                             </span>
                             <button style={styles.btnOutline} onClick={handleDashboard}>
                                 {getDashboardLabel()}
