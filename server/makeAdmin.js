@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+require('dotenv').config();
 
-const MONGODB_URI = 'mongodb://localhost:27017/gettimelam';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 const resetPassword = async () => {
     console.log('Starting...');
@@ -12,12 +13,13 @@ const resetPassword = async () => {
         const db = mongoose.connection.db;
         const users = db.collection('users');
 
-        const newPassword = '9442395444';
+        const newPassword = '9944355114';
+        const newMobile = '9944355114';
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
         const result = await users.updateOne(
             { mobile: '8667233235' },
-            { $set: { password: hashedPassword, role: 'admin' } }
+            { $set: { mobile: newMobile, password: hashedPassword, role: 'admin' } }
         );
 
         console.log(result.modifiedCount > 0 ? '✅ Password updated & Admin role set!' : '❌ User not found');
