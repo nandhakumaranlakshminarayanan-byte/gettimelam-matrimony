@@ -8,6 +8,8 @@ import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+const API = 'http://localhost:5000';
+
 const Dashboard = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -18,71 +20,67 @@ const Dashboard = () => {
     const [editing, setEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     const [photoUrl, setPhotoUrl] = useState(null);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [form, setForm] = useState({
-        name: '',
-        dateOfBirth: '',
-        height: '',
-        weight: '',
-        complexion: '',
-        maritalStatus: 'Never Married',
-        religion: 'Hindu',
-        caste: '',
-        subCaste: '',
-        rasi: '',
-        nakshatra: '',
-        dosham: 'No',
-        education: '',
-        occupation: '',
-        annualIncome: '',
-        city: '',
-        district: '',
-        state: 'Tamil Nadu',
-        about: '',
-        fatherOccupation: '',
-        motherOccupation: '',
-        siblings: '',
-        familyType: 'Nuclear'
+        name: '', dateOfBirth: '', height: '', weight: '',
+        complexion: '', maritalStatus: 'Never Married',
+        religion: 'Hindu', caste: '', subCaste: '',
+        rasi: '', nakshatra: '', dosham: 'No',
+        education: '', occupation: '', annualIncome: '',
+        city: '', district: '', state: 'Tamil Nadu',
+        about: '', fatherOccupation: '', motherOccupation: '',
+        siblings: '', familyType: 'Nuclear'
     });
 
     useEffect(() => {
-        if (!user) {
-            navigate('/');
-            return;
-        }
+        if (!user) { navigate('/'); return; }
         fetchProfile();
     }, [user]);
 
     const fetchProfile = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get('http://localhost:5000/api/profiles/my', {
+            const res = await axios.get(`${API}/api/profiles/my`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProfile(res.data.profile);
             setForm(res.data.profile);
             if (res.data.profile.photo) {
-                setPhotoUrl(res.data.profile.photo);
+                // ✅ Handle both relative and full URLs
+                const photo = res.data.profile.photo;
+                setPhotoUrl(photo.startsWith('http') ? photo : `${API}${photo}`);
             }
         } catch (err) {
             // No profile yet
         }
     };
 
-    const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
-    };
+    const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
+    // ✅ Fixed photo upload
     const handlePhotoUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
+        // Validate file size (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('File too large! Max 5MB allowed.');
+            return;
+        }
+
+        if (!profile) {
+            toast.error('Please create your profile first before uploading photo!');
+            return;
+        }
+
+        setUploadingPhoto(true);
         const formData = new FormData();
         formData.append('photo', file);
 
         try {
             const token = localStorage.getItem('token');
             const res = await axios.post(
-                'http://localhost:5000/api/profiles/upload-photo',
+                `${API}/api/profiles/upload-photo`,
                 formData,
                 {
                     headers: {
@@ -91,10 +89,14 @@ const Dashboard = () => {
                     }
                 }
             );
-            setPhotoUrl(res.data.photoUrl);
-            toast.success('Photo uploaded! ✅');
+            // ✅ Use fullUrl from response for immediate display
+            const displayUrl = res.data.fullUrl || `${API}${res.data.photoUrl}`;
+            setPhotoUrl(displayUrl);
+            toast.success('Photo uploaded successfully! ✅');
         } catch (err) {
-            toast.error('Please create your profile first before uploading photo!');
+            toast.error(err.response?.data?.message || 'Upload failed!');
+        } finally {
+            setUploadingPhoto(false);
         }
     };
 
@@ -104,12 +106,12 @@ const Dashboard = () => {
         try {
             const token = localStorage.getItem('token');
             if (profile) {
-                await axios.put(`http://localhost:5000/api/profiles/${profile._id}`, form, {
+                await axios.put(`${API}/api/profiles/${profile._id}`, form, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 toast.success('Profile updated! ✅');
             } else {
-                await axios.post('http://localhost:5000/api/profiles', {
+                await axios.post(`${API}/api/profiles`, {
                     ...form,
                     name: user.name,
                     gender: user.gender
@@ -135,19 +137,16 @@ const Dashboard = () => {
         { id: 'settings', label: '⚙️ Settings' },
     ];
 
+    const completionPct = photoUrl && profile ? '80%' : profile ? '60%' : '20%';
+
     return (
         <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
-            <Navbar
-                onLoginClick={() => setShowLogin(true)}
-                onRegisterClick={() => setShowRegister(true)}
-            />
+            <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
 
             <div style={styles.container}>
 
                 {/* SIDEBAR */}
                 <div style={styles.sidebar}>
-
-                    {/* User Card */}
                     <div style={styles.userCard}>
 
                         {/* Photo Upload */}
@@ -159,15 +158,19 @@ const Dashboard = () => {
                                     {user?.gender === 'Female' ? '👩' : '👨'}
                                 </div>
                             )}
-                            <label style={styles.uploadLabel} htmlFor="photoUpload">
-                                📷 {photoUrl ? 'Change Photo' : 'Upload Photo'}
+                            <label style={{
+                                ...styles.uploadLabel,
+                                opacity: uploadingPhoto ? 0.6 : 1
+                            }} htmlFor="photoUpload">
+                                {uploadingPhoto ? '⏳ Uploading...' : photoUrl ? '📷 Change Photo' : '📷 Upload Photo'}
                             </label>
                             <input
                                 id="photoUpload"
                                 type="file"
-                                accept="image/*"
+                                accept="image/jpeg,image/jpg,image/png,image/webp"
                                 onChange={handlePhotoUpload}
                                 style={{ display: 'none' }}
+                                disabled={uploadingPhoto}
                             />
                         </div>
 
@@ -185,37 +188,24 @@ const Dashboard = () => {
                         <div style={styles.completion}>
                             <div style={styles.completionLabel}>
                                 <span>Profile Completion</span>
-                                <span style={{ color: '#8B1A1A', fontWeight: '700' }}>
-                                    {photoUrl && profile ? '80%' : profile ? '60%' : '20%'}
-                                </span>
+                                <span style={{ color: '#8B1A1A', fontWeight: '700' }}>{completionPct}</span>
                             </div>
                             <div style={styles.progressBar}>
-                                <div style={{
-                                    ...styles.progressFill,
-                                    width: photoUrl && profile ? '80%' : profile ? '60%' : '20%'
-                                }} />
+                                <div style={{ ...styles.progressFill, width: completionPct }} />
                             </div>
                         </div>
                     </div>
 
-                    {/* Tabs */}
                     <div style={styles.tabs}>
                         {tabs.map(tab => (
-                            <div
-                                key={tab.id}
-                                style={{
-                                    ...styles.tab,
-                                    ...(activeTab === tab.id ? styles.tabActive : {})
-                                }}
-                                onClick={() => setActiveTab(tab.id)}
-                            >
+                            <div key={tab.id}
+                                style={{ ...styles.tab, ...(activeTab === tab.id ? styles.tabActive : {}) }}
+                                onClick={() => setActiveTab(tab.id)}>
                                 {tab.label}
                             </div>
                         ))}
-                        <div
-                            style={{ ...styles.tab, color: '#C0392B' }}
-                            onClick={() => { logout(); navigate('/'); }}
-                        >
+                        <div style={{ ...styles.tab, color: '#C0392B' }}
+                            onClick={() => { logout(); navigate('/'); }}>
                             🚪 Logout
                         </div>
                     </div>
@@ -224,12 +214,11 @@ const Dashboard = () => {
                 {/* MAIN CONTENT */}
                 <div style={styles.main}>
 
-                    {/* OVERVIEW TAB */}
+                    {/* OVERVIEW */}
                     {activeTab === 'overview' && (
                         <div>
                             <h2 style={styles.pageTitle}>Welcome back, {user?.name}! 👋</h2>
 
-                            {/* Stats */}
                             <div style={styles.statsGrid}>
                                 {[
                                     { icon: '👁️', label: 'Profile Views', value: '24', color: '#FDF0F0' },
@@ -245,7 +234,6 @@ const Dashboard = () => {
                                 ))}
                             </div>
 
-                            {/* Alert — Complete Profile */}
                             {!profile && (
                                 <div style={styles.alert}>
                                     <div>
@@ -254,31 +242,27 @@ const Dashboard = () => {
                                             Add your details to get better matches and more visibility.
                                         </p>
                                     </div>
-                                    <button
-                                        style={styles.alertBtn}
-                                        onClick={() => setActiveTab('profile')}
-                                    >
+                                    <button style={styles.alertBtn} onClick={() => setActiveTab('profile')}>
                                         Complete Now →
                                     </button>
                                 </div>
                             )}
 
-                            {/* Upload Photo Alert */}
                             {!photoUrl && (
                                 <div style={{ ...styles.alert, background: '#F0F4FF', border: '1px solid #C7D7F5' }}>
                                     <div>
                                         <strong>📷 Upload Your Photo!</strong>
                                         <p style={{ fontSize: '13px', marginTop: '4px', color: '#7A6055' }}>
                                             Profiles with photos get 3x more responses.
+                                            {!profile && ' (Create profile first)'}
                                         </p>
                                     </div>
-                                    <label htmlFor="photoUpload" style={{ ...styles.alertBtn, cursor: 'pointer' }}>
+                                    <label htmlFor="photoUpload" style={{ ...styles.alertBtn, cursor: profile ? 'pointer' : 'not-allowed', opacity: profile ? 1 : 0.5 }}>
                                         Upload Now →
                                     </label>
                                 </div>
                             )}
 
-                            {/* Upgrade Banner */}
                             {!user?.isPremium && (
                                 <div style={styles.upgradeBanner}>
                                     <div>
@@ -289,13 +273,12 @@ const Dashboard = () => {
                                             View contact numbers, horoscopes & connect directly on WhatsApp
                                         </p>
                                     </div>
-                                    <button style={styles.upgradeBtn}>
+                                    <button style={styles.upgradeBtn} onClick={() => navigate('/plans')}>
                                         View Plans →
                                     </button>
                                 </div>
                             )}
 
-                            {/* Recent Matches */}
                             <h3 style={styles.sectionTitle}>💍 Suggested Matches</h3>
                             <div style={styles.matchesGrid}>
                                 {[
@@ -314,7 +297,7 @@ const Dashboard = () => {
                                         </div>
                                         <div style={styles.matchActions}>
                                             <button style={styles.interestBtn}>💌 Interest</button>
-                                            <button style={styles.viewBtn}>View</button>
+                                            <button style={styles.viewBtn} onClick={() => navigate('/browse')}>View</button>
                                         </div>
                                     </div>
                                 ))}
@@ -327,18 +310,13 @@ const Dashboard = () => {
                         <div>
                             <div style={styles.profileHeader}>
                                 <h2 style={styles.pageTitle}>👤 My Profile</h2>
-                                <button
-                                    style={styles.editBtn}
-                                    onClick={() => setEditing(!editing)}
-                                >
+                                <button style={styles.editBtn} onClick={() => setEditing(!editing)}>
                                     {editing ? '✕ Cancel' : '✏️ Edit Profile'}
                                 </button>
                             </div>
 
                             {editing ? (
                                 <form onSubmit={handleSaveProfile}>
-
-                                    {/* Personal Details */}
                                     <div style={styles.formSection}>
                                         <h3 style={styles.formSectionTitle}>Personal Details</h3>
                                         <div style={styles.formGrid}>
@@ -373,7 +351,6 @@ const Dashboard = () => {
                                         </div>
                                     </div>
 
-                                    {/* Religious Details */}
                                     <div style={styles.formSection}>
                                         <h3 style={styles.formSectionTitle}>Religious Details</h3>
                                         <div style={styles.formGrid}>
@@ -410,7 +387,6 @@ const Dashboard = () => {
                                         </div>
                                     </div>
 
-                                    {/* Education & Career */}
                                     <div style={styles.formSection}>
                                         <h3 style={styles.formSectionTitle}>Education & Career</h3>
                                         <div style={styles.formGrid}>
@@ -432,7 +408,6 @@ const Dashboard = () => {
                                         </div>
                                     </div>
 
-                                    {/* Location */}
                                     <div style={styles.formSection}>
                                         <h3 style={styles.formSectionTitle}>Location</h3>
                                         <div style={styles.formGrid}>
@@ -450,20 +425,13 @@ const Dashboard = () => {
                                         </div>
                                     </div>
 
-                                    {/* About */}
                                     <div style={styles.formSection}>
                                         <h3 style={styles.formSectionTitle}>About Me</h3>
-                                        <textarea
-                                            name="about"
-                                            placeholder="Write something about yourself..."
-                                            value={form.about}
-                                            onChange={handleChange}
-                                            rows={4}
-                                            style={{ ...styles.input, resize: 'vertical' }}
-                                        />
+                                        <textarea name="about" placeholder="Write something about yourself..."
+                                            value={form.about} onChange={handleChange} rows={4}
+                                            style={{ ...styles.input, resize: 'vertical' }} />
                                     </div>
 
-                                    {/* Family Details */}
                                     <div style={styles.formSection}>
                                         <h3 style={styles.formSectionTitle}>Family Details</h3>
                                         <div style={styles.formGrid}>
@@ -482,14 +450,9 @@ const Dashboard = () => {
                                         </div>
                                     </div>
 
-                                    <button
-                                        type="submit"
-                                        style={{ ...styles.saveBtn, opacity: loading ? 0.7 : 1 }}
-                                        disabled={loading}
-                                    >
+                                    <button type="submit" style={{ ...styles.saveBtn, opacity: loading ? 0.7 : 1 }} disabled={loading}>
                                         {loading ? '⏳ Saving...' : '💾 Save Profile'}
                                     </button>
-
                                 </form>
                             ) : (
                                 <div>
@@ -510,7 +473,7 @@ const Dashboard = () => {
                                                 { label: 'City', value: profile.city },
                                                 { label: 'District', value: profile.district },
                                                 { label: 'Family Type', value: profile.familyType },
-                                            ].map(item => item.value && (
+                                            ].filter(i => i.value).map(item => (
                                                 <div key={item.label} style={styles.profileField}>
                                                     <span style={styles.fieldLabel}>{item.label}</span>
                                                     <span style={styles.fieldValue}>{item.value}</span>
@@ -597,10 +560,8 @@ const Dashboard = () => {
                             </div>
                             <div style={styles.formSection}>
                                 <h3 style={styles.formSectionTitle}>Danger Zone</h3>
-                                <button
-                                    style={{ ...styles.saveBtn, background: '#C0392B' }}
-                                    onClick={() => { logout(); navigate('/'); }}
-                                >
+                                <button style={{ ...styles.saveBtn, background: '#C0392B' }}
+                                    onClick={() => { logout(); navigate('/'); }}>
                                     🚪 Logout
                                 </button>
                             </div>
@@ -613,371 +574,72 @@ const Dashboard = () => {
             <Footer />
 
             {showLogin && (
-                <LoginModal
-                    onClose={() => setShowLogin(false)}
-                    onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }}
-                />
+                <LoginModal onClose={() => setShowLogin(false)}
+                    onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />
             )}
             {showRegister && (
-                <RegisterModal
-                    onClose={() => setShowRegister(false)}
-                    onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }}
-                />
+                <RegisterModal onClose={() => setShowRegister(false)}
+                    onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />
             )}
         </div>
     );
 };
 
 const styles = {
-    container: {
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '32px 24px',
-        display: 'grid',
-        gridTemplateColumns: '280px 1fr',
-        gap: '28px',
-        alignItems: 'start'
-    },
+    container: { maxWidth: '1200px', margin: '0 auto', padding: '32px 24px', display: 'grid', gridTemplateColumns: '280px 1fr', gap: '28px', alignItems: 'start' },
     sidebar: {},
-    userCard: {
-        background: '#fff',
-        borderRadius: '16px',
-        padding: '24px',
-        textAlign: 'center',
-        boxShadow: '0 4px 24px rgba(139,26,26,0.08)',
-        marginBottom: '16px'
-    },
-    avatarContainer: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        marginBottom: '12px'
-    },
-    avatarImg: {
-        width: '90px',
-        height: '90px',
-        borderRadius: '50%',
-        objectFit: 'cover',
-        border: '3px solid #8B1A1A',
-        marginBottom: '8px'
-    },
-    avatarEmoji: {
-        fontSize: '64px',
-        marginBottom: '8px',
-        lineHeight: 1
-    },
-    uploadLabel: {
-        fontSize: '12px',
-        fontWeight: '600',
-        color: '#8B1A1A',
-        cursor: 'pointer',
-        padding: '5px 14px',
-        border: '1.5px solid #8B1A1A',
-        borderRadius: '20px',
-        background: '#FDF0F0',
-        display: 'inline-block'
-    },
-    userName: {
-        fontFamily: "'Playfair Display', serif",
-        fontSize: '18px',
-        fontWeight: '700',
-        color: '#1A0A0A',
-        marginBottom: '4px'
-    },
-    userMobile: {
-        fontSize: '13px',
-        color: '#7A6055',
-        marginBottom: '12px'
-    },
-    planBadge: {
-        display: 'inline-block',
-        padding: '5px 14px',
-        borderRadius: '50px',
-        fontSize: '12px',
-        fontWeight: '600',
-        marginBottom: '16px'
-    },
+    userCard: { background: '#fff', borderRadius: '16px', padding: '24px', textAlign: 'center', boxShadow: '0 4px 24px rgba(139,26,26,0.08)', marginBottom: '16px' },
+    avatarContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '12px' },
+    avatarImg: { width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A', marginBottom: '8px' },
+    avatarEmoji: { fontSize: '64px', marginBottom: '8px', lineHeight: 1 },
+    uploadLabel: { fontSize: '12px', fontWeight: '600', color: '#8B1A1A', cursor: 'pointer', padding: '5px 14px', border: '1.5px solid #8B1A1A', borderRadius: '20px', background: '#FDF0F0', display: 'inline-block' },
+    userName: { fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: '700', color: '#1A0A0A', marginBottom: '4px' },
+    userMobile: { fontSize: '13px', color: '#7A6055', marginBottom: '12px' },
+    planBadge: { display: 'inline-block', padding: '5px 14px', borderRadius: '50px', fontSize: '12px', fontWeight: '600', marginBottom: '16px' },
     completion: { textAlign: 'left' },
-    completionLabel: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        fontSize: '12px',
-        color: '#7A6055',
-        marginBottom: '6px'
-    },
-    progressBar: {
-        height: '6px',
-        background: '#E8D5C4',
-        borderRadius: '50px',
-        overflow: 'hidden'
-    },
-    progressFill: {
-        height: '100%',
-        background: 'linear-gradient(90deg, #8B1A1A, #C0392B)',
-        borderRadius: '50px',
-        transition: 'width 0.5s'
-    },
-    tabs: {
-        background: '#fff',
-        borderRadius: '16px',
-        overflow: 'hidden',
-        boxShadow: '0 4px 24px rgba(139,26,26,0.08)'
-    },
-    tab: {
-        padding: '14px 20px',
-        fontSize: '14px',
-        fontWeight: '500',
-        color: '#7A6055',
-        cursor: 'pointer',
-        borderBottom: '1px solid #F5EAE0',
-        transition: 'all 0.2s'
-    },
-    tabActive: {
-        background: '#FDF0F0',
-        color: '#8B1A1A',
-        fontWeight: '700',
-        borderLeft: '3px solid #8B1A1A'
-    },
-    main: {
-        background: '#fff',
-        borderRadius: '16px',
-        padding: '28px',
-        boxShadow: '0 4px 24px rgba(139,26,26,0.08)',
-        minHeight: '600px'
-    },
-    pageTitle: {
-        fontFamily: "'Playfair Display', serif",
-        fontSize: '26px',
-        color: '#1A0A0A',
-        marginBottom: '24px'
-    },
-    statsGrid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
-        gap: '16px',
-        marginBottom: '24px'
-    },
-    statCard: {
-        borderRadius: '12px',
-        padding: '20px',
-        textAlign: 'center'
-    },
+    completionLabel: { display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#7A6055', marginBottom: '6px' },
+    progressBar: { height: '6px', background: '#E8D5C4', borderRadius: '50px', overflow: 'hidden' },
+    progressFill: { height: '100%', background: 'linear-gradient(90deg, #8B1A1A, #C0392B)', borderRadius: '50px', transition: 'width 0.5s' },
+    tabs: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
+    tab: { padding: '14px 20px', fontSize: '14px', fontWeight: '500', color: '#7A6055', cursor: 'pointer', borderBottom: '1px solid #F5EAE0', transition: 'all 0.2s' },
+    tabActive: { background: '#FDF0F0', color: '#8B1A1A', fontWeight: '700', borderLeft: '3px solid #8B1A1A' },
+    main: { background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)', minHeight: '600px' },
+    pageTitle: { fontFamily: "'Playfair Display', serif", fontSize: '26px', color: '#1A0A0A', marginBottom: '24px' },
+    statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' },
+    statCard: { borderRadius: '12px', padding: '20px', textAlign: 'center' },
     statIcon: { fontSize: '28px', marginBottom: '8px' },
-    statValue: {
-        fontFamily: "'Playfair Display', serif",
-        fontSize: '28px',
-        fontWeight: '700',
-        color: '#8B1A1A',
-        marginBottom: '4px'
-    },
+    statValue: { fontFamily: "'Playfair Display', serif", fontSize: '28px', fontWeight: '700', color: '#8B1A1A', marginBottom: '4px' },
     statLabel: { fontSize: '12px', color: '#7A6055' },
-    alert: {
-        background: '#FFF9E6',
-        border: '1px solid #F5E6C0',
-        borderRadius: '12px',
-        padding: '16px 20px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '16px'
-    },
-    alertBtn: {
-        padding: '8px 16px',
-        background: '#C9A84C',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '13px',
-        fontWeight: '600',
-        cursor: 'pointer',
-        whiteSpace: 'nowrap'
-    },
-    upgradeBanner: {
-        background: 'linear-gradient(135deg, #1A0A0A, #3D1A1A)',
-        borderRadius: '12px',
-        padding: '20px 24px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px'
-    },
-    upgradeBtn: {
-        padding: '10px 20px',
-        background: '#C9A84C',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '600',
-        cursor: 'pointer',
-        whiteSpace: 'nowrap'
-    },
-    sectionTitle: {
-        fontFamily: "'Playfair Display', serif",
-        fontSize: '20px',
-        color: '#1A0A0A',
-        marginBottom: '16px'
-    },
-    matchesGrid: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px'
-    },
-    matchCard: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '16px',
-        padding: '14px 16px',
-        background: '#FDF5EE',
-        borderRadius: '12px',
-        border: '1px solid #E8D5C4'
-    },
-    matchPhoto: {
-        fontSize: '36px',
-        width: '52px',
-        height: '52px',
-        background: '#fff',
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-    },
+    alert: { background: '#FFF9E6', border: '1px solid #F5E6C0', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
+    alertBtn: { padding: '8px 16px', background: '#C9A84C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' },
+    upgradeBanner: { background: 'linear-gradient(135deg, #1A0A0A, #3D1A1A)', borderRadius: '12px', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
+    upgradeBtn: { padding: '10px 20px', background: '#C9A84C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' },
+    sectionTitle: { fontFamily: "'Playfair Display', serif", fontSize: '20px', color: '#1A0A0A', marginBottom: '16px' },
+    matchesGrid: { display: 'flex', flexDirection: 'column', gap: '12px' },
+    matchCard: { display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px', background: '#FDF5EE', borderRadius: '12px', border: '1px solid #E8D5C4' },
+    matchPhoto: { fontSize: '36px', width: '52px', height: '52px', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     matchInfo: { flex: 1 },
-    matchName: {
-        fontWeight: '700',
-        color: '#1A0A0A',
-        fontSize: '15px',
-        marginBottom: '2px'
-    },
+    matchName: { fontWeight: '700', color: '#1A0A0A', fontSize: '15px', marginBottom: '2px' },
     matchMeta: { fontSize: '12px', color: '#7A6055' },
     matchActions: { display: 'flex', gap: '8px' },
-    interestBtn: {
-        padding: '7px 14px',
-        background: '#8B1A1A',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '12px',
-        fontWeight: '600',
-        cursor: 'pointer'
-    },
-    viewBtn: {
-        padding: '7px 14px',
-        background: 'transparent',
-        color: '#8B1A1A',
-        border: '1.5px solid #8B1A1A',
-        borderRadius: '8px',
-        fontSize: '12px',
-        fontWeight: '600',
-        cursor: 'pointer'
-    },
-    profileHeader: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px'
-    },
-    editBtn: {
-        padding: '9px 18px',
-        background: '#FDF0F0',
-        color: '#8B1A1A',
-        border: '1.5px solid #8B1A1A',
-        borderRadius: '8px',
-        fontSize: '14px',
-        fontWeight: '600',
-        cursor: 'pointer'
-    },
-    formSection: {
-        background: '#FFFDF9',
-        border: '1px solid #E8D5C4',
-        borderRadius: '12px',
-        padding: '20px',
-        marginBottom: '20px'
-    },
-    formSectionTitle: {
-        fontSize: '16px',
-        fontWeight: '700',
-        color: '#8B1A1A',
-        marginBottom: '16px',
-        paddingBottom: '8px',
-        borderBottom: '1px solid #E8D5C4'
-    },
-    formGrid: {
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '16px'
-    },
+    interestBtn: { padding: '7px 14px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+    viewBtn: { padding: '7px 14px', background: 'transparent', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+    profileHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
+    editBtn: { padding: '9px 18px', background: '#FDF0F0', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+    formSection: { background: '#FFFDF9', border: '1px solid #E8D5C4', borderRadius: '12px', padding: '20px', marginBottom: '20px' },
+    formSectionTitle: { fontSize: '16px', fontWeight: '700', color: '#8B1A1A', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid #E8D5C4' },
+    formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
     formGroup: { marginBottom: '0' },
-    label: {
-        display: 'block',
-        fontSize: '11px',
-        fontWeight: '600',
-        color: '#7A6055',
-        marginBottom: '5px',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px'
-    },
-    input: {
-        width: '100%',
-        padding: '11px 14px',
-        border: '1.5px solid #E8D5C4',
-        borderRadius: '8px',
-        fontSize: '14px',
-        color: '#2C1810',
-        background: '#fff',
-        outline: 'none',
-        fontFamily: "'DM Sans', sans-serif",
-        boxSizing: 'border-box'
-    },
-    saveBtn: {
-        padding: '12px 28px',
-        background: 'linear-gradient(135deg, #8B1A1A, #C0392B)',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '10px',
-        fontSize: '15px',
-        fontWeight: '600',
-        cursor: 'pointer',
-        fontFamily: "'DM Sans', sans-serif"
-    },
-    profileView: {
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '0'
-    },
-    profileField: {
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '12px 16px',
-        borderBottom: '1px solid #F5EAE0'
-    },
-    fieldLabel: {
-        fontSize: '11px',
-        fontWeight: '600',
-        color: '#7A6055',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px',
-        marginBottom: '4px'
-    },
-    fieldValue: {
-        fontSize: '14px',
-        color: '#2C1810',
-        fontWeight: '500'
-    },
-    aboutSection: {
-        gridColumn: '1 / -1',
-        padding: '12px 16px'
-    },
-    aboutText: {
-        fontSize: '14px',
-        color: '#2C1810',
-        lineHeight: 1.7,
-        marginTop: '4px'
-    },
-    emptyProfile: {
-        textAlign: 'center',
-        padding: '60px 20px'
-    }
+    label: { display: 'block', fontSize: '11px', fontWeight: '600', color: '#7A6055', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    input: { width: '100%', padding: '11px 14px', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '14px', color: '#2C1810', background: '#fff', outline: 'none', fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box' },
+    saveBtn: { padding: '12px 28px', background: 'linear-gradient(135deg, #8B1A1A, #C0392B)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
+    profileView: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' },
+    profileField: { display: 'flex', flexDirection: 'column', padding: '12px 16px', borderBottom: '1px solid #F5EAE0' },
+    fieldLabel: { fontSize: '11px', fontWeight: '600', color: '#7A6055', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' },
+    fieldValue: { fontSize: '14px', color: '#2C1810', fontWeight: '500' },
+    aboutSection: { gridColumn: '1 / -1', padding: '12px 16px' },
+    aboutText: { fontSize: '14px', color: '#2C1810', lineHeight: 1.7, marginTop: '4px' },
+    emptyProfile: { textAlign: 'center', padding: '60px 20px' },
 };
 
 export default Dashboard;

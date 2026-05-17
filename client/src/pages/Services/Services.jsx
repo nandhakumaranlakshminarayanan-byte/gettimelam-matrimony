@@ -36,6 +36,155 @@ const getCategoryIcon = (category) => {
     return found ? found.icon : '✨';
 };
 
+const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
+// ── Availability Calendar Component ──────────────────────────────────────
+const AvailabilityCalendar = ({ serviceId, onDateSelect, selectedDate }) => {
+    const [calMonth, setCalMonth] = useState(new Date());
+    const [availability, setAvailability] = useState([]);
+    const [loadingCal, setLoadingCal] = useState(false);
+
+    useEffect(() => {
+        if (serviceId) loadAvailability();
+    }, [serviceId]);
+
+    const loadAvailability = async () => {
+        setLoadingCal(true);
+        try {
+            const res = await axios.get(`http://localhost:5000/api/services/${serviceId}/availability`);
+            setAvailability(res.data.availability || []);
+        } catch {
+            setAvailability([]);
+        } finally {
+            setLoadingCal(false);
+        }
+    };
+
+    const toLocalStr = (date) =>
+        `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+
+    const getStatus = (date) => {
+        const dStr = toLocalStr(date);
+        const found = availability.find(a => {
+            const aDate = new Date(a.date);
+            return `${aDate.getUTCFullYear()}-${aDate.getUTCMonth()}-${aDate.getUTCDate()}` === dStr;
+        });
+        return found ? found.status : 'available';
+    };
+
+    const year = calMonth.getFullYear();
+    const month = calMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const cellColors = {
+        available: { bg: '#E8F5E9', border: '#A5D6A7', text: '#2E7D32' },
+        blocked: { bg: '#FFEBEE', border: '#EF9A9A', text: '#C62828' },
+        booked: { bg: '#FFF8E1', border: '#FFE082', text: '#F57F17' },
+    };
+
+    const isSelectedDate = (date) => {
+        if (!selectedDate) return false;
+        return new Date(selectedDate).toDateString() === date.toDateString();
+    };
+
+    return (
+        <div style={calStyles.wrap}>
+            {/* Legend */}
+            <div style={calStyles.legend}>
+                {[
+                    { color: '#E8F5E9', border: '#A5D6A7', label: 'Available' },
+                    { color: '#FFEBEE', border: '#EF9A9A', label: 'Blocked' },
+                    { color: '#FFF8E1', border: '#FFE082', label: 'Booked' },
+                ].map(l => (
+                    <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: l.color, border: `1px solid ${l.border}` }} />
+                        <span style={{ fontSize: '11px', color: '#7A6055' }}>{l.label}</span>
+                    </div>
+                ))}
+            </div>
+
+            {/* Month nav */}
+            <div style={calStyles.nav}>
+                <button style={calStyles.navBtn} onClick={() => setCalMonth(new Date(year, month - 1))}>←</button>
+                <span style={calStyles.monthLabel}>{monthNames[month]} {year}</span>
+                <button style={calStyles.navBtn} onClick={() => setCalMonth(new Date(year, month + 1))}>→</button>
+            </div>
+
+            {loadingCal ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: '#7A6055' }}>Loading calendar...</div>
+            ) : (
+                <div style={calStyles.grid}>
+                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                        <div key={d} style={calStyles.dayHeader}>{d}</div>
+                    ))}
+                    {Array.from({ length: firstDay }).map((_, i) => (
+                        <div key={`e-${i}`} />
+                    ))}
+                    {Array.from({ length: daysInMonth }).map((_, i) => {
+                        const date = new Date(year, month, i + 1);
+                        const status = getStatus(date);
+                        const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
+                        const isToday = date.toDateString() === new Date().toDateString();
+                        const isSel = isSelectedDate(date);
+                        const colors = isPast
+                            ? { bg: '#F5F5F5', border: '#E0E0E0', text: '#BDBDBD' }
+                            : cellColors[status];
+
+                        return (
+                            <div
+                                key={i}
+                                style={{
+                                    ...calStyles.dayCell,
+                                    background: isSel ? '#8B1A1A' : colors.bg,
+                                    border: isSel ? '2px solid #8B1A1A' : `1px solid ${colors.border}`,
+                                    color: isSel ? '#fff' : colors.text,
+                                    cursor: isPast || status !== 'available' ? 'not-allowed' : 'pointer',
+                                    fontWeight: isToday || isSel ? '800' : '500',
+                                    opacity: isPast ? 0.5 : 1,
+                                }}
+                                onClick={() => {
+                                    if (isPast || status !== 'available') {
+                                        if (status === 'blocked') toast.error('This date is blocked by the provider');
+                                        if (status === 'booked') toast.error('This date is already booked');
+                                        return;
+                                    }
+                                    // ✅ Timezone safe date
+                                    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+                                    onDateSelect(localDate.toISOString().split('T')[0]);
+                                }}
+                            >
+                                {i + 1}
+                                {isToday && <div style={{ fontSize: '6px', marginTop: '1px' }}>●</div>}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {selectedDate && (
+                <div style={calStyles.selectedInfo}>
+                    Selected: <strong>{new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const calStyles = {
+    wrap: { background: '#F8F9FA', borderRadius: '12px', padding: '14px', marginBottom: '16px' },
+    legend: { display: 'flex', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' },
+    nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' },
+    navBtn: { padding: '4px 12px', background: '#fff', border: '1px solid #E8D5C4', borderRadius: '6px', cursor: 'pointer', color: '#8B1A1A', fontWeight: '700', fontSize: '14px' },
+    monthLabel: { fontWeight: '700', color: '#1A0A0A', fontSize: '14px' },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' },
+    dayHeader: { textAlign: 'center', fontSize: '10px', fontWeight: '700', color: '#7A6055', padding: '4px 0' },
+    dayCell: { height: '36px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', userSelect: 'none', transition: 'all 0.1s' },
+    selectedInfo: { marginTop: '10px', fontSize: '13px', color: '#2E7D32', background: '#E8F5E9', padding: '8px 12px', borderRadius: '8px', border: '1px solid #A5D6A7' },
+};
+
+// ── Main Services Component ───────────────────────────────────────────────
 const Services = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -56,9 +205,7 @@ const Services = () => {
         guestCount: '', specialRequirements: ''
     });
 
-    useEffect(() => {
-        fetchServices();
-    }, [activeCategory, searchCity, searchDate]);
+    useEffect(() => { fetchServices(); }, [activeCategory, searchCity, searchDate]);
 
     const fetchServices = async () => {
         setLoading(true);
@@ -67,11 +214,9 @@ const Services = () => {
             if (activeCategory !== 'all') params.category = activeCategory;
             if (searchCity) params.city = searchCity;
             if (searchDate) params.date = searchDate;
-
             const res = await axios.get('http://localhost:5000/api/services', { params });
             setServices(res.data.services || []);
         } catch (err) {
-            console.error(err);
             toast.error('Failed to load services');
         } finally {
             setLoading(false);
@@ -86,9 +231,7 @@ const Services = () => {
                 { date }
             );
             setAvailability(res.data);
-        } catch (err) {
-            toast.error('Could not check availability');
-        }
+        } catch { toast.error('Could not check availability'); }
     };
 
     const handleBook = (service) => {
@@ -101,11 +244,7 @@ const Services = () => {
 
     const handleBookingSubmit = async (e) => {
         e.preventDefault();
-        if (!booking.eventDate) { toast.error('Please select an event date'); return; }
-        if (availability && !availability.isAvailable) {
-            toast.error('This date is not available. Please choose another date.');
-            return;
-        }
+        if (!booking.eventDate) { toast.error('Please select a date from the calendar'); return; }
         setBookingLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -116,7 +255,6 @@ const Services = () => {
                 guestCount: booking.guestCount,
                 specialRequirements: booking.specialRequirements,
             }, { headers: { Authorization: `Bearer ${token}` } });
-
             toast.success(`Booking request sent to ${selectedService.businessName}!`);
             setShowBooking(false);
             setSelectedService(null);
@@ -127,7 +265,7 @@ const Services = () => {
         }
     };
 
-    const handleViewDetail = async (service) => {
+    const handleViewDetail = (service) => {
         setSelectedService(service);
         setAvailability(null);
         setCheckingDate('');
@@ -142,76 +280,47 @@ const Services = () => {
 
     return (
         <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
-            <Navbar
-                onLoginClick={() => setShowLogin(true)}
-                onRegisterClick={() => setShowRegister(true)}
-            />
+            <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
 
             {/* Header */}
             <div style={styles.header}>
                 <div style={styles.headerInner}>
                     <div style={styles.headerBadge}>Wedding Services</div>
                     <h1 style={styles.headerTitle}>Everything for Your Perfect Wedding</h1>
-                    <p style={styles.headerDesc}>
-                        Book trusted local vendors across all wedding categories
-                    </p>
-
-                    {/* Search Bar */}
+                    <p style={styles.headerDesc}>Book trusted local vendors across all wedding categories</p>
                     <div style={styles.searchBar}>
                         <div style={styles.searchField}>
                             <span style={styles.searchIcon}>📍</span>
-                            <input
-                                style={styles.searchInput}
-                                placeholder="Search by city..."
-                                value={searchCity}
-                                onChange={e => setSearchCity(e.target.value)}
-                            />
+                            <input style={styles.searchInput} placeholder="Search by city..."
+                                value={searchCity} onChange={e => setSearchCity(e.target.value)} />
                         </div>
                         <div style={styles.searchDivider} />
                         <div style={styles.searchField}>
                             <span style={styles.searchIcon}>📅</span>
-                            <input
-                                type="date"
-                                style={styles.searchInput}
-                                value={searchDate}
-                                onChange={e => setSearchDate(e.target.value)}
-                                placeholder="Event date"
-                            />
+                            <input type="date" style={styles.searchInput} value={searchDate}
+                                onChange={e => setSearchDate(e.target.value)} />
                         </div>
-                        <button style={styles.searchBtn} onClick={fetchServices}>
-                            Search
-                        </button>
+                        <button style={styles.searchBtn} onClick={fetchServices}>Search</button>
                     </div>
                 </div>
             </div>
 
             <div style={styles.container}>
-
                 {/* Category Pills */}
                 <div style={styles.categoryRow}>
                     {ALL_CATEGORIES.map(cat => (
-                        <button
-                            key={cat.id}
-                            style={{
-                                ...styles.catBtn,
-                                ...(activeCategory === cat.id ? styles.catBtnActive : {})
-                            }}
-                            onClick={() => setActiveCategory(cat.id)}
-                        >
+                        <button key={cat.id}
+                            style={{ ...styles.catBtn, ...(activeCategory === cat.id ? styles.catBtnActive : {}) }}
+                            onClick={() => setActiveCategory(cat.id)}>
                             {cat.icon} {cat.label}
                         </button>
                     ))}
                 </div>
 
-                {/* Results Info */}
+                {/* Results */}
                 <div style={styles.resultsRow}>
                     <span style={styles.resultsCount}>
-                        {loading ? 'Loading...' : (
-                            <>Showing <strong>{services.length}</strong> services
-                                {searchDate && ` available on ${new Date(searchDate).toLocaleDateString('en-IN')}`}
-                                {searchCity && ` in ${searchCity}`}
-                            </>
-                        )}
+                        {loading ? 'Loading...' : <><strong>{services.length}</strong> services found</>}
                     </span>
                     {(searchCity || searchDate) && (
                         <button style={styles.clearBtn} onClick={() => { setSearchCity(''); setSearchDate(''); }}>
@@ -230,9 +339,6 @@ const Services = () => {
                     <div style={styles.emptyBox}>
                         <div style={{ fontSize: '52px', marginBottom: '16px' }}>🔍</div>
                         <h3 style={{ color: '#1A0A0A', marginBottom: '8px' }}>No Services Found</h3>
-                        <p style={{ color: '#7A6055', marginBottom: '20px' }}>
-                            {searchDate ? 'No vendors available on this date.' : 'No services listed in this category yet.'}
-                        </p>
                         <button style={styles.clearBtn2} onClick={() => { setActiveCategory('all'); setSearchCity(''); setSearchDate(''); }}>
                             Show All Services
                         </button>
@@ -241,33 +347,18 @@ const Services = () => {
                     <div style={styles.servicesGrid}>
                         {services.map(service => (
                             <div key={service._id} style={styles.serviceCard}>
-
-                                {/* Photo / Banner */}
                                 <div style={styles.servicePhoto}>
                                     {service.photos && service.photos.length > 0 ? (
-                                        <img
-                                            src={`http://localhost:5000${service.photos[0]}`}
-                                            alt={service.businessName}
-                                            style={styles.serviceImg}
-                                        />
+                                        <img src={`http://localhost:5000${service.photos[0]}`}
+                                            alt={service.businessName} style={styles.serviceImg} />
                                     ) : (
-                                        <div style={styles.serviceEmoji}>
-                                            {getCategoryIcon(service.category)}
-                                        </div>
+                                        <div style={styles.serviceEmoji}>{getCategoryIcon(service.category)}</div>
                                     )}
-                                    {service.isVerified && (
-                                        <span style={styles.verifiedBadge}>Verified</span>
-                                    )}
-                                    {service.isFeatured && (
-                                        <span style={styles.featuredBadge}>Featured</span>
-                                    )}
+                                    {service.isVerified && <span style={styles.verifiedBadge}>Verified</span>}
+                                    {service.isFeatured && <span style={styles.featuredBadge}>Featured</span>}
                                     <span style={styles.categoryBadge}>{service.category}</span>
-                                    <div style={styles.ratingBadge}>
-                                        ⭐ {service.rating > 0 ? service.rating : 'New'}
-                                    </div>
+                                    <div style={styles.ratingBadge}>⭐ {service.rating > 0 ? service.rating : 'New'}</div>
                                 </div>
-
-                                {/* Info */}
                                 <div style={styles.serviceInfo}>
                                     <div style={styles.serviceName}>{service.businessName}</div>
                                     <div style={styles.serviceMeta}>👤 {service.ownerName}</div>
@@ -275,18 +366,11 @@ const Services = () => {
                                     {service.capacity && <div style={styles.serviceMeta}>👥 {service.capacity}</div>}
                                     <div style={styles.servicePrice}>{getPrice(service)}</div>
                                     {service.description && (
-                                        <p style={styles.serviceDesc}>
-                                            {service.description.substring(0, 80)}...
-                                        </p>
+                                        <p style={styles.serviceDesc}>{service.description.substring(0, 80)}...</p>
                                     )}
-
                                     <div style={styles.serviceActions}>
-                                        <button style={styles.bookBtn} onClick={() => handleBook(service)}>
-                                            Book Now
-                                        </button>
-                                        <button style={styles.viewBtn} onClick={() => handleViewDetail(service)}>
-                                            View
-                                        </button>
+                                        <button style={styles.bookBtn} onClick={() => handleBook(service)}>Book Now</button>
+                                        <button style={styles.viewBtn} onClick={() => handleViewDetail(service)}>View</button>
                                     </div>
                                 </div>
                             </div>
@@ -294,25 +378,17 @@ const Services = () => {
                     </div>
                 )}
 
-                {/* CTA Banner */}
+                {/* CTA */}
                 <div style={styles.listCta}>
                     <div>
                         <h3 style={styles.listCtaTitle}>Are You a Service Provider?</h3>
-                        <p style={styles.listCtaDesc}>
-                            List your wedding service and reach thousands of families planning their wedding!
-                        </p>
+                        <p style={styles.listCtaDesc}>List your wedding service and reach thousands of families!</p>
                     </div>
-                    <button
-                        style={styles.listCtaBtn}
-                        onClick={() => user?.role === 'vendor'
-                            ? navigate('/vendor-dashboard')
-                            : setShowRegister(true)
-                        }
-                    >
+                    <button style={styles.listCtaBtn}
+                        onClick={() => user?.role === 'service' ? navigate('/service-provider') : setShowRegister(true)}>
                         List Your Service Free
                     </button>
                 </div>
-
             </div>
 
             {/* ── Service Detail Modal ── */}
@@ -320,34 +396,24 @@ const Services = () => {
                 <div style={styles.overlay} onClick={() => setSelectedService(null)}>
                     <div style={styles.modal} onClick={e => e.stopPropagation()}>
                         <button style={styles.closeBtn} onClick={() => setSelectedService(null)}>✕</button>
-
                         <div style={styles.modalPhoto}>
                             {selectedService.photos && selectedService.photos.length > 0 ? (
-                                <img
-                                    src={`http://localhost:5000${selectedService.photos[0]}`}
+                                <img src={`http://localhost:5000${selectedService.photos[0]}`}
                                     alt={selectedService.businessName}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
-                                <div style={{ fontSize: '60px' }}>
-                                    {getCategoryIcon(selectedService.category)}
-                                </div>
+                                <div style={{ fontSize: '60px' }}>{getCategoryIcon(selectedService.category)}</div>
                             )}
-                            {selectedService.isVerified && (
-                                <span style={styles.verifiedBadge}>Verified</span>
-                            )}
+                            {selectedService.isVerified && <span style={styles.verifiedBadge}>Verified</span>}
                         </div>
-
                         <div style={styles.modalBody}>
                             <h2 style={styles.modalName}>{selectedService.businessName}</h2>
                             <div style={styles.modalRating}>
                                 ⭐ {selectedService.rating > 0 ? `${selectedService.rating} Rating` : 'New Listing'}
-                                {selectedService.totalReviews > 0 && ` (${selectedService.totalReviews} reviews)`}
                             </div>
                             {selectedService.description && (
                                 <p style={styles.modalDesc}>{selectedService.description}</p>
                             )}
-
                             <div style={styles.modalGrid}>
                                 {[
                                     { label: 'Owner', value: selectedService.ownerName },
@@ -364,29 +430,18 @@ const Services = () => {
                                 ))}
                             </div>
 
-                            {/* Availability Check */}
+                            {/* ✅ Visual Availability Calendar in Detail Modal */}
                             <div style={styles.availSection}>
-                                <h4 style={styles.availTitle}>Check Availability</h4>
-                                <div style={styles.availRow}>
-                                    <input
-                                        type="date"
-                                        style={{ ...styles.input, flex: 1 }}
-                                        value={checkingDate}
-                                        min={new Date().toISOString().split('T')[0]}
-                                        onChange={e => {
-                                            setCheckingDate(e.target.value);
-                                            setAvailability(null);
-                                        }}
-                                    />
-                                    <button
-                                        style={styles.checkBtn}
-                                        onClick={() => checkAvailability(selectedService._id, checkingDate)}
-                                        disabled={!checkingDate}
-                                    >
-                                        Check
-                                    </button>
-                                </div>
-                                {availability && (
+                                <h4 style={styles.availTitle}>Availability Calendar</h4>
+                                <AvailabilityCalendar
+                                    serviceId={selectedService._id}
+                                    selectedDate={checkingDate}
+                                    onDateSelect={(date) => {
+                                        setCheckingDate(date);
+                                        checkAvailability(selectedService._id, date);
+                                    }}
+                                />
+                                {availability && checkingDate && (
                                     <div style={{
                                         ...styles.availResult,
                                         background: availability.isAvailable ? '#E8F5E9' : '#FFEBEE',
@@ -401,17 +456,15 @@ const Services = () => {
                             <div style={styles.modalActions}>
                                 <button style={styles.bookBtn} onClick={() => {
                                     if (!user) { setShowLogin(true); return; }
+                                    setBooking(b => ({ ...b, eventDate: checkingDate }));
                                     setShowBooking(true);
                                 }}>
                                     Book This Service
                                 </button>
-                                <button
-                                    style={styles.whatsappBtn}
-                                    onClick={() => {
-                                        if (!user) { setShowLogin(true); return; }
-                                        window.open(`https://wa.me/91${selectedService.mobile}`, '_blank');
-                                    }}
-                                >
+                                <button style={styles.whatsappBtn} onClick={() => {
+                                    if (!user) { setShowLogin(true); return; }
+                                    window.open(`https://wa.me/91${selectedService.mobile}`, '_blank');
+                                }}>
                                     WhatsApp
                                 </button>
                             </div>
@@ -420,55 +473,38 @@ const Services = () => {
                 </div>
             )}
 
-            {/* ── Booking Modal ── */}
+            {/* ── Booking Modal with Visual Calendar ── */}
             {showBooking && selectedService && (
                 <div style={styles.overlay} onClick={() => setShowBooking(false)}>
-                    <div style={styles.modal} onClick={e => e.stopPropagation()}>
+                    <div style={{ ...styles.modal, maxWidth: '560px' }} onClick={e => e.stopPropagation()}>
                         <button style={styles.closeBtn} onClick={() => setShowBooking(false)}>✕</button>
                         <div style={styles.modalBody}>
                             <h2 style={styles.modalName}>Book {selectedService.businessName}</h2>
-                            <p style={styles.modalDesc}>
-                                {selectedService.city} • {getPrice(selectedService)}
-                            </p>
+                            <p style={styles.modalDesc}>{selectedService.city} • {getPrice(selectedService)}</p>
 
                             <form onSubmit={handleBookingSubmit}>
+
+                                {/* ✅ Visual Calendar for date selection */}
                                 <div style={styles.formGroup}>
-                                    <label style={styles.label}>Event Date *</label>
-                                    <input
-                                        type="date"
-                                        style={styles.input}
-                                        value={booking.eventDate}
-                                        min={new Date().toISOString().split('T')[0]}
-                                        onChange={e => {
-                                            setBooking({ ...booking, eventDate: e.target.value });
-                                            setAvailability(null);
-                                            if (e.target.value) {
-                                                checkAvailability(selectedService._id, e.target.value);
-                                            }
+                                    <label style={styles.label}>Select Event Date *</label>
+                                    <AvailabilityCalendar
+                                        serviceId={selectedService._id}
+                                        selectedDate={booking.eventDate}
+                                        onDateSelect={(date) => {
+                                            setBooking(b => ({ ...b, eventDate: date }));
                                         }}
-                                        required
                                     />
-                                    {/* Show availability status */}
-                                    {booking.eventDate && availability && (
-                                        <div style={{
-                                            ...styles.availResult,
-                                            marginTop: '8px',
-                                            background: availability.isAvailable ? '#E8F5E9' : '#FFEBEE',
-                                            color: availability.isAvailable ? '#2E7D32' : '#C62828',
-                                            border: `1px solid ${availability.isAvailable ? '#A5D6A7' : '#EF9A9A'}`
-                                        }}>
-                                            {availability.message}
-                                        </div>
+                                    {!booking.eventDate && (
+                                        <p style={{ fontSize: '12px', color: '#C62828', marginTop: '4px' }}>
+                                            Please click an available (green) date
+                                        </p>
                                     )}
                                 </div>
 
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>Event Type *</label>
-                                    <select
-                                        style={styles.input}
-                                        value={booking.eventType}
-                                        onChange={e => setBooking({ ...booking, eventType: e.target.value })}
-                                    >
+                                    <select style={styles.input} value={booking.eventType}
+                                        onChange={e => setBooking({ ...booking, eventType: e.target.value })}>
                                         {['Wedding', 'Engagement', 'Reception', 'Other'].map(t => (
                                             <option key={t}>{t}</option>
                                         ))}
@@ -477,38 +513,24 @@ const Services = () => {
 
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>Expected Guests</label>
-                                    <input
-                                        type="number"
-                                        placeholder="Number of guests"
-                                        style={styles.input}
-                                        value={booking.guestCount}
-                                        onChange={e => setBooking({ ...booking, guestCount: e.target.value })}
-                                    />
+                                    <input type="number" placeholder="Number of guests"
+                                        style={styles.input} value={booking.guestCount}
+                                        onChange={e => setBooking({ ...booking, guestCount: e.target.value })} />
                                 </div>
 
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>Special Requirements</label>
-                                    <textarea
-                                        placeholder="Any special requirements..."
+                                    <textarea placeholder="Any special requirements..."
                                         style={{ ...styles.input, height: '80px', resize: 'vertical' }}
                                         value={booking.specialRequirements}
-                                        onChange={e => setBooking({ ...booking, specialRequirements: e.target.value })}
-                                    />
+                                        onChange={e => setBooking({ ...booking, specialRequirements: e.target.value })} />
                                 </div>
 
-                                <button
-                                    type="submit"
-                                    style={{ ...styles.bookBtn, opacity: bookingLoading ? 0.7 : 1 }}
-                                    disabled={bookingLoading || (availability && !availability.isAvailable)}
-                                >
+                                <button type="submit"
+                                    style={{ ...styles.bookBtn, opacity: bookingLoading || !booking.eventDate ? 0.6 : 1 }}
+                                    disabled={bookingLoading || !booking.eventDate}>
                                     {bookingLoading ? 'Sending...' : 'Confirm Booking Request'}
                                 </button>
-
-                                {availability && !availability.isAvailable && (
-                                    <p style={{ color: '#C62828', fontSize: '13px', marginTop: '8px', textAlign: 'center' }}>
-                                        Please select an available date to proceed.
-                                    </p>
-                                )}
                             </form>
                         </div>
                     </div>
@@ -518,16 +540,12 @@ const Services = () => {
             <Footer />
 
             {showLogin && (
-                <LoginModal
-                    onClose={() => setShowLogin(false)}
-                    onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }}
-                />
+                <LoginModal onClose={() => setShowLogin(false)}
+                    onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />
             )}
             {showRegister && (
-                <RegisterModal
-                    onClose={() => setShowRegister(false)}
-                    onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }}
-                />
+                <RegisterModal onClose={() => setShowRegister(false)}
+                    onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />
             )}
         </div>
     );
@@ -542,9 +560,9 @@ const styles = {
     searchBar: { display: 'flex', background: '#fff', borderRadius: '12px', overflow: 'hidden', maxWidth: '600px', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' },
     searchField: { display: 'flex', alignItems: 'center', flex: 1, padding: '0 14px' },
     searchIcon: { fontSize: '16px', marginRight: '8px', flexShrink: 0 },
-    searchInput: { border: 'none', outline: 'none', fontSize: '14px', color: '#2C1810', background: 'transparent', width: '100%', padding: '14px 0', fontFamily: "'DM Sans', sans-serif" },
+    searchInput: { border: 'none', outline: 'none', fontSize: '14px', color: '#2C1810', background: 'transparent', width: '100%', padding: '14px 0' },
     searchDivider: { width: '1px', background: '#E8D5C4', margin: '10px 0' },
-    searchBtn: { padding: '0 24px', background: '#8B1A1A', color: '#fff', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" },
+    searchBtn: { padding: '0 24px', background: '#8B1A1A', color: '#fff', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
     container: { maxWidth: '1200px', margin: '0 auto', padding: '36px 24px' },
     categoryRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '24px' },
     catBtn: { padding: '7px 14px', border: '1.5px solid #E8D5C4', borderRadius: '50px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: '#fff', color: '#7A6055', whiteSpace: 'nowrap' },
@@ -597,7 +615,7 @@ const styles = {
     whatsappBtn: { flex: 1, padding: '12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
     formGroup: { marginBottom: '16px' },
     label: { display: 'block', fontSize: '11px', fontWeight: '700', color: '#7A6055', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-    input: { width: '100%', padding: '11px 14px', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '14px', color: '#2C1810', background: '#FFFDF9', outline: 'none', fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box' },
+    input: { width: '100%', padding: '11px 14px', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '14px', color: '#2C1810', background: '#FFFDF9', outline: 'none', boxSizing: 'border-box' },
 };
 
 export default Services;

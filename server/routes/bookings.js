@@ -3,7 +3,7 @@ const router = express.Router();
 const Booking = require('../models/Booking');
 const { protect } = require('../middleware/authMiddleware');
 
-// Create booking
+// ── Create booking ──
 router.post('/', protect, async (req, res) => {
     try {
         const booking = await Booking.create({
@@ -16,7 +16,7 @@ router.post('/', protect, async (req, res) => {
     }
 });
 
-// Get my bookings
+// ── Get my bookings (for members) ──
 router.get('/my', protect, async (req, res) => {
     try {
         const bookings = await Booking.find({ user: req.user.id })
@@ -28,7 +28,33 @@ router.get('/my', protect, async (req, res) => {
     }
 });
 
-// Get single booking
+// ── Get bookings for vendor's services ──
+router.get('/vendor', protect, async (req, res) => {
+    try {
+        const Service = require('../models/Service');
+
+        console.log('🔍 Logged in user ID:', req.user.id);
+        console.log('🔍 Logged in user role:', req.user.role);
+
+        const myServices = await Service.find({ vendor: req.user.id }).select('_id');
+        console.log('🔍 Services found:', myServices.length);
+
+        const serviceIds = myServices.map(s => s._id);
+
+        const bookings = await Booking.find({ service: { $in: serviceIds } })
+            .populate('user', 'name mobile email')
+            .populate('service', 'businessName category city')
+            .sort({ createdAt: -1 });
+
+        console.log('🔍 Bookings found:', bookings.length);
+
+        res.json({ success: true, count: bookings.length, bookings });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ── Get single booking ──
 router.get('/:id', protect, async (req, res) => {
     try {
         const booking = await Booking.findById(req.params.id)
@@ -40,7 +66,7 @@ router.get('/:id', protect, async (req, res) => {
     }
 });
 
-// Update booking status
+// ── Update booking status ──
 router.put('/:id', protect, async (req, res) => {
     try {
         const booking = await Booking.findByIdAndUpdate(

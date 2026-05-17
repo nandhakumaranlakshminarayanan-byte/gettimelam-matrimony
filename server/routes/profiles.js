@@ -12,7 +12,7 @@ const {
 } = require('../controllers/profileController');
 const { protect } = require('../middleware/authMiddleware');
 
-// Storage config
+// ── Storage config ──
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, 'uploads/');
@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
     fileFilter: function (req, file, cb) {
         const types = /jpeg|jpg|png|webp/;
         const valid = types.test(path.extname(file.originalname).toLowerCase());
@@ -33,21 +33,22 @@ const upload = multer({
     }
 });
 
-// Profile routes
+// ── Profile routes ──
 router.get('/', getProfiles);
 router.post('/', protect, createProfile);
 router.get('/my', protect, getMyProfile);
 router.get('/:id', getProfileById);
 router.put('/:id', protect, updateProfile);
 
-// Upload photo
+// ── Upload profile photo ──
 router.post('/upload-photo', protect, upload.single('photo'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, message: 'No file uploaded' });
         }
 
-        const photoUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+        // ✅ Store relative path — works on any domain/port
+        const photoUrl = `/uploads/${req.file.filename}`;
 
         await Profile.findOneAndUpdate(
             { user: req.user.id },
@@ -55,7 +56,12 @@ router.post('/upload-photo', protect, upload.single('photo'), async (req, res) =
             { new: true }
         );
 
-        res.json({ success: true, photoUrl });
+        res.json({
+            success: true,
+            photoUrl,
+            // ✅ Full URL for immediate display in frontend
+            fullUrl: `http://localhost:5000${photoUrl}`
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

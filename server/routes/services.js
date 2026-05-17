@@ -1,7 +1,25 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const Service = require('../models/Service');
 const { protect } = require('../middleware/authMiddleware');
+
+// ── Photo upload config ──
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, 'uploads/'),
+    filename: (req, file, cb) => cb(null, `service_${Date.now()}${path.extname(file.originalname)}`)
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const valid = /jpeg|jpg|png|webp/.test(path.extname(file.originalname).toLowerCase());
+        if (valid) cb(null, true);
+        else cb(new Error('Only images allowed!'));
+    }
+});
 
 // ── GET all services with filters ──
 router.get('/', async (req, res) => {
@@ -14,11 +32,10 @@ router.get('/', async (req, res) => {
         if (district) filter.district = new RegExp(district, 'i');
         if (featured) filter.isFeatured = true;
 
-        // Filter by available date
         if (date) {
             const searchDate = new Date(date);
             filter.$or = [
-                { availability: { $size: 0 } }, // no calendar set = assume available
+                { availability: { $size: 0 } },
                 {
                     availability: {
                         $not: {
@@ -35,9 +52,17 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        const services = await Service.find(filter)
-            .sort({ isFeatured: -1, createdAt: -1 });
+        const services = await Service.find(filter).sort({ isFeatured: -1, createdAt: -1 });
+        res.json({ success: true, count: services.length, services });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
+// ── GET vendor's own services ── (must be before /:id)
+router.get('/vendor/my', protect, async (req, res) => {
+    try {
+        const services = await Service.find({ vendor: req.user.id }).sort({ createdAt: -1 });
         res.json({ success: true, count: services.length, services });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -47,24 +72,18 @@ router.get('/', async (req, res) => {
 // ── GET single service ──
 router.get('/:id', async (req, res) => {
     try {
-        const service = await Service.findById(req.params.id)
-            .populate('vendor', 'name email mobile');
-        if (!service) {
-            return res.status(404).json({ success: false, message: 'Service not found' });
-        }
+        const service = await Service.findById(req.params.id).populate('vendor', 'name email mobile');
+        if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
         res.json({ success: true, service });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// ── CREATE service (vendor only) ──
+// ── CREATE service ──
 router.post('/', protect, async (req, res) => {
     try {
-        const service = await Service.create({
-            ...req.body,
-            vendor: req.user.id
-        });
+        const service = await Service.create({ ...req.body, vendor: req.user.id });
         res.status(201).json({ success: true, message: 'Service listed successfully!', service });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -79,40 +98,67 @@ router.put('/:id', protect, async (req, res) => {
             req.body,
             { new: true, runValidators: true }
         );
-        if (!service) {
-            return res.status(404).json({ success: false, message: 'Service not found or unauthorized' });
-        }
+        if (!service) return res.status(404).json({ success: false, message: 'Service not found or unauthorized' });
         res.json({ success: true, message: 'Service updated!', service });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// ── GET availability for a service ──
+// ── UPLOAD photos for a service ──
+router.post('/:id/upload-photos', protect, upload.array('photos', 10), async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ success: false, message: 'No files uploaded' });
+        }
+        const photoUrls = req.files.map(f => `/uploads/${f.filename}`);
+        const service = await Service.findOneAndUpdate(
+            { _id: req.params.id, vendor: req.user.id },
+            { $push: { photos: { $each: photoUrls } } },
+            { new: true }
+        );
+        if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
+        res.json({ success: true, message: `${req.files.length} photo(s) uploaded!`, photos: service.photos });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ── DELETE a photo from service ──
+router.delete('/:id/photos', protect, async (req, res) => {
+    try {
+        const { photoUrl } = req.body;
+        const service = await Service.findOneAndUpdate(
+            { _id: req.params.id, vendor: req.user.id },
+            { $pull: { photos: photoUrl } },
+            { new: true }
+        );
+        res.json({ success: true, message: 'Photo deleted!', photos: service.photos });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ── GET availability ──
 router.get('/:id/availability', async (req, res) => {
     try {
         const service = await Service.findById(req.params.id).select('availability businessName');
-        if (!service) {
-            return res.status(404).json({ success: false, message: 'Service not found' });
-        }
+        if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
         res.json({ success: true, availability: service.availability });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// ── UPDATE availability (vendor sets their calendar) ──
+// ── UPDATE availability ──
 router.put('/:id/availability', protect, async (req, res) => {
     try {
-        // req.body.availability = [{ date, status, note }]
         const service = await Service.findOneAndUpdate(
             { _id: req.params.id, vendor: req.user.id },
             { availability: req.body.availability },
             { new: true }
         );
-        if (!service) {
-            return res.status(404).json({ success: false, message: 'Service not found or unauthorized' });
-        }
+        if (!service) return res.status(404).json({ success: false, message: 'Service not found or unauthorized' });
         res.json({ success: true, message: 'Availability updated!', availability: service.availability });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -123,14 +169,10 @@ router.put('/:id/availability', protect, async (req, res) => {
 router.post('/:id/check-availability', async (req, res) => {
     try {
         const { date } = req.body;
-        if (!date) {
-            return res.status(400).json({ success: false, message: 'Date is required' });
-        }
+        if (!date) return res.status(400).json({ success: false, message: 'Date is required' });
 
         const service = await Service.findById(req.params.id).select('availability businessName');
-        if (!service) {
-            return res.status(404).json({ success: false, message: 'Service not found' });
-        }
+        if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
 
         const checkDate = new Date(date);
         const entry = service.availability.find(a => {
@@ -145,10 +187,10 @@ router.post('/:id/check-availability', async (req, res) => {
             status,
             isAvailable: status === 'available',
             message: status === 'available'
-                ? '✅ Available on this date!'
+                ? 'Available on this date!'
                 : status === 'booked'
-                    ? '❌ Already booked on this date'
-                    : '🚫 Blocked on this date'
+                    ? 'Already booked on this date'
+                    : 'Blocked on this date'
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -160,29 +202,15 @@ router.post('/:id/reviews', protect, async (req, res) => {
     try {
         const { comment, rating } = req.body;
         const service = await Service.findById(req.params.id);
-        if (!service) {
-            return res.status(404).json({ success: false, message: 'Service not found' });
-        }
+        if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
 
         service.reviews.push({ user: req.user.id, comment, rating });
-        // Recalculate average rating
         const total = service.reviews.reduce((sum, r) => sum + r.rating, 0);
         service.rating = (total / service.reviews.length).toFixed(1);
         service.totalReviews = service.reviews.length;
         await service.save();
 
         res.json({ success: true, message: 'Review added!', rating: service.rating });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ── GET vendor's own services ──
-router.get('/vendor/my', protect, async (req, res) => {
-    try {
-        const services = await Service.find({ vendor: req.user.id })
-            .sort({ createdAt: -1 });
-        res.json({ success: true, count: services.length, services });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

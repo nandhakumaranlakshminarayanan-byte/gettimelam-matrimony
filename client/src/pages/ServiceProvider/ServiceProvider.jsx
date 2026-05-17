@@ -52,10 +52,11 @@ const ServiceProvider = () => {
         }
     };
 
+    // ✅ Fixed — now calls /bookings/vendor instead of /bookings/my
     const fetchMyBookings = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get('http://localhost:5000/api/bookings/my', {
+            const res = await axios.get('http://localhost:5000/api/bookings/vendor', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setBookings(res.data.bookings || []);
@@ -82,6 +83,34 @@ const ServiceProvider = () => {
         }
     };
 
+    const handleConfirmBooking = async (bookingId) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`http://localhost:5000/api/bookings/${bookingId}`,
+                { status: 'Confirmed' },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            toast.success('Booking confirmed!');
+            fetchMyBookings();
+        } catch (err) {
+            toast.error('Failed to confirm booking');
+        }
+    };
+
+    const handleCancelBooking = async (bookingId) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`http://localhost:5000/api/bookings/${bookingId}`,
+                { status: 'Cancelled' },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            toast.success('Booking cancelled!');
+            fetchMyBookings();
+        } catch (err) {
+            toast.error('Failed to cancel booking');
+        }
+    };
+
     // ── Calendar functions ──
     const loadAvailability = async (service) => {
         setSelectedService(service);
@@ -93,10 +122,8 @@ const ServiceProvider = () => {
         }
     };
 
-    // ✅ Timezone-safe date comparison
-    const toLocalDateStr = (date) => {
-        return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-    };
+    const toLocalDateStr = (date) =>
+        `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 
     const getDateStatus = (date) => {
         const dStr = toLocalDateStr(date);
@@ -111,10 +138,8 @@ const ServiceProvider = () => {
     const toggleDateStatus = async (date) => {
         const current = getDateStatus(date);
         const next = current === 'available' ? 'blocked'
-            : current === 'blocked' ? 'booked'
-                : 'available';
+            : current === 'blocked' ? 'booked' : 'available';
 
-        // ✅ Fix timezone offset — use local date string
         const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
         const dateStr = localDate.toISOString().split('T')[0];
         const dStr = toLocalDateStr(date);
@@ -204,18 +229,14 @@ const ServiceProvider = () => {
 
                     <div style={styles.tabs}>
                         {tabs.map(tab => (
-                            <div
-                                key={tab.id}
+                            <div key={tab.id}
                                 style={{ ...styles.tab, ...(activeTab === tab.id ? styles.tabActive : {}) }}
-                                onClick={() => setActiveTab(tab.id)}
-                            >
+                                onClick={() => setActiveTab(tab.id)}>
                                 {tab.label}
                             </div>
                         ))}
-                        <div
-                            style={{ ...styles.tab, color: '#C0392B' }}
-                            onClick={() => { logout(); navigate('/'); }}
-                        >
+                        <div style={{ ...styles.tab, color: '#C0392B' }}
+                            onClick={() => { logout(); navigate('/'); }}>
                             🚪 Logout
                         </div>
                     </div>
@@ -364,8 +385,7 @@ const ServiceProvider = () => {
                                                 </span>
                                                 <button
                                                     style={{ ...styles.addBtn, padding: '6px 14px', fontSize: '12px' }}
-                                                    onClick={() => { setActiveTab('calendar'); loadAvailability(s); }}
-                                                >
+                                                    onClick={() => { setActiveTab('calendar'); loadAvailability(s); }}>
                                                     🗓️ Calendar
                                                 </button>
                                             </div>
@@ -376,10 +396,10 @@ const ServiceProvider = () => {
                         </div>
                     )}
 
-                    {/* BOOKINGS */}
+                    {/* ✅ BOOKINGS — now shows customer details + confirm/cancel buttons */}
                     {activeTab === 'bookings' && (
                         <div>
-                            <h2 style={styles.pageTitle}>📅 Bookings</h2>
+                            <h2 style={styles.pageTitle}>📅 Bookings ({bookings.length})</h2>
                             {bookings.length === 0 ? (
                                 <div style={styles.empty}>
                                     <div style={{ fontSize: '52px', marginBottom: '12px' }}>📅</div>
@@ -389,24 +409,52 @@ const ServiceProvider = () => {
                             ) : (
                                 <div style={styles.servicesList}>
                                     {bookings.map(b => (
-                                        <div key={b._id} style={styles.serviceRow}>
-                                            <div style={styles.serviceRowInfo}>
-                                                <div style={styles.serviceRowName}>{b.service?.businessName || 'Service'}</div>
-                                                <div style={styles.serviceRowMeta}>
-                                                    📅 {new Date(b.eventDate).toLocaleDateString('en-IN')} • {b.eventType}
+                                        <div key={b._id} style={{
+                                            ...styles.serviceRow,
+                                            flexDirection: 'column',
+                                            alignItems: 'stretch',
+                                            gap: '12px'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                <div style={styles.serviceRowInfo}>
+                                                    <div style={styles.serviceRowName}>{b.service?.businessName || 'Service'}</div>
+                                                    <div style={styles.serviceRowMeta}>
+                                                        👤 {b.user?.name || 'Customer'} • 📱 {b.user?.mobile || '—'}
+                                                    </div>
+                                                    <div style={styles.serviceRowMeta}>
+                                                        📅 {new Date(b.eventDate).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                                    </div>
+                                                    <div style={styles.serviceRowMeta}>
+                                                        🎉 {b.eventType} {b.guestCount ? `• 👥 ${b.guestCount} guests` : ''}
+                                                    </div>
+                                                    {b.specialRequirements && (
+                                                        <div style={styles.serviceRowMeta}>📝 {b.specialRequirements}</div>
+                                                    )}
                                                 </div>
-                                                <div style={styles.serviceRowMeta}>👥 {b.guestCount || 0} guests</div>
-                                                {b.specialRequirements && (
-                                                    <div style={styles.serviceRowMeta}>📝 {b.specialRequirements}</div>
-                                                )}
+                                                <span style={{
+                                                    ...styles.statusPill,
+                                                    background: b.status === 'Confirmed' ? '#E8F5E9' : b.status === 'Cancelled' ? '#FFEBEE' : '#FFF8E1',
+                                                    color: b.status === 'Confirmed' ? '#2E7D32' : b.status === 'Cancelled' ? '#C62828' : '#F57F17'
+                                                }}>
+                                                    {b.status}
+                                                </span>
                                             </div>
-                                            <span style={{
-                                                ...styles.statusPill,
-                                                background: b.status === 'Confirmed' ? '#E8F5E9' : b.status === 'Cancelled' ? '#FFEBEE' : '#FFF8E1',
-                                                color: b.status === 'Confirmed' ? '#2E7D32' : b.status === 'Cancelled' ? '#C62828' : '#F57F17'
-                                            }}>
-                                                {b.status}
-                                            </span>
+
+                                            {/* ✅ Action buttons for pending bookings */}
+                                            {b.status === 'Pending' && (
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button
+                                                        style={{ ...styles.addBtn, background: '#2E7D32', flex: 1 }}
+                                                        onClick={() => handleConfirmBooking(b._id)}>
+                                                        ✅ Confirm Booking
+                                                    </button>
+                                                    <button
+                                                        style={{ ...styles.addBtn, background: '#C62828', flex: 1 }}
+                                                        onClick={() => handleCancelBooking(b._id)}>
+                                                        ❌ Cancel Booking
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -424,9 +472,7 @@ const ServiceProvider = () => {
                                     <div style={{ fontSize: '52px', marginBottom: '12px' }}>🗓️</div>
                                     <h3>Add a service first</h3>
                                     <p style={{ color: '#7A6055' }}>List a service before setting availability</p>
-                                    <button style={styles.addBtn} onClick={() => setActiveTab('services')}>
-                                        Add Service
-                                    </button>
+                                    <button style={styles.addBtn} onClick={() => setActiveTab('services')}>Add Service</button>
                                 </div>
                             ) : (
                                 <div>
@@ -453,12 +499,9 @@ const ServiceProvider = () => {
                                                 <button style={styles.backBtn} onClick={() => setSelectedService(null)}>
                                                     ← Back to Services
                                                 </button>
-                                                <div style={styles.calendarServiceName}>
-                                                    {selectedService.businessName}
-                                                </div>
+                                                <div style={styles.calendarServiceName}>{selectedService.businessName}</div>
                                             </div>
 
-                                            {/* Legend */}
                                             <div style={styles.legend}>
                                                 {[
                                                     { color: '#E8F5E9', border: '#A5D6A7', label: 'Available' },
@@ -475,14 +518,12 @@ const ServiceProvider = () => {
                                                 </span>
                                             </div>
 
-                                            {/* Month navigation */}
                                             <div style={styles.monthNav}>
                                                 <button style={styles.navBtn} onClick={() => setCalendarMonth(new Date(year, month - 1))}>←</button>
                                                 <span style={styles.monthLabel}>{monthNames[month]} {year}</span>
                                                 <button style={styles.navBtn} onClick={() => setCalendarMonth(new Date(year, month + 1))}>→</button>
                                             </div>
 
-                                            {/* Calendar grid */}
                                             <div style={styles.calendarGrid}>
                                                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
                                                     <div key={d} style={styles.dayHeader}>{d}</div>
@@ -504,19 +545,16 @@ const ServiceProvider = () => {
                                                         ? { bg: '#F5F5F5', border: '#E0E0E0', text: '#BDBDBD' }
                                                         : cellColors[status];
                                                     return (
-                                                        <div
-                                                            key={i}
-                                                            style={{
-                                                                ...styles.dayCell,
-                                                                background: colors.bg,
-                                                                border: `1px solid ${colors.border}`,
-                                                                color: colors.text,
-                                                                cursor: isPast ? 'not-allowed' : 'pointer',
-                                                                fontWeight: isToday ? '800' : '500',
-                                                                outline: isToday ? '2px solid #8B1A1A' : 'none',
-                                                            }}
-                                                            onClick={() => !isPast && toggleDateStatus(date)}
-                                                        >
+                                                        <div key={i} style={{
+                                                            ...styles.dayCell,
+                                                            background: colors.bg,
+                                                            border: `1px solid ${colors.border}`,
+                                                            color: colors.text,
+                                                            cursor: isPast ? 'not-allowed' : 'pointer',
+                                                            fontWeight: isToday ? '800' : '500',
+                                                            outline: isToday ? '2px solid #8B1A1A' : 'none',
+                                                        }}
+                                                            onClick={() => !isPast && toggleDateStatus(date)}>
                                                             {i + 1}
                                                             {isToday && <div style={{ fontSize: '8px', marginTop: '2px' }}>TODAY</div>}
                                                         </div>
@@ -524,18 +562,13 @@ const ServiceProvider = () => {
                                                 })}
                                             </div>
 
-                                            {/* Summary */}
                                             <div style={styles.calendarSummary}>
                                                 <div style={styles.summaryItem}>
-                                                    <strong style={{ color: '#C62828' }}>
-                                                        {availability.filter(a => a.status === 'blocked').length}
-                                                    </strong>
+                                                    <strong style={{ color: '#C62828' }}>{availability.filter(a => a.status === 'blocked').length}</strong>
                                                     <span> Blocked dates</span>
                                                 </div>
                                                 <div style={styles.summaryItem}>
-                                                    <strong style={{ color: '#F57F17' }}>
-                                                        {availability.filter(a => a.status === 'booked').length}
-                                                    </strong>
+                                                    <strong style={{ color: '#F57F17' }}>{availability.filter(a => a.status === 'booked').length}</strong>
                                                     <span> Booked dates</span>
                                                 </div>
                                             </div>
@@ -570,10 +603,8 @@ const ServiceProvider = () => {
                                     ))}
                                 </div>
                             </div>
-                            <button
-                                style={{ ...styles.addBtn, background: '#C0392B', marginTop: '16px' }}
-                                onClick={() => { logout(); navigate('/'); }}
-                            >
+                            <button style={{ ...styles.addBtn, background: '#C0392B', marginTop: '16px' }}
+                                onClick={() => { logout(); navigate('/'); }}>
                                 🚪 Logout
                             </button>
                         </div>
@@ -622,9 +653,9 @@ const styles = {
     serviceRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: '#FDF5EE', borderRadius: '12px', border: '1px solid #E8D5C4' },
     serviceRowInfo: {},
     serviceRowName: { fontWeight: '700', color: '#1A0A0A', fontSize: '15px', marginBottom: '4px' },
-    serviceRowMeta: { fontSize: '12px', color: '#7A6055' },
+    serviceRowMeta: { fontSize: '12px', color: '#7A6055', marginBottom: '2px' },
     serviceRowActions: { display: 'flex', gap: '8px', alignItems: 'center' },
-    statusPill: { padding: '5px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: '600' },
+    statusPill: { padding: '5px 12px', borderRadius: '50px', fontSize: '12px', fontWeight: '600', whiteSpace: 'nowrap' },
     empty: { textAlign: 'center', padding: '60px 20px' },
     calendarHeader: { display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' },
     backBtn: { padding: '8px 16px', background: 'transparent', border: '1.5px solid #8B1A1A', color: '#8B1A1A', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
