@@ -8,7 +8,6 @@ import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-// Sample profiles as fallback when no real profiles exist
 const sampleProfiles = [
     { _id: '1', name: 'Priya S.', gender: 'Female', religion: 'Hindu', caste: 'Mudaliar', education: 'B.Tech', occupation: 'Software Engineer', city: 'Chennai', district: 'Chennai', maritalStatus: 'Never Married', rasi: 'Mesham', height: "5'4\"", annualIncome: '5-10 Lakhs', about: 'Simple and family oriented girl looking for a genuine life partner.' },
     { _id: '2', name: 'Arun K.', gender: 'Male', religion: 'Hindu', caste: 'Gounder', education: 'MBBS', occupation: 'Doctor', city: 'Coimbatore', district: 'Coimbatore', maritalStatus: 'Never Married', rasi: 'Rishabam', height: "5'10\"", annualIncome: '10-20 Lakhs', about: 'Doctor by profession, fun loving and family oriented.' },
@@ -34,21 +33,17 @@ const Browse = () => {
     const [allProfiles, setAllProfiles] = useState([]);
     const [displayProfiles, setDisplayProfiles] = useState([]);
 
-    useEffect(() => {
-        fetchProfiles();
-    }, []);
+    useEffect(() => { fetchProfiles(); }, []);
 
     const fetchProfiles = async () => {
         setLoading(true);
         try {
             const res = await axios.get('http://localhost:5000/api/profiles');
             const real = res.data.profiles || [];
-            // Use real profiles if available, else show samples
             const profiles = real.length > 0 ? real : sampleProfiles;
             setAllProfiles(profiles);
             setDisplayProfiles(profiles);
         } catch (err) {
-            // Fallback to sample data
             setAllProfiles(sampleProfiles);
             setDisplayProfiles(sampleProfiles);
         } finally {
@@ -78,12 +73,11 @@ const Browse = () => {
 
     const handleSendInterest = async (profile) => {
         if (!user) { setShowLogin(true); return; }
-        toast.success(`Interest sent to ${profile.name}!`);
+        toast.success(`Interest sent to ${getName(profile)}! 💌`);
     };
 
-    // ✅ Navigate to profile detail page
+    // ✅ No login required to view profile
     const handleViewProfile = (profile) => {
-        if (!user) { setShowLogin(true); return; }
         navigate(`/profile/${profile._id}`);
     };
 
@@ -91,10 +85,7 @@ const Browse = () => {
 
     return (
         <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
-            <Navbar
-                onLoginClick={() => setShowLogin(true)}
-                onRegisterClick={() => setShowRegister(true)}
-            />
+            <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
 
             {/* Header */}
             <div style={styles.header}>
@@ -196,7 +187,6 @@ const Browse = () => {
 
                 {/* PROFILES AREA */}
                 <div style={styles.profilesArea}>
-
                     <div style={styles.resultsHeader}>
                         <span style={styles.resultsCount}>
                             Showing <strong>{displayProfiles.length}</strong> profiles
@@ -210,7 +200,7 @@ const Browse = () => {
 
                     {!user && (
                         <div style={styles.loginAlert}>
-                            <span>Login to send interests and view full profiles</span>
+                            <span>🔒 Login to send interests and connect with profiles</span>
                             <button style={styles.loginAlertBtn} onClick={() => setShowLogin(true)}>
                                 Login Now
                             </button>
@@ -253,12 +243,8 @@ const Browse = () => {
                                         {/* Info */}
                                         <div style={styles.cardInfo}>
                                             <div style={styles.cardName}>{getName(profile)}</div>
-                                            <div style={styles.cardMeta}>
-                                                {profile.occupation} • {profile.city}
-                                            </div>
-                                            <div style={styles.cardMeta}>
-                                                {profile.religion} • {profile.caste}
-                                            </div>
+                                            <div style={styles.cardMeta}>{profile.occupation} • {profile.city}</div>
+                                            <div style={styles.cardMeta}>{profile.religion} • {profile.caste}</div>
 
                                             <div style={styles.detailsRow}>
                                                 {[
@@ -282,7 +268,7 @@ const Browse = () => {
                                             <div style={styles.cardActions}>
                                                 <button style={styles.interestBtn}
                                                     onClick={() => handleSendInterest(profile)}>
-                                                    Send Interest
+                                                    💌 Send Interest
                                                 </button>
                                                 <button style={styles.viewBtn}
                                                     onClick={() => handleViewProfile(profile)}>

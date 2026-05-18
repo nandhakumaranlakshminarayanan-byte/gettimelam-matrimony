@@ -29,7 +29,6 @@ io.on('connection', (socket) => {
         console.log('👤 User joined:', userId);
     });
 
-    // ✅ Use ChatMessage model for chat
     socket.on('sendMessage', async (data) => {
         try {
             const ChatMessage = require('./models/ChatMessage');
@@ -38,16 +37,9 @@ io.on('connection', (socket) => {
                 receiver: data.receiverId,
                 content: data.content,
             });
-
             const populated = await message.populate('sender', 'name businessName ownerName');
-
-            // Send to receiver if online
             const receiverSocket = onlineUsers.get(data.receiverId);
-            if (receiverSocket) {
-                io.to(receiverSocket).emit('receiveMessage', populated);
-            }
-
-            // Send back to sender
+            if (receiverSocket) io.to(receiverSocket).emit('receiveMessage', populated);
             socket.emit('messageSent', populated);
         } catch (err) {
             console.error('Message error:', err);
@@ -56,16 +48,12 @@ io.on('connection', (socket) => {
 
     socket.on('typing', (data) => {
         const receiverSocket = onlineUsers.get(data.receiverId);
-        if (receiverSocket) {
-            io.to(receiverSocket).emit('userTyping', { senderId: data.senderId });
-        }
+        if (receiverSocket) io.to(receiverSocket).emit('userTyping', { senderId: data.senderId });
     });
 
     socket.on('stopTyping', (data) => {
         const receiverSocket = onlineUsers.get(data.receiverId);
-        if (receiverSocket) {
-            io.to(receiverSocket).emit('userStopTyping', { senderId: data.senderId });
-        }
+        if (receiverSocket) io.to(receiverSocket).emit('userStopTyping', { senderId: data.senderId });
     });
 
     socket.on('disconnect', () => {
@@ -85,6 +73,7 @@ app.use('/api/profiles', require('./routes/profiles'));
 app.use('/api/services', require('./routes/services'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/messages', require('./routes/messages'));
+app.use('/api/testimonials', require('./routes/testimonials')); // ✅ new
 app.use('/api/admin', require('./routes/admin'));
 
 app.get('/', (req, res) => {

@@ -1,6 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const ProfilesSection = ({ onLoginClick }) => {
+    const navigate = useNavigate();
+    const { user } = useAuth();
+
     const profiles = [
         { name: 'Priya S.', age: 25, job: 'Software Engineer', city: 'Chennai', religion: 'Hindu', caste: 'Mudaliar', edu: 'B.Tech', gender: 'female' },
         { name: 'Arun K.', age: 29, job: 'Doctor (MBBS)', city: 'Coimbatore', religion: 'Hindu', caste: 'Mudaliar', edu: 'MBBS', gender: 'male' },
@@ -9,6 +14,10 @@ const ProfilesSection = ({ onLoginClick }) => {
         { name: 'Deepa N.', age: 26, job: 'Nurse', city: 'Trichy', religion: 'Christian', caste: 'RC', edu: 'B.Sc Nursing', gender: 'female' },
         { name: 'Ramesh T.', age: 28, job: 'Engineer', city: 'Erode', religion: 'Hindu', caste: 'Vanniyar', edu: 'B.E', gender: 'male' },
     ];
+
+    const handleSendInterest = () => {
+        if (!user) { onLoginClick(); return; }
+    };
 
     return (
         <section style={styles.section}>
@@ -41,8 +50,14 @@ const ProfilesSection = ({ onLoginClick }) => {
                                     <span style={styles.tag}>{p.city}</span>
                                 </div>
                                 <div style={styles.actions}>
-                                    <button style={styles.btnPrimary} onClick={onLoginClick}>Send Interest</button>
-                                    <button style={styles.btnOutline} onClick={onLoginClick}>View Profile</button>
+                                    {/* ✅ Send Interest requires login */}
+                                    <button style={styles.btnPrimary} onClick={handleSendInterest}>
+                                        Send Interest
+                                    </button>
+                                    {/* ✅ View Profile — no login required */}
+                                    <button style={styles.btnOutline} onClick={() => navigate('/browse')}>
+                                        View Profile
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -50,7 +65,10 @@ const ProfilesSection = ({ onLoginClick }) => {
                 </div>
 
                 <div style={styles.center}>
-                    <button style={styles.viewAll} onClick={onLoginClick}>View All Profiles →</button>
+                    {/* ✅ View All Profiles — navigate directly to browse */}
+                    <button style={styles.viewAll} onClick={() => navigate('/browse')}>
+                        View All Profiles →
+                    </button>
                 </div>
             </div>
         </section>
