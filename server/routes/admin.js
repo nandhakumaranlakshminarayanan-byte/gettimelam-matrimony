@@ -34,8 +34,7 @@ router.delete('/users/:id', protect, adminOnly, deleteUser);
 router.get('/vendors', protect, adminOnly, async (req, res) => {
     try {
         const providers = await User.find({ role: 'service' })
-            .select('-password')
-            .sort({ createdAt: -1 });
+            .select('-password').sort({ createdAt: -1 });
         res.json({ success: true, count: providers.length, vendors: providers });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -45,13 +44,9 @@ router.get('/vendors', protect, adminOnly, async (req, res) => {
 router.put('/vendors/:id/approve', protect, adminOnly, async (req, res) => {
     try {
         const provider = await User.findByIdAndUpdate(
-            req.params.id,
-            { isApproved: true, isActive: true },
-            { new: true }
+            req.params.id, { isApproved: true, isActive: true }, { new: true }
         ).select('-password');
-        if (!provider) {
-            return res.status(404).json({ success: false, message: 'Service provider not found' });
-        }
+        if (!provider) return res.status(404).json({ success: false, message: 'Service provider not found' });
         res.json({ success: true, message: 'Service provider approved!', vendor: provider });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -61,13 +56,9 @@ router.put('/vendors/:id/approve', protect, adminOnly, async (req, res) => {
 router.put('/vendors/:id/reject', protect, adminOnly, async (req, res) => {
     try {
         const provider = await User.findByIdAndUpdate(
-            req.params.id,
-            { isApproved: false, isActive: false },
-            { new: true }
+            req.params.id, { isApproved: false, isActive: false }, { new: true }
         ).select('-password');
-        if (!provider) {
-            return res.status(404).json({ success: false, message: 'Service provider not found' });
-        }
+        if (!provider) return res.status(404).json({ success: false, message: 'Service provider not found' });
         res.json({ success: true, message: 'Service provider rejected!', vendor: provider });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -112,5 +103,44 @@ router.delete('/messages/:id', protect, adminOnly, deleteMessage);
 router.get('/notifications', protect, adminOnly, getNotifications);
 router.post('/notifications', protect, adminOnly, createNotification);
 router.delete('/notifications/:id', protect, adminOnly, deleteNotification);
+
+// ── Admin Management ──
+router.get('/admins', protect, adminOnly, async (req, res) => {
+    try {
+        const admins = await User.find({ role: 'admin' })
+            .select('-password').sort({ createdAt: -1 });
+        res.json({ success: true, admins });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.post('/admins', protect, adminOnly, async (req, res) => {
+    try {
+        const bcrypt = require('bcryptjs');
+        const { name, email, mobile, password } = req.body;
+        const exists = await User.findOne({ $or: [{ email }, { mobile }] });
+        if (exists) return res.status(400).json({ success: false, message: 'Account already exists!' });
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const admin = await User.create({
+            name, email, mobile,
+            password: hashedPassword,
+            role: 'admin',
+            gender: 'Male'
+        });
+        res.status(201).json({ success: true, message: 'Admin created!', admin });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+router.delete('/admins/:id', protect, adminOnly, async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Admin deleted!' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 module.exports = router;

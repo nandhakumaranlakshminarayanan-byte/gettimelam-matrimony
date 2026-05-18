@@ -10,7 +10,7 @@ const Notification = require('../models/Notification');
 // Get dashboard stats
 const getStats = async (req, res) => {
     try {
-        const totalUsers = await User.countDocuments();
+        const totalUsers = await User.countDocuments({ role: { $ne: 'admin' } });
         const totalProfiles = await Profile.countDocuments();
         const totalServices = await Service.countDocuments();
         const totalBookings = await Booking.countDocuments();
@@ -18,7 +18,8 @@ const getStats = async (req, res) => {
         const totalMessages = await Message.countDocuments();
         const unreadMessages = await Message.countDocuments({ isRead: false });
         const totalTestimonials = await Testimonial.countDocuments();
-        const recentUsers = await User.find()
+
+        const recentUsers = await User.find({ role: { $ne: 'admin' } })
             .select('-password')
             .sort({ createdAt: -1 })
             .limit(5);
@@ -26,15 +27,9 @@ const getStats = async (req, res) => {
         res.json({
             success: true,
             stats: {
-                totalUsers,
-                totalProfiles,
-                totalServices,
-                totalBookings,
-                premiumUsers,
-                freeUsers: totalUsers - premiumUsers,
-                totalMessages,
-                unreadMessages,
-                totalTestimonials
+                totalUsers, totalProfiles, totalServices, totalBookings,
+                premiumUsers, freeUsers: totalUsers - premiumUsers,
+                totalMessages, unreadMessages, totalTestimonials
             },
             recentUsers
         });
@@ -43,10 +38,12 @@ const getStats = async (req, res) => {
     }
 };
 
-// Get all users
+// ✅ Get all users — exclude admins
 const getAllUsers = async (req, res) => {
     try {
-        const users = await User.find().select('-password').sort({ createdAt: -1 });
+        const users = await User.find({ role: { $ne: 'admin' } })
+            .select('-password')
+            .sort({ createdAt: -1 });
         res.json({ success: true, count: users.length, users });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -73,7 +70,11 @@ const togglePremium = async (req, res) => {
         user.isPremium = !user.isPremium;
         user.plan = user.isPremium ? 'premium' : 'free';
         await user.save();
-        res.json({ success: true, message: `User ${user.isPremium ? 'upgraded to Premium' : 'downgraded to Free'}`, isPremium: user.isPremium });
+        res.json({
+            success: true,
+            message: `User ${user.isPremium ? 'upgraded to Premium' : 'downgraded to Free'}`,
+            isPremium: user.isPremium
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -93,7 +94,9 @@ const deleteUser = async (req, res) => {
 // Verify profile
 const verifyProfile = async (req, res) => {
     try {
-        const profile = await Profile.findByIdAndUpdate(req.params.id, { isVerified: true }, { new: true });
+        const profile = await Profile.findByIdAndUpdate(
+            req.params.id, { isVerified: true }, { new: true }
+        );
         res.json({ success: true, message: 'Profile verified!', profile });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -117,9 +120,7 @@ const getAllBookings = async (req, res) => {
 const updateBookingStatus = async (req, res) => {
     try {
         const booking = await Booking.findByIdAndUpdate(
-            req.params.id,
-            { status: req.body.status },
-            { new: true }
+            req.params.id, { status: req.body.status }, { new: true }
         );
         res.json({ success: true, message: 'Booking updated!', booking });
     } catch (error) {
@@ -269,18 +270,12 @@ const getAnalytics = async (req, res) => {
         const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-        const newUsersThisWeek = await User.countDocuments({ createdAt: { $gte: last7Days } });
-        const newUsersThisMonth = await User.countDocuments({ createdAt: { $gte: last30Days } });
+        const newUsersThisWeek = await User.countDocuments({ createdAt: { $gte: last7Days }, role: { $ne: 'admin' } });
+        const newUsersThisMonth = await User.countDocuments({ createdAt: { $gte: last30Days }, role: { $ne: 'admin' } });
         const newProfilesThisWeek = await Profile.countDocuments({ createdAt: { $gte: last7Days } });
 
-        const genderStats = await User.aggregate([
-            { $group: { _id: '$gender', count: { $sum: 1 } } }
-        ]);
-
-        const religionStats = await Profile.aggregate([
-            { $group: { _id: '$religion', count: { $sum: 1 } } }
-        ]);
-
+        const genderStats = await User.aggregate([{ $match: { role: 'member' } }, { $group: { _id: '$gender', count: { $sum: 1 } } }]);
+        const religionStats = await Profile.aggregate([{ $group: { _id: '$religion', count: { $sum: 1 } } }]);
         const districtStats = await Profile.aggregate([
             { $group: { _id: '$district', count: { $sum: 1 } } },
             { $sort: { count: -1 } },
@@ -289,14 +284,7 @@ const getAnalytics = async (req, res) => {
 
         res.json({
             success: true,
-            analytics: {
-                newUsersThisWeek,
-                newUsersThisMonth,
-                newProfilesThisWeek,
-                genderStats,
-                religionStats,
-                districtStats
-            }
+            analytics: { newUsersThisWeek, newUsersThisMonth, newProfilesThisWeek, genderStats, religionStats, districtStats }
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

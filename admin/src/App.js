@@ -14,6 +14,7 @@ import Analytics from './pages/Analytics/Analytics';
 import Notifications from './pages/Notifications/Notifications';
 import Banners from './pages/Banners/Banners';
 import Messages from './pages/Messages/Messages';
+import AdminAccess from './pages/AdminAccess/AdminAccess';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -44,6 +45,7 @@ function App() {
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/banners" element={<ProtectedRoute><Banners /></ProtectedRoute>} />
           <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+          <Route path="/admin-access" element={<ProtectedRoute><AdminAccess /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </Router>
