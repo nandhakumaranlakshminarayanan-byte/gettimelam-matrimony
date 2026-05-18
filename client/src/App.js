@@ -12,6 +12,7 @@ import Services from './pages/Services/Services';
 import AdminPanel from './pages/Admin/AdminPanel';
 import Contact from './pages/Contact/Contact';
 import ProfileDetail from './pages/Profile/ProfileDetail';
+import Messages from './pages/Messages/Messages';
 import './App.css';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/profile/:id" element={<ProfileDetail />} />
+          <Route path="/messages" element={<Messages />} />
         </Routes>
       </Router>
     </AuthProvider>
