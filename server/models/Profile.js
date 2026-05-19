@@ -8,17 +8,13 @@ const profileSchema = new mongoose.Schema({
     height: { type: String },
     weight: { type: String },
     complexion: { type: String },
-    maritalStatus: {
-        type: String,
-        enum: ['Never Married', 'Divorced', 'Widowed', 'Separated'],
-        default: 'Never Married'
-    },
+    maritalStatus: { type: String, enum: ['Never Married', 'Divorced', 'Widowed', 'Separated'], default: 'Never Married' },
     religion: { type: String, enum: ['Hindu', 'Muslim', 'Christian'] },
     caste: { type: String },
     subCaste: { type: String },
     rasi: { type: String },
     nakshatra: { type: String },
-    dosham: { type: String, enum: ['Yes', 'No', 'Doesn\'t Matter'] },
+    dosham: { type: String, enum: ['Yes', 'No', "Doesn't Matter"] },
     education: { type: String },
     occupation: { type: String },
     annualIncome: { type: String },
@@ -34,6 +30,10 @@ const profileSchema = new mongoose.Schema({
     familyType: { type: String, enum: ['Joint', 'Nuclear'] },
     isVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
+
+    // ✅ Number Privacy
+    numberProtected: { type: Boolean, default: false },
+
     createdAt: { type: Date, default: Date.now }
 });
 

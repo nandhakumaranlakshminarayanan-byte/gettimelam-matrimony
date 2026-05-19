@@ -73,7 +73,9 @@ app.use('/api/profiles', require('./routes/profiles'));
 app.use('/api/services', require('./routes/services'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/messages', require('./routes/messages'));
-app.use('/api/testimonials', require('./routes/testimonials')); // ✅ new
+app.use('/api/testimonials', require('./routes/testimonials'));
+app.use('/api/banners', require('./routes/banners'));
+app.use('/api/privacy', require('./routes/privacy'));         // ✅ new
 app.use('/api/admin', require('./routes/admin'));
 
 app.get('/', (req, res) => {

@@ -1,23 +1,48 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
+
+const API = 'http://localhost:5000';
 
 const ProfilesSection = ({ onLoginClick }) => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const [profiles, setProfiles] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const profiles = [
-        { name: 'Priya S.', age: 25, job: 'Software Engineer', city: 'Chennai', religion: 'Hindu', caste: 'Mudaliar', edu: 'B.Tech', gender: 'female' },
-        { name: 'Arun K.', age: 29, job: 'Doctor (MBBS)', city: 'Coimbatore', religion: 'Hindu', caste: 'Mudaliar', edu: 'MBBS', gender: 'male' },
-        { name: 'Kavitha R.', age: 24, job: 'Teacher', city: 'Madurai', religion: 'Hindu', caste: 'Nadar', edu: 'B.Ed', gender: 'female' },
-        { name: 'Vijay M.', age: 31, job: 'Business', city: 'Salem', religion: 'Hindu', caste: 'Gounder', edu: 'MBA', gender: 'male' },
-        { name: 'Deepa N.', age: 26, job: 'Nurse', city: 'Trichy', religion: 'Christian', caste: 'RC', edu: 'B.Sc Nursing', gender: 'female' },
-        { name: 'Ramesh T.', age: 28, job: 'Engineer', city: 'Erode', religion: 'Hindu', caste: 'Vanniyar', edu: 'B.E', gender: 'male' },
-    ];
+    useEffect(() => { fetchProfiles(); }, [user]);
+
+    const fetchProfiles = async () => {
+        try {
+            // ✅ Send token to exclude own profile
+            const token = localStorage.getItem('token');
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            const res = await axios.get(`${API}/api/profiles`, { headers });
+            const real = res.data.profiles || [];
+            // ✅ Show max 6 profiles
+            setProfiles(real.slice(0, 6));
+        } catch (err) {
+            setProfiles([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSendInterest = () => {
         if (!user) { onLoginClick(); return; }
     };
+
+    const getName = (p) => p.name || p.user?.name || 'Unknown';
+
+    if (loading) return (
+        <section style={styles.section}>
+            <div style={{ textAlign: 'center', padding: '60px' }}>
+                <div style={{ fontSize: '40px', marginBottom: '12px' }}>⏳</div>
+                <p style={{ color: '#7A6055' }}>Loading profiles...</p>
+            </div>
+        </section>
+    );
 
     return (
         <section style={styles.section}>
@@ -30,42 +55,54 @@ const ProfilesSection = ({ onLoginClick }) => {
 
                 <div style={styles.grid}>
                     {profiles.map((p, i) => (
-                        <div key={i} style={styles.card}>
+                        <div key={p._id || i} style={styles.card}>
                             <div style={{
                                 ...styles.photo,
-                                background: p.gender === 'female'
+                                background: p.gender === 'Female'
                                     ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
                                     : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
                             }}>
-                                <span style={styles.avatar}>{p.gender === 'female' ? '👩' : '👨'}</span>
+                                {p.photo ? (
+                                    <img src={`${API}${p.photo}`} alt={getName(p)}
+                                        style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A' }} />
+                                ) : (
+                                    <span style={styles.avatar}>
+                                        {p.gender === 'Female' ? '👩' : '👨'}
+                                    </span>
+                                )}
                                 <span style={styles.verified}>✓ Verified</span>
                             </div>
                             <div style={styles.info}>
-                                <div style={styles.name}>{p.name}</div>
-                                <div style={styles.meta}>{p.age} yrs • {p.job} • {p.city}</div>
-                                <div style={styles.meta}>{p.religion} • {p.caste} • Tamil</div>
+                                <div style={styles.name}>{getName(p)}</div>
+                                <div style={styles.meta}>{p.occupation} • {p.city}</div>
+                                <div style={styles.meta}>{p.religion} • {p.caste}</div>
                                 <div style={styles.tags}>
-                                    <span style={styles.tag}>Never Married</span>
-                                    <span style={styles.tag}>{p.edu}</span>
-                                    <span style={styles.tag}>{p.city}</span>
+                                    {p.maritalStatus && <span style={styles.tag}>{p.maritalStatus}</span>}
+                                    {p.education && <span style={styles.tag}>{p.education}</span>}
+                                    {p.district && <span style={styles.tag}>{p.district}</span>}
                                 </div>
                                 <div style={styles.actions}>
-                                    {/* ✅ Send Interest requires login */}
                                     <button style={styles.btnPrimary} onClick={handleSendInterest}>
-                                        Send Interest
+                                        💌 Send Interest
                                     </button>
-                                    {/* ✅ View Profile — no login required */}
-                                    <button style={styles.btnOutline} onClick={() => navigate('/browse')}>
+                                    <button style={styles.btnOutline}
+                                        onClick={() => navigate(`/profile/${p._id}`)}>
                                         View Profile
                                     </button>
                                 </div>
                             </div>
                         </div>
                     ))}
+
+                    {profiles.length === 0 && (
+                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#7A6055' }}>
+                            <div style={{ fontSize: '48px', marginBottom: '12px' }}>💍</div>
+                            <p>No profiles yet. Be the first to register!</p>
+                        </div>
+                    )}
                 </div>
 
                 <div style={styles.center}>
-                    {/* ✅ View All Profiles — navigate directly to browse */}
                     <button style={styles.viewAll} onClick={() => navigate('/browse')}>
                         View All Profiles →
                     </button>
@@ -96,7 +133,7 @@ const styles = {
     btnPrimary: { flex: 1, padding: '9px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' },
     btnOutline: { flex: 1, padding: '9px', background: 'transparent', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' },
     center: { textAlign: 'center', marginTop: '36px' },
-    viewAll: { padding: '12px 32px', background: 'transparent', border: '1.5px solid #8B1A1A', color: '#8B1A1A', borderRadius: '8px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }
+    viewAll: { padding: '12px 32px', background: 'transparent', border: '1.5px solid #8B1A1A', color: '#8B1A1A', borderRadius: '8px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' },
 };
 
 export default ProfilesSection;

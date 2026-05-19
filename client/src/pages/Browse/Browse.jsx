@@ -8,18 +8,6 @@ import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const sampleProfiles = [
-    { _id: '1', name: 'Priya S.', gender: 'Female', religion: 'Hindu', caste: 'Mudaliar', education: 'B.Tech', occupation: 'Software Engineer', city: 'Chennai', district: 'Chennai', maritalStatus: 'Never Married', rasi: 'Mesham', height: "5'4\"", annualIncome: '5-10 Lakhs', about: 'Simple and family oriented girl looking for a genuine life partner.' },
-    { _id: '2', name: 'Arun K.', gender: 'Male', religion: 'Hindu', caste: 'Gounder', education: 'MBBS', occupation: 'Doctor', city: 'Coimbatore', district: 'Coimbatore', maritalStatus: 'Never Married', rasi: 'Rishabam', height: "5'10\"", annualIncome: '10-20 Lakhs', about: 'Doctor by profession, fun loving and family oriented.' },
-    { _id: '3', name: 'Kavitha R.', gender: 'Female', religion: 'Hindu', caste: 'Nadar', education: 'B.Ed', occupation: 'Teacher', city: 'Madurai', district: 'Madurai', maritalStatus: 'Never Married', rasi: 'Mithunam', height: "5'2\"", annualIncome: '2-5 Lakhs', about: 'Teacher by profession. Looking for a simple and caring life partner.' },
-    { _id: '4', name: 'Vijay M.', gender: 'Male', religion: 'Hindu', caste: 'Thevar', education: 'MBA', occupation: 'Business', city: 'Salem', district: 'Salem', maritalStatus: 'Never Married', rasi: 'Simmam', height: "5'8\"", annualIncome: '10-20 Lakhs', about: 'Running a successful business. Looking for a life partner.' },
-    { _id: '5', name: 'Deepa N.', gender: 'Female', religion: 'Christian', caste: 'Roman Catholic', education: 'B.Sc Nursing', occupation: 'Nurse', city: 'Trichy', district: 'Trichy', maritalStatus: 'Never Married', rasi: 'Kanni', height: "5'3\"", annualIncome: '2-5 Lakhs', about: 'Working as a nurse. Simple and god fearing.' },
-    { _id: '6', name: 'Ramesh T.', gender: 'Male', religion: 'Hindu', caste: 'Vanniyar', education: 'B.E', occupation: 'Engineer', city: 'Erode', district: 'Erode', maritalStatus: 'Never Married', rasi: 'Thulam', height: "5'9\"", annualIncome: '5-10 Lakhs', about: 'Engineer working in a reputed company. Family oriented.' },
-    { _id: '7', name: 'Sindhu A.', gender: 'Female', religion: 'Hindu', caste: 'Brahmin', education: 'M.Tech', occupation: 'Software Engineer', city: 'Chennai', district: 'Chennai', maritalStatus: 'Never Married', rasi: 'Kadagam', height: "5'5\"", annualIncome: '5-10 Lakhs', about: 'Software Engineer at a top MNC. Looking for an educated life partner.' },
-    { _id: '8', name: 'Karthik P.', gender: 'Male', religion: 'Muslim', caste: 'Lebbai', education: 'B.Com', occupation: 'Business', city: 'Vellore', district: 'Vellore', maritalStatus: 'Never Married', rasi: 'Viruchigam', height: "5'7\"", annualIncome: '5-10 Lakhs', about: 'Running a business. Looking for a simple and religious life partner.' },
-    { _id: '9', name: 'Meena L.', gender: 'Female', religion: 'Hindu', caste: 'Yadavar', education: 'BBA', occupation: 'HR Executive', city: 'Coimbatore', district: 'Coimbatore', maritalStatus: 'Never Married', rasi: 'Dhanusu', height: "5'3\"", annualIncome: '2-5 Lakhs', about: 'Working as HR. Family oriented and fun loving.' },
-];
-
 const Browse = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -33,19 +21,21 @@ const Browse = () => {
     const [allProfiles, setAllProfiles] = useState([]);
     const [displayProfiles, setDisplayProfiles] = useState([]);
 
-    useEffect(() => { fetchProfiles(); }, []);
+    useEffect(() => { fetchProfiles(); }, [user]);
 
     const fetchProfiles = async () => {
         setLoading(true);
         try {
-            const res = await axios.get('http://localhost:5000/api/profiles');
-            const real = res.data.profiles || [];
-            const profiles = real.length > 0 ? real : sampleProfiles;
+            // ✅ Send token so server can exclude own profile
+            const token = localStorage.getItem('token');
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            const res = await axios.get('http://localhost:5000/api/profiles', { headers });
+            const profiles = res.data.profiles || [];
             setAllProfiles(profiles);
             setDisplayProfiles(profiles);
         } catch (err) {
-            setAllProfiles(sampleProfiles);
-            setDisplayProfiles(sampleProfiles);
+            setAllProfiles([]);
+            setDisplayProfiles([]);
         } finally {
             setLoading(false);
         }
@@ -76,7 +66,6 @@ const Browse = () => {
         toast.success(`Interest sent to ${getName(profile)}! 💌`);
     };
 
-    // ✅ No login required to view profile
     const handleViewProfile = (profile) => {
         navigate(`/profile/${profile._id}`);
     };
@@ -87,7 +76,6 @@ const Browse = () => {
         <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
             <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
 
-            {/* Header */}
             <div style={styles.header}>
                 <div style={styles.headerInner}>
                     <h1 style={styles.headerTitle}>Browse Profiles</h1>
@@ -212,84 +200,89 @@ const Browse = () => {
                             <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
                             <p style={{ color: '#7A6055' }}>Loading profiles...</p>
                         </div>
+                    ) : displayProfiles.length === 0 ? (
+                        <div style={styles.noResults}>
+                            <div style={{ fontSize: '60px' }}>💍</div>
+                            <h3>No profiles found!</h3>
+                            <p style={{ color: '#7A6055' }}>
+                                {allProfiles.length === 0
+                                    ? 'No profiles registered yet. Be the first!'
+                                    : 'Try adjusting your filters'}
+                            </p>
+                            {allProfiles.length > 0 && (
+                                <button style={styles.resetBtn2} onClick={resetFilters}>
+                                    Reset Filters
+                                </button>
+                            )}
+                        </div>
                     ) : (
-                        <>
-                            <div style={styles.profilesGrid}>
-                                {displayProfiles.map((profile) => (
-                                    <div key={profile._id} style={styles.profileCard}>
-
-                                        {/* Photo */}
-                                        <div style={{
-                                            ...styles.photoSection,
-                                            background: profile.gender === 'Female'
-                                                ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
-                                                : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
-                                        }}>
-                                            {profile.photo ? (
-                                                <img src={`http://localhost:5000${profile.photo}`}
-                                                    alt={getName(profile)}
-                                                    style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A' }} />
-                                            ) : (
-                                                <span style={styles.profileEmoji}>
-                                                    {profile.gender === 'Female' ? '👩' : '👨'}
-                                                </span>
-                                            )}
-                                            <span style={styles.verifiedBadge}>✓ Verified</span>
-                                            <span style={styles.genderBadge}>
-                                                {profile.gender === 'Female' ? 'Bride' : 'Groom'}
+                        <div style={styles.profilesGrid}>
+                            {displayProfiles.map((profile) => (
+                                <div key={profile._id} style={styles.profileCard}>
+                                    <div style={{
+                                        ...styles.photoSection,
+                                        background: profile.gender === 'Female'
+                                            ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
+                                            : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
+                                    }}>
+                                        {profile.photo ? (
+                                            <img src={`http://localhost:5000${profile.photo}`}
+                                                alt={getName(profile)}
+                                                style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A' }} />
+                                        ) : (
+                                            <span style={styles.profileEmoji}>
+                                                {profile.gender === 'Female' ? '👩' : '👨'}
                                             </span>
+                                        )}
+                                        <span style={styles.verifiedBadge}>✓ Verified</span>
+                                        <span style={styles.genderBadge}>
+                                            {profile.gender === 'Female' ? 'Bride' : 'Groom'}
+                                        </span>
+                                        {/* ✅ Show lock icon if number protected */}
+                                        {profile.numberProtected && (
+                                            <span style={styles.privacyBadge}>🔒</span>
+                                        )}
+                                    </div>
+
+                                    <div style={styles.cardInfo}>
+                                        <div style={styles.cardName}>{getName(profile)}</div>
+                                        <div style={styles.cardMeta}>{profile.occupation} • {profile.city}</div>
+                                        <div style={styles.cardMeta}>{profile.religion} • {profile.caste}</div>
+
+                                        <div style={styles.detailsRow}>
+                                            {[
+                                                { icon: '📏', value: profile.height },
+                                                { icon: '🎓', value: profile.education },
+                                                { icon: '💰', value: profile.annualIncome },
+                                                { icon: '⭐', value: profile.rasi },
+                                            ].filter(d => d.value).map(d => (
+                                                <div key={d.icon} style={styles.detailTag}>
+                                                    {d.icon} {d.value}
+                                                </div>
+                                            ))}
                                         </div>
 
-                                        {/* Info */}
-                                        <div style={styles.cardInfo}>
-                                            <div style={styles.cardName}>{getName(profile)}</div>
-                                            <div style={styles.cardMeta}>{profile.occupation} • {profile.city}</div>
-                                            <div style={styles.cardMeta}>{profile.religion} • {profile.caste}</div>
+                                        {profile.about && (
+                                            <p style={styles.cardAbout}>
+                                                {profile.about.substring(0, 80)}...
+                                            </p>
+                                        )}
 
-                                            <div style={styles.detailsRow}>
-                                                {[
-                                                    { icon: '📏', value: profile.height },
-                                                    { icon: '🎓', value: profile.education },
-                                                    { icon: '💰', value: profile.annualIncome },
-                                                    { icon: '⭐', value: profile.rasi },
-                                                ].filter(d => d.value).map(d => (
-                                                    <div key={d.icon} style={styles.detailTag}>
-                                                        {d.icon} {d.value}
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            {profile.about && (
-                                                <p style={styles.cardAbout}>
-                                                    {profile.about.substring(0, 80)}...
-                                                </p>
-                                            )}
-
-                                            <div style={styles.cardActions}>
-                                                <button style={styles.interestBtn}
-                                                    onClick={() => handleSendInterest(profile)}>
-                                                    💌 Send Interest
-                                                </button>
-                                                <button style={styles.viewBtn}
-                                                    onClick={() => handleViewProfile(profile)}>
-                                                    View Profile
-                                                </button>
-                                                <button style={styles.shortlistBtn}>⭐</button>
-                                            </div>
+                                        <div style={styles.cardActions}>
+                                            <button style={styles.interestBtn}
+                                                onClick={() => handleSendInterest(profile)}>
+                                                💌 Send Interest
+                                            </button>
+                                            <button style={styles.viewBtn}
+                                                onClick={() => handleViewProfile(profile)}>
+                                                View Profile
+                                            </button>
+                                            <button style={styles.shortlistBtn}>⭐</button>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-
-                            {displayProfiles.length === 0 && (
-                                <div style={styles.noResults}>
-                                    <div style={{ fontSize: '60px' }}>😔</div>
-                                    <h3>No profiles found!</h3>
-                                    <p style={{ color: '#7A6055' }}>Try adjusting your filters</p>
-                                    <button style={styles.resetBtn2} onClick={resetFilters}>Reset Filters</button>
                                 </div>
-                            )}
-                        </>
+                            ))}
+                        </div>
                     )}
                 </div>
             </div>
@@ -338,6 +331,7 @@ const styles = {
     profileEmoji: { fontSize: '52px' },
     verifiedBadge: { position: 'absolute', top: '10px', right: '10px', background: '#1E6B3C', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px' },
     genderBadge: { position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(255,255,255,0.9)', color: '#2C1810', fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '20px' },
+    privacyBadge: { position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(139,26,26,0.8)', color: '#fff', fontSize: '10px', padding: '3px 6px', borderRadius: '20px' },
     cardInfo: { padding: '14px' },
     cardName: { fontFamily: "'Playfair Display', serif", fontSize: '17px', fontWeight: '700', color: '#1A0A0A', marginBottom: '3px' },
     cardMeta: { fontSize: '12px', color: '#7A6055', marginBottom: '2px', lineHeight: 1.5 },

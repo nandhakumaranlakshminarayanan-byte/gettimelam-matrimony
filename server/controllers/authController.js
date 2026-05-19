@@ -13,7 +13,6 @@ const registerUser = async (req, res) => {
     try {
         const { role = 'member' } = req.body;
 
-        // ── Check duplicate email or mobile ──
         const userExists = await User.findOne({
             $or: [{ email: req.body.email }, { mobile: req.body.mobile }]
         });
@@ -24,9 +23,7 @@ const registerUser = async (req, res) => {
             });
         }
 
-        // ── Hash password ──
         const hashedPassword = await bcrypt.hash(req.body.password, 10);
-
         let userData = { role, password: hashedPassword };
 
         if (role === 'member') {
@@ -38,7 +35,6 @@ const registerUser = async (req, res) => {
                 });
             }
             userData = { ...userData, name, email, mobile, gender, profileFor, dateOfBirth, motherTongue };
-
         } else if (role === 'service') {
             const { businessName, ownerName, email, mobile, category, city, district } = req.body;
             if (!businessName || !ownerName || !email || !mobile || !category) {
@@ -48,26 +44,22 @@ const registerUser = async (req, res) => {
                 });
             }
             userData = { ...userData, businessName, ownerName, email, mobile, category, city, district };
-
         } else {
             return res.status(400).json({ success: false, message: 'Invalid role' });
         }
 
-        // ── Create user ──
         const user = await User.create(userData);
 
-        // ── Build response ──
         const responseUser = {
-            id: user._id,
-            role: user.role,
-            email: user.email,
-            mobile: user.mobile,
+            id: user._id, role: user.role,
+            email: user.email, mobile: user.mobile,
         };
 
         if (role === 'member') {
             responseUser.name = user.name;
             responseUser.gender = user.gender;
             responseUser.isPremium = user.isPremium;
+            responseUser.plan = user.plan;
         } else {
             responseUser.businessName = user.businessName;
             responseUser.ownerName = user.ownerName;
@@ -85,7 +77,6 @@ const registerUser = async (req, res) => {
             token: generateToken(user._id),
             user: responseUser
         });
-
     } catch (error) {
         console.error('Register error:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -96,15 +87,10 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
     try {
         const { mobile, password, role } = req.body;
-
-        // ── Search by mobile ONLY ──
         const user = await User.findOne({ mobile });
 
         if (!user) {
-            return res.status(401).json({
-                success: false,
-                message: 'No account found with this mobile number'
-            });
+            return res.status(401).json({ success: false, message: 'No account found with this mobile number' });
         }
 
         // ── Auto-fix old roles ──
@@ -117,7 +103,6 @@ const loginUser = async (req, res) => {
             user.role = 'service';
         }
 
-        // ── Check role tab mismatch ──
         if (role && role !== 'any' && user.role !== 'admin') {
             if (user.role !== role) {
                 const correctTab = user.role === 'service' ? 'Service Provider' : 'Member Login';
@@ -128,21 +113,14 @@ const loginUser = async (req, res) => {
             }
         }
 
-        // ── Check password ──
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(401).json({
-                success: false,
-                message: 'Incorrect password. Please try again.'
-            });
+            return res.status(401).json({ success: false, message: 'Incorrect password. Please try again.' });
         }
 
-        // ── Build response ──
         const responseUser = {
-            id: user._id,
-            role: user.role,
-            email: user.email,
-            mobile: user.mobile,
+            id: user._id, role: user.role,
+            email: user.email, mobile: user.mobile,
         };
 
         if (user.role === 'member') {
@@ -167,18 +145,40 @@ const loginUser = async (req, res) => {
             token: generateToken(user._id),
             user: responseUser
         });
-
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// @route GET /api/auth/me
+// ✅ @route GET /api/auth/me — same format as login
 const getMe = async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-password');
-        res.json({ success: true, user });
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const responseUser = {
+            id: user._id, role: user.role,
+            email: user.email, mobile: user.mobile,
+        };
+
+        if (user.role === 'member') {
+            responseUser.name = user.name;
+            responseUser.gender = user.gender;
+            responseUser.isPremium = user.isPremium; // ✅ always latest from DB
+            responseUser.plan = user.plan;
+        } else if (user.role === 'service') {
+            responseUser.businessName = user.businessName;
+            responseUser.ownerName = user.ownerName;
+            responseUser.category = user.category;
+            responseUser.isApproved = user.isApproved;
+            responseUser.city = user.city;
+            responseUser.district = user.district;
+        } else if (user.role === 'admin') {
+            responseUser.name = user.name;
+        }
+
+        res.json({ success: true, user: responseUser });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

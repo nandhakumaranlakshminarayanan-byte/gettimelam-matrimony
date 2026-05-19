@@ -7,12 +7,7 @@ const createProfile = async (req, res) => {
         if (profileExists) {
             return res.status(400).json({ success: false, message: 'Profile already exists' });
         }
-
-        const profile = await Profile.create({
-            user: req.user.id,
-            ...req.body
-        });
-
+        const profile = await Profile.create({ user: req.user.id, ...req.body });
         res.status(201).json({ success: true, message: 'Profile created!', profile });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -25,6 +20,11 @@ const getProfiles = async (req, res) => {
         const { gender, religion, caste, city, district, maritalStatus, minAge, maxAge } = req.query;
 
         let filter = { isActive: true };
+
+        // ✅ Exclude own profile if logged in
+        if (req.user) {
+            filter.user = { $ne: req.user.id };
+        }
 
         if (gender) filter.gender = gender;
         if (religion) filter.religion = religion;
@@ -49,16 +49,47 @@ const getProfiles = async (req, res) => {
     }
 };
 
+// ✅ New route — get opposite gender profiles for suggestions
+const getSuggestedMatches = async (req, res) => {
+    try {
+        const myProfile = await Profile.findOne({ user: req.user.id });
+
+        let filter = {
+            isActive: true,
+            user: { $ne: req.user.id }
+        };
+
+        // ✅ Show opposite gender
+        if (myProfile?.gender === 'Female') {
+            filter.gender = 'Male';
+        } else if (myProfile?.gender === 'Male') {
+            filter.gender = 'Female';
+        }
+
+        // ✅ Match same religion if available
+        if (myProfile?.religion) {
+            filter.religion = myProfile.religion;
+        }
+
+        const profiles = await Profile.find(filter)
+            .populate('user', 'name email mobile')
+            .sort({ createdAt: -1 })
+            .limit(6);
+
+        res.json({ success: true, profiles });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 // @route   GET /api/profiles/:id
 const getProfileById = async (req, res) => {
     try {
         const profile = await Profile.findById(req.params.id)
             .populate('user', 'name email mobile');
-
         if (!profile) {
             return res.status(404).json({ success: false, message: 'Profile not found' });
         }
-
         res.json({ success: true, profile });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -73,11 +104,9 @@ const updateProfile = async (req, res) => {
             { ...req.body },
             { new: true, runValidators: true }
         );
-
         if (!profile) {
             return res.status(404).json({ success: false, message: 'Profile not found' });
         }
-
         res.json({ success: true, message: 'Profile updated!', profile });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -88,15 +117,16 @@ const updateProfile = async (req, res) => {
 const getMyProfile = async (req, res) => {
     try {
         const profile = await Profile.findOne({ user: req.user.id });
-
         if (!profile) {
             return res.status(404).json({ success: false, message: 'Profile not found' });
         }
-
         res.json({ success: true, profile });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-module.exports = { createProfile, getProfiles, getProfileById, updateProfile, getMyProfile };
+module.exports = {
+    createProfile, getProfiles, getProfileById,
+    updateProfile, getMyProfile, getSuggestedMatches
+};

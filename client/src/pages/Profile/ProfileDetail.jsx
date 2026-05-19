@@ -8,51 +8,31 @@ import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
-const sampleProfiles = [
-    { _id: '1', name: 'Priya S.', gender: 'Female', religion: 'Hindu', caste: 'Mudaliar', education: 'B.Tech', occupation: 'Software Engineer', city: 'Chennai', district: 'Chennai', maritalStatus: 'Never Married', rasi: 'Mesham', height: "5'4\"", annualIncome: '5-10 Lakhs', about: 'Simple and family oriented girl looking for a genuine life partner.', motherTongue: 'Tamil', state: 'Tamil Nadu' },
-    { _id: '2', name: 'Arun K.', gender: 'Male', religion: 'Hindu', caste: 'Gounder', education: 'MBBS', occupation: 'Doctor', city: 'Coimbatore', district: 'Coimbatore', maritalStatus: 'Never Married', rasi: 'Rishabam', height: "5'10\"", annualIncome: '10-20 Lakhs', about: 'Doctor by profession, fun loving and family oriented.', motherTongue: 'Tamil', state: 'Tamil Nadu' },
-    { _id: '3', name: 'Kavitha R.', gender: 'Female', religion: 'Hindu', caste: 'Nadar', education: 'B.Ed', occupation: 'Teacher', city: 'Madurai', district: 'Madurai', maritalStatus: 'Never Married', rasi: 'Mithunam', height: "5'2\"", annualIncome: '2-5 Lakhs', about: 'Teacher by profession. Looking for a simple and caring life partner.', motherTongue: 'Tamil', state: 'Tamil Nadu' },
-    { _id: '4', name: 'Vijay M.', gender: 'Male', religion: 'Hindu', caste: 'Thevar', education: 'MBA', occupation: 'Business', city: 'Salem', district: 'Salem', maritalStatus: 'Never Married', rasi: 'Simmam', height: "5'8\"", annualIncome: '10-20 Lakhs', about: 'Running a successful business. Looking for a life partner.', motherTongue: 'Tamil', state: 'Tamil Nadu' },
-    { _id: '5', name: 'Deepa N.', gender: 'Female', religion: 'Christian', caste: 'Roman Catholic', education: 'B.Sc Nursing', occupation: 'Nurse', city: 'Trichy', district: 'Trichy', maritalStatus: 'Never Married', rasi: 'Kanni', height: "5'3\"", annualIncome: '2-5 Lakhs', about: 'Working as a nurse. Simple and god fearing.', motherTongue: 'Tamil', state: 'Tamil Nadu' },
-    { _id: '6', name: 'Ramesh T.', gender: 'Male', religion: 'Hindu', caste: 'Vanniyar', education: 'B.E', occupation: 'Engineer', city: 'Erode', district: 'Erode', maritalStatus: 'Never Married', rasi: 'Thulam', height: "5'9\"", annualIncome: '5-10 Lakhs', about: 'Engineer working in a reputed company. Family oriented.', motherTongue: 'Tamil', state: 'Tamil Nadu' },
-    { _id: '7', name: 'Sindhu A.', gender: 'Female', religion: 'Hindu', caste: 'Brahmin', education: 'M.Tech', occupation: 'Software Engineer', city: 'Chennai', district: 'Chennai', maritalStatus: 'Never Married', rasi: 'Kadagam', height: "5'5\"", annualIncome: '5-10 Lakhs', about: 'Software Engineer at a top MNC. Looking for an educated life partner.', motherTongue: 'Tamil', state: 'Tamil Nadu' },
-    { _id: '8', name: 'Karthik P.', gender: 'Male', religion: 'Muslim', caste: 'Lebbai', education: 'B.Com', occupation: 'Business', city: 'Vellore', district: 'Vellore', maritalStatus: 'Never Married', rasi: 'Viruchigam', height: "5'7\"", annualIncome: '5-10 Lakhs', about: 'Running a business. Looking for a simple and religious life partner.', motherTongue: 'Tamil', state: 'Tamil Nadu' },
-    { _id: '9', name: 'Meena L.', gender: 'Female', religion: 'Hindu', caste: 'Yadavar', education: 'BBA', occupation: 'HR Executive', city: 'Coimbatore', district: 'Coimbatore', maritalStatus: 'Never Married', rasi: 'Dhanusu', height: "5'3\"", annualIncome: '2-5 Lakhs', about: 'Working as HR. Family oriented and fun loving.', motherTongue: 'Tamil', state: 'Tamil Nadu' },
-];
+const API = 'http://localhost:5000';
 
 const ProfileDetail = () => {
     const { id } = useParams();
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth(); // ✅ added refreshUser
     const navigate = useNavigate();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
     const [interestSent, setInterestSent] = useState(false);
+    const [numberRequest, setNumberRequest] = useState(null);
+    const [requesting, setRequesting] = useState(false);
 
     useEffect(() => {
         fetchProfile();
+        if (refreshUser) refreshUser(); // ✅ always get latest premium status
     }, [id]);
+
+    useEffect(() => { if (user && profile) checkNumberRequest(); }, [user, profile]);
 
     const fetchProfile = async () => {
         try {
-            // ✅ Check if real MongoDB ID (24 hex chars)
-            const isMongoId = /^[a-f\d]{24}$/i.test(id);
-
-            if (!isMongoId) {
-                // ✅ Use sample data for demo profiles
-                const found = sampleProfiles.find(p => p._id === id);
-                if (found) {
-                    setProfile(found);
-                } else {
-                    toast.error('Profile not found');
-                    navigate('/browse');
-                }
-            } else {
-                // ✅ Fetch real profile from API
-                const res = await axios.get(`http://localhost:5000/api/profiles/${id}`);
-                setProfile(res.data.profile);
-            }
+            const res = await axios.get(`${API}/api/profiles/${id}`);
+            setProfile(res.data.profile);
         } catch (err) {
             toast.error('Profile not found');
             navigate('/browse');
@@ -61,45 +41,81 @@ const ProfileDetail = () => {
         }
     };
 
-    const handleSendInterest = async () => {
-        if (!user) { setShowLogin(true); return; }
+    const checkNumberRequest = async () => {
         try {
             const token = localStorage.getItem('token');
-            await axios.post('http://localhost:5000/api/interests',
-                { toUserId: profile.user?._id || profile._id },
+            const res = await axios.get(`${API}/api/privacy/check/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setNumberRequest(res.data.request);
+        } catch (err) { }
+    };
+
+    const handleSendInterest = async () => {
+        if (!user) { setShowLogin(true); return; }
+        setInterestSent(true);
+        toast.success('Interest sent! 💌');
+    };
+
+    const handleSendNumberRequest = async () => {
+        if (!user) { setShowLogin(true); return; }
+        setRequesting(true);
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`${API}/api/privacy/request`,
+                { profileId: id },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            setInterestSent(true);
-            toast.success('Interest sent successfully!');
+            toast.success('Number request sent! 📬');
+            checkNumberRequest();
         } catch (err) {
-            // For sample profiles, just show success
-            setInterestSent(true);
-            toast.success('Interest sent!');
+            toast.error(err.response?.data?.message || 'Failed!');
+        } finally {
+            setRequesting(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
-                <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
-                <div style={{ textAlign: 'center', padding: '100px 20px' }}>
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-                    <p style={{ color: '#7A6055' }}>Loading profile...</p>
-                </div>
+    const handleStartChat = () => {
+        if (!user) { setShowLogin(true); return; }
+        const profileUserId = profile?.user?._id || profile?.user;
+        if (profileUserId) {
+            navigate(`/messages?with=${profileUserId}`);
+        } else {
+            toast.error('Cannot start chat with this profile');
+        }
+    };
+
+    const getNumberStatus = () => {
+        if (!user) return 'login';
+        if (!profile?.numberProtected) {
+            return user?.isPremium ? 'show' : 'upgrade';
+        }
+        if (!numberRequest) return 'request';
+        if (numberRequest.status === 'pending') return 'pending';
+        if (numberRequest.status === 'approved') return 'show';
+        if (numberRequest.status === 'rejected') return 'rejected';
+    };
+
+    if (loading) return (
+        <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
+            <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
+            <div style={{ textAlign: 'center', padding: '100px 20px' }}>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+                <p style={{ color: '#7A6055' }}>Loading profile...</p>
             </div>
-        );
-    }
+        </div>
+    );
 
     if (!profile) return null;
 
     const isFemale = profile.gender === 'Female';
+    const numberStatus = getNumberStatus();
 
     return (
         <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
             <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
 
             <div style={styles.container}>
-
                 <button style={styles.backBtn} onClick={() => navigate('/browse')}>
                     ← Back to Browse
                 </button>
@@ -115,8 +131,7 @@ const ProfileDetail = () => {
                                 : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
                         }}>
                             {profile.photo ? (
-                                <img src={`http://localhost:5000${profile.photo}`}
-                                    alt={profile.name}
+                                <img src={`${API}${profile.photo}`} alt={profile.name}
                                     style={styles.profilePhoto} />
                             ) : (
                                 <div style={styles.profileEmoji}>
@@ -124,55 +139,105 @@ const ProfileDetail = () => {
                                 </div>
                             )}
                             <div style={styles.verifiedBadge}>✓ Verified Profile</div>
+                            {profile.numberProtected && (
+                                <div style={styles.protectedBadge}>🔒 Number Protected</div>
+                            )}
                         </div>
 
-                        {/* Actions */}
+                        {/* Actions Card */}
                         <div style={styles.actionsCard}>
                             <button
                                 style={{ ...styles.interestBtn, opacity: interestSent ? 0.7 : 1 }}
                                 onClick={handleSendInterest}
-                                disabled={interestSent}
-                            >
+                                disabled={interestSent}>
                                 {interestSent ? '✅ Interest Sent' : '💌 Send Interest'}
                             </button>
 
-                            {user?.isPremium ? (
-                                <div style={styles.contactBox}>
-                                    <div style={styles.contactLabel}>📞 Mobile Number</div>
-                                    <div style={styles.contactValue}>
-                                        +91 {profile.user?.mobile || '99999 99999'}
-                                    </div>
-                                    <button
-                                        style={styles.whatsappBtn}
-                                        onClick={() => window.open(`https://wa.me/91${profile.user?.mobile}`, '_blank')}
-                                    >
-                                        💬 WhatsApp
-                                    </button>
-                                </div>
-                            ) : (
-                                <div style={styles.premiumLock}>
-                                    <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔒</div>
-                                    <p style={{ fontSize: '13px', color: '#7A6055', marginBottom: '12px' }}>
-                                        Upgrade to Premium to view contact details
-                                    </p>
-                                    <button
-                                        style={styles.upgradeBtn}
-                                        onClick={() => navigate('/plans')}
-                                    >
-                                        ⭐ Upgrade Now
-                                    </button>
-                                </div>
-                            )}
-
-                            <button style={styles.shortlistBtn}>
-                                ⭐ Shortlist Profile
+                            <button style={styles.chatBtn} onClick={handleStartChat}>
+                                💬 Send Message
                             </button>
+
+                            {/* ✅ Number Privacy Section */}
+                            <div style={styles.numberSection}>
+                                <div style={styles.numberTitle}>
+                                    {profile.numberProtected ? '🔒 Protected Number' : '📞 Contact Number'}
+                                </div>
+
+                                {numberStatus === 'show' && (
+                                    <div style={styles.contactBox}>
+                                        <div style={styles.contactValue}>
+                                            +91 {profile.user?.mobile || '—'}
+                                        </div>
+                                        <button style={styles.whatsappBtn}
+                                            onClick={() => window.open(`https://wa.me/91${profile.user?.mobile}`, '_blank')}>
+                                            💬 WhatsApp
+                                        </button>
+                                    </div>
+                                )}
+
+                                {numberStatus === 'upgrade' && (
+                                    <div style={styles.lockBox}>
+                                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔒</div>
+                                        <p style={{ fontSize: '12px', color: '#7A6055', marginBottom: '10px' }}>
+                                            Upgrade to Premium to view contact
+                                        </p>
+                                        <button style={styles.upgradeBtn} onClick={() => navigate('/plans')}>
+                                            ⭐ Upgrade Now
+                                        </button>
+                                    </div>
+                                )}
+
+                                {numberStatus === 'request' && (
+                                    <div style={styles.lockBox}>
+                                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔒</div>
+                                        <p style={{ fontSize: '12px', color: '#7A6055', marginBottom: '10px' }}>
+                                            This number is protected. Send a request to view it.
+                                        </p>
+                                        <button style={styles.requestBtn}
+                                            onClick={handleSendNumberRequest}
+                                            disabled={requesting}>
+                                            {requesting ? '⏳ Sending...' : '📬 Request Number'}
+                                        </button>
+                                    </div>
+                                )}
+
+                                {numberStatus === 'pending' && (
+                                    <div style={{ ...styles.lockBox, background: '#FFF8E1', border: '1px solid #FFE082' }}>
+                                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>⏳</div>
+                                        <p style={{ fontSize: '12px', color: '#F57F17', fontWeight: '600' }}>
+                                            Request pending approval
+                                        </p>
+                                    </div>
+                                )}
+
+                                {numberStatus === 'rejected' && (
+                                    <div style={{ ...styles.lockBox, background: '#FFEBEE', border: '1px solid #FFCDD2' }}>
+                                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>❌</div>
+                                        <p style={{ fontSize: '12px', color: '#C62828', fontWeight: '600' }}>
+                                            Request was rejected
+                                        </p>
+                                    </div>
+                                )}
+
+                                {numberStatus === 'login' && (
+                                    <div style={styles.lockBox}>
+                                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔐</div>
+                                        <p style={{ fontSize: '12px', color: '#7A6055', marginBottom: '10px' }}>
+                                            Login to view contact details
+                                        </p>
+                                        <button style={styles.upgradeBtn} onClick={() => setShowLogin(true)}>
+                                            Login Now
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button style={styles.shortlistBtn}>⭐ Shortlist Profile</button>
                         </div>
                     </div>
 
                     {/* RIGHT — Profile Details */}
                     <div style={styles.rightCol}>
-
                         <div style={styles.nameCard}>
                             <h1 style={styles.profileName}>{profile.name || profile.user?.name}</h1>
                             <p style={styles.profileSub}>
@@ -279,7 +344,6 @@ const ProfileDetail = () => {
                                 ))}
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -306,15 +370,19 @@ const styles = {
     photoCard: { borderRadius: '16px', padding: '32px 20px', textAlign: 'center', marginBottom: '16px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
     profilePhoto: { width: '140px', height: '140px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #8B1A1A', marginBottom: '12px' },
     profileEmoji: { fontSize: '80px', marginBottom: '12px' },
-    verifiedBadge: { display: 'inline-block', background: '#1E6B3C', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px' },
+    verifiedBadge: { display: 'inline-block', background: '#1E6B3C', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', marginBottom: '6px' },
+    protectedBadge: { display: 'inline-block', background: '#8B1A1A', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', marginLeft: '6px' },
     actionsCard: { background: '#fff', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
-    interestBtn: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #8B1A1A, #C0392B)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '12px' },
-    contactBox: { background: '#F0FFF4', border: '1px solid #C3E6CB', borderRadius: '10px', padding: '14px', marginBottom: '12px', textAlign: 'center' },
-    contactLabel: { fontSize: '11px', fontWeight: '700', color: '#7A6055', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' },
+    interestBtn: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #8B1A1A, #C0392B)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '10px' },
+    chatBtn: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #1565C0, #1976D2)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '12px' },
+    numberSection: { background: '#F8F9FA', borderRadius: '10px', padding: '14px', marginBottom: '12px' },
+    numberTitle: { fontSize: '12px', fontWeight: '700', color: '#7A6055', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' },
+    contactBox: { background: '#F0FFF4', border: '1px solid #C3E6CB', borderRadius: '10px', padding: '14px', textAlign: 'center' },
     contactValue: { fontSize: '18px', fontWeight: '700', color: '#1A0A0A', marginBottom: '10px' },
     whatsappBtn: { width: '100%', padding: '10px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
-    premiumLock: { background: '#FFF9E6', border: '1px solid #F5E6C0', borderRadius: '10px', padding: '16px', marginBottom: '12px', textAlign: 'center' },
+    lockBox: { background: '#FFF9E6', border: '1px solid #F5E6C0', borderRadius: '10px', padding: '16px', textAlign: 'center' },
     upgradeBtn: { padding: '9px 20px', background: '#C9A84C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
+    requestBtn: { width: '100%', padding: '10px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
     shortlistBtn: { width: '100%', padding: '10px', background: '#FFFBF0', border: '1.5px solid #F5E6C0', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', color: '#7A6055' },
     rightCol: {},
     nameCard: { background: '#fff', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },

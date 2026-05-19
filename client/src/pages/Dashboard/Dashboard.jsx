@@ -10,6 +10,86 @@ import toast from 'react-hot-toast';
 
 const API = 'http://localhost:5000';
 
+// ✅ Incoming Number Requests Component
+const IncomingRequests = () => {
+    const [requests, setRequests] = useState([]);
+
+    useEffect(() => { fetchRequests(); }, []);
+
+    const fetchRequests = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/privacy/incoming`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setRequests(res.data.requests || []);
+        } catch (err) { }
+    };
+
+    const respond = async (id, status) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`${API}/api/privacy/${id}/respond`,
+                { status },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            toast.success(`Request ${status}!`);
+            fetchRequests();
+        } catch (err) {
+            toast.error('Failed!');
+        }
+    };
+
+    if (requests.length === 0) return (
+        <p style={{ fontSize: '13px', color: '#7A6055', textAlign: 'center', padding: '12px' }}>
+            No number requests yet
+        </p>
+    );
+
+    return (
+        <div>
+            {requests.map(req => (
+                <div key={req._id} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '12px 16px', background: '#fff', borderRadius: '10px',
+                    border: '1px solid #E8D5C4', marginBottom: '8px'
+                }}>
+                    <div>
+                        <div style={{ fontWeight: '600', color: '#1A0A0A', fontSize: '14px' }}>
+                            {req.requester?.name || 'Unknown'}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#7A6055' }}>
+                            {req.requester?.gender} • {new Date(req.createdAt).toLocaleDateString('en-IN')}
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {req.status === 'pending' ? (
+                            <>
+                                <button style={{ padding: '6px 14px', background: '#E8F5E9', color: '#2E7D32', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                                    onClick={() => respond(req._id, 'approved')}>
+                                    ✅ Approve
+                                </button>
+                                <button style={{ padding: '6px 14px', background: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                                    onClick={() => respond(req._id, 'rejected')}>
+                                    ❌ Reject
+                                </button>
+                            </>
+                        ) : (
+                            <span style={{
+                                padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700',
+                                background: req.status === 'approved' ? '#E8F5E9' : '#FFEBEE',
+                                color: req.status === 'approved' ? '#2E7D32' : '#C62828'
+                            }}>
+                                {req.status === 'approved' ? '✅ Approved' : '❌ Rejected'}
+                            </span>
+                        )}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const Dashboard = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -21,6 +101,8 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(false);
     const [photoUrl, setPhotoUrl] = useState(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [suggestedMatches, setSuggestedMatches] = useState([]);
+
     const [form, setForm] = useState({
         name: '', dateOfBirth: '', height: '', weight: '',
         complexion: '', maritalStatus: 'Never Married',
@@ -35,6 +117,7 @@ const Dashboard = () => {
     useEffect(() => {
         if (!user) { navigate('/'); return; }
         fetchProfile();
+        fetchSuggestedMatches();
     }, [user]);
 
     const fetchProfile = async () => {
@@ -46,53 +129,41 @@ const Dashboard = () => {
             setProfile(res.data.profile);
             setForm(res.data.profile);
             if (res.data.profile.photo) {
-                // ✅ Handle both relative and full URLs
                 const photo = res.data.profile.photo;
                 setPhotoUrl(photo.startsWith('http') ? photo : `${API}${photo}`);
             }
+        } catch (err) { }
+    };
+
+    const fetchSuggestedMatches = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/profiles/suggested`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setSuggestedMatches(res.data.profiles || []);
         } catch (err) {
-            // No profile yet
+            setSuggestedMatches([]);
         }
     };
 
     const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-    // ✅ Fixed photo upload
     const handlePhotoUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-
-        // Validate file size (5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error('File too large! Max 5MB allowed.');
-            return;
-        }
-
-        if (!profile) {
-            toast.error('Please create your profile first before uploading photo!');
-            return;
-        }
-
+        if (file.size > 5 * 1024 * 1024) { toast.error('File too large! Max 5MB allowed.'); return; }
+        if (!profile) { toast.error('Please create your profile first!'); return; }
         setUploadingPhoto(true);
         const formData = new FormData();
         formData.append('photo', file);
-
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.post(
-                `${API}/api/profiles/upload-photo`,
-                formData,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'multipart/form-data'
-                    }
-                }
-            );
-            // ✅ Use fullUrl from response for immediate display
-            const displayUrl = res.data.fullUrl || `${API}${res.data.photoUrl}`;
-            setPhotoUrl(displayUrl);
-            toast.success('Photo uploaded successfully! ✅');
+            const res = await axios.post(`${API}/api/profiles/upload-photo`, formData, {
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+            });
+            setPhotoUrl(res.data.fullUrl || `${API}${res.data.photoUrl}`);
+            toast.success('Photo uploaded! ✅');
         } catch (err) {
             toast.error(err.response?.data?.message || 'Upload failed!');
         } finally {
@@ -112,20 +183,31 @@ const Dashboard = () => {
                 toast.success('Profile updated! ✅');
             } else {
                 await axios.post(`${API}/api/profiles`, {
-                    ...form,
-                    name: user.name,
-                    gender: user.gender
-                }, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                    ...form, name: user.name, gender: user.gender
+                }, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success('Profile created! 🎊');
             }
             setEditing(false);
             fetchProfile();
+            fetchSuggestedMatches();
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to save profile');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleTogglePrivacy = async () => {
+        if (!profile) { toast.error('Create your profile first!'); return; }
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.put(`${API}/api/privacy/toggle-protection`, {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            toast.success(res.data.message);
+            fetchProfile();
+        } catch (err) {
+            toast.error('Failed to update privacy!');
         }
     };
 
@@ -148,8 +230,6 @@ const Dashboard = () => {
                 {/* SIDEBAR */}
                 <div style={styles.sidebar}>
                     <div style={styles.userCard}>
-
-                        {/* Photo Upload */}
                         <div style={styles.avatarContainer}>
                             {photoUrl ? (
                                 <img src={photoUrl} alt="Profile" style={styles.avatarImg} />
@@ -158,22 +238,16 @@ const Dashboard = () => {
                                     {user?.gender === 'Female' ? '👩' : '👨'}
                                 </div>
                             )}
-                            <label style={{
-                                ...styles.uploadLabel,
-                                opacity: uploadingPhoto ? 0.6 : 1
-                            }} htmlFor="photoUpload">
+                            <label style={{ ...styles.uploadLabel, opacity: uploadingPhoto ? 0.6 : 1 }}
+                                htmlFor="photoUpload">
                                 {uploadingPhoto ? '⏳ Uploading...' : photoUrl ? '📷 Change Photo' : '📷 Upload Photo'}
                             </label>
-                            <input
-                                id="photoUpload"
-                                type="file"
+                            <input id="photoUpload" type="file"
                                 accept="image/jpeg,image/jpg,image/png,image/webp"
                                 onChange={handlePhotoUpload}
                                 style={{ display: 'none' }}
-                                disabled={uploadingPhoto}
-                            />
+                                disabled={uploadingPhoto} />
                         </div>
-
                         <div style={styles.userName}>{user?.name}</div>
                         <div style={styles.userMobile}>{user?.mobile}</div>
                         <div style={{
@@ -183,8 +257,6 @@ const Dashboard = () => {
                         }}>
                             {user?.isPremium ? '⭐ Premium Member' : '🆓 Free Member'}
                         </div>
-
-                        {/* Profile Completion */}
                         <div style={styles.completion}>
                             <div style={styles.completionLabel}>
                                 <span>Profile Completion</span>
@@ -218,12 +290,11 @@ const Dashboard = () => {
                     {activeTab === 'overview' && (
                         <div>
                             <h2 style={styles.pageTitle}>Welcome back, {user?.name}! 👋</h2>
-
                             <div style={styles.statsGrid}>
                                 {[
                                     { icon: '👁️', label: 'Profile Views', value: '24', color: '#FDF0F0' },
                                     { icon: '💌', label: 'Interests Received', value: '8', color: '#F0F4FF' },
-                                    { icon: '💍', label: 'Matches Found', value: '142', color: '#F0FFF4' },
+                                    { icon: '💍', label: 'Matches Found', value: suggestedMatches.length.toString(), color: '#F0FFF4' },
                                     { icon: '⭐', label: 'Shortlisted', value: '5', color: '#FFFBF0' },
                                 ].map(s => (
                                     <div key={s.label} style={{ ...styles.statCard, background: s.color }}>
@@ -239,7 +310,7 @@ const Dashboard = () => {
                                     <div>
                                         <strong>⚠️ Complete Your Profile!</strong>
                                         <p style={{ fontSize: '13px', marginTop: '4px', color: '#7A6055' }}>
-                                            Add your details to get better matches and more visibility.
+                                            Add your details to get better matches.
                                         </p>
                                     </div>
                                     <button style={styles.alertBtn} onClick={() => setActiveTab('profile')}>
@@ -257,7 +328,8 @@ const Dashboard = () => {
                                             {!profile && ' (Create profile first)'}
                                         </p>
                                     </div>
-                                    <label htmlFor="photoUpload" style={{ ...styles.alertBtn, cursor: profile ? 'pointer' : 'not-allowed', opacity: profile ? 1 : 0.5 }}>
+                                    <label htmlFor="photoUpload"
+                                        style={{ ...styles.alertBtn, cursor: profile ? 'pointer' : 'not-allowed', opacity: profile ? 1 : 0.5 }}>
                                         Upload Now →
                                     </label>
                                 </div>
@@ -266,11 +338,9 @@ const Dashboard = () => {
                             {!user?.isPremium && (
                                 <div style={styles.upgradeBanner}>
                                     <div>
-                                        <h3 style={{ color: '#fff', marginBottom: '4px', fontSize: '18px' }}>
-                                            ⭐ Upgrade to Premium
-                                        </h3>
+                                        <h3 style={{ color: '#fff', marginBottom: '4px', fontSize: '18px' }}>⭐ Upgrade to Premium</h3>
                                         <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px' }}>
-                                            View contact numbers, horoscopes & connect directly on WhatsApp
+                                            View contact numbers, horoscopes & connect on WhatsApp
                                         </p>
                                     </div>
                                     <button style={styles.upgradeBtn} onClick={() => navigate('/plans')}>
@@ -281,26 +351,42 @@ const Dashboard = () => {
 
                             <h3 style={styles.sectionTitle}>💍 Suggested Matches</h3>
                             <div style={styles.matchesGrid}>
-                                {[
-                                    { name: 'Priya S.', age: 25, job: 'Engineer', city: 'Chennai', gender: 'female' },
-                                    { name: 'Kavitha R.', age: 24, job: 'Teacher', city: 'Madurai', gender: 'female' },
-                                    { name: 'Deepa N.', age: 26, job: 'Nurse', city: 'Trichy', gender: 'female' },
-                                ].map((m, i) => (
-                                    <div key={i} style={styles.matchCard}>
-                                        <div style={styles.matchPhoto}>
-                                            {m.gender === 'female' ? '👩' : '👨'}
-                                        </div>
-                                        <div style={styles.matchInfo}>
-                                            <div style={styles.matchName}>{m.name}</div>
-                                            <div style={styles.matchMeta}>{m.age} yrs • {m.job}</div>
-                                            <div style={styles.matchMeta}>{m.city}</div>
-                                        </div>
-                                        <div style={styles.matchActions}>
-                                            <button style={styles.interestBtn}>💌 Interest</button>
-                                            <button style={styles.viewBtn} onClick={() => navigate('/browse')}>View</button>
-                                        </div>
+                                {suggestedMatches.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '32px', color: '#7A6055', background: '#FDF5EE', borderRadius: '12px' }}>
+                                        <div style={{ fontSize: '40px', marginBottom: '8px' }}>💍</div>
+                                        <p style={{ fontWeight: '600', marginBottom: '4px' }}>No matches yet!</p>
+                                        <p style={{ fontSize: '13px' }}>Complete your profile to get matched</p>
+                                        <button style={{ ...styles.interestBtn, marginTop: '12px' }}
+                                            onClick={() => setActiveTab('profile')}>
+                                            Complete Profile →
+                                        </button>
                                     </div>
-                                ))}
+                                ) : (
+                                    suggestedMatches.map((m, i) => (
+                                        <div key={m._id || i} style={styles.matchCard}>
+                                            <div style={styles.matchPhoto}>
+                                                {m.photo ? (
+                                                    <img src={`${API}${m.photo}`} alt={m.name}
+                                                        style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    m.gender === 'Female' ? '👩' : '👨'
+                                                )}
+                                            </div>
+                                            <div style={styles.matchInfo}>
+                                                <div style={styles.matchName}>{m.name}</div>
+                                                <div style={styles.matchMeta}>{m.occupation} • {m.city}</div>
+                                                <div style={styles.matchMeta}>{m.religion} • {m.caste}</div>
+                                            </div>
+                                            <div style={styles.matchActions}>
+                                                <button style={styles.interestBtn}>💌 Interest</button>
+                                                <button style={styles.viewBtn}
+                                                    onClick={() => navigate(`/profile/${m._id}`)}>
+                                                    View
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     )}
@@ -362,7 +448,8 @@ const Dashboard = () => {
                                             </div>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Caste</label>
-                                                <input name="caste" type="text" placeholder="Enter caste" value={form.caste} onChange={handleChange} style={styles.input} />
+                                                <input name="caste" type="text" placeholder="Enter caste"
+                                                    value={form.caste} onChange={handleChange} style={styles.input} />
                                             </div>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Rasi</label>
@@ -392,11 +479,13 @@ const Dashboard = () => {
                                         <div style={styles.formGrid}>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Education</label>
-                                                <input name="education" type="text" placeholder="e.g. B.Tech, MBA" value={form.education} onChange={handleChange} style={styles.input} />
+                                                <input name="education" type="text" placeholder="e.g. B.Tech, MBA"
+                                                    value={form.education} onChange={handleChange} style={styles.input} />
                                             </div>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Occupation</label>
-                                                <input name="occupation" type="text" placeholder="e.g. Software Engineer" value={form.occupation} onChange={handleChange} style={styles.input} />
+                                                <input name="occupation" type="text" placeholder="e.g. Software Engineer"
+                                                    value={form.occupation} onChange={handleChange} style={styles.input} />
                                             </div>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Annual Income</label>
@@ -413,7 +502,8 @@ const Dashboard = () => {
                                         <div style={styles.formGrid}>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>City</label>
-                                                <input name="city" type="text" placeholder="Enter city" value={form.city} onChange={handleChange} style={styles.input} />
+                                                <input name="city" type="text" placeholder="Enter city"
+                                                    value={form.city} onChange={handleChange} style={styles.input} />
                                             </div>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>District</label>
@@ -437,20 +527,25 @@ const Dashboard = () => {
                                         <div style={styles.formGrid}>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Father's Occupation</label>
-                                                <input name="fatherOccupation" type="text" placeholder="Father's occupation" value={form.fatherOccupation} onChange={handleChange} style={styles.input} />
+                                                <input name="fatherOccupation" type="text" placeholder="Father's occupation"
+                                                    value={form.fatherOccupation} onChange={handleChange} style={styles.input} />
                                             </div>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Mother's Occupation</label>
-                                                <input name="motherOccupation" type="text" placeholder="Mother's occupation" value={form.motherOccupation} onChange={handleChange} style={styles.input} />
+                                                <input name="motherOccupation" type="text" placeholder="Mother's occupation"
+                                                    value={form.motherOccupation} onChange={handleChange} style={styles.input} />
                                             </div>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Siblings</label>
-                                                <input name="siblings" type="text" placeholder="e.g. 1 Brother, 1 Sister" value={form.siblings} onChange={handleChange} style={styles.input} />
+                                                <input name="siblings" type="text" placeholder="e.g. 1 Brother, 1 Sister"
+                                                    value={form.siblings} onChange={handleChange} style={styles.input} />
                                             </div>
                                         </div>
                                     </div>
 
-                                    <button type="submit" style={{ ...styles.saveBtn, opacity: loading ? 0.7 : 1 }} disabled={loading}>
+                                    <button type="submit"
+                                        style={{ ...styles.saveBtn, opacity: loading ? 0.7 : 1 }}
+                                        disabled={loading}>
                                         {loading ? '⏳ Saving...' : '💾 Save Profile'}
                                     </button>
                                 </form>
@@ -524,16 +619,45 @@ const Dashboard = () => {
                     {activeTab === 'matches' && (
                         <div>
                             <h2 style={styles.pageTitle}>💍 Your Matches</h2>
-                            <div style={styles.emptyProfile}>
-                                <div style={{ fontSize: '60px', marginBottom: '16px' }}>💍</div>
-                                <h3>Complete your profile to see matches!</h3>
-                                <p style={{ color: '#7A6055', marginBottom: '20px' }}>
-                                    The more details you add, the better your matches
-                                </p>
-                                <button style={styles.saveBtn} onClick={() => setActiveTab('profile')}>
-                                    Complete Profile →
-                                </button>
-                            </div>
+                            {suggestedMatches.length === 0 ? (
+                                <div style={styles.emptyProfile}>
+                                    <div style={{ fontSize: '60px', marginBottom: '16px' }}>💍</div>
+                                    <h3>Complete your profile to see matches!</h3>
+                                    <p style={{ color: '#7A6055', marginBottom: '20px' }}>
+                                        The more details you add, the better your matches
+                                    </p>
+                                    <button style={styles.saveBtn} onClick={() => setActiveTab('profile')}>
+                                        Complete Profile →
+                                    </button>
+                                </div>
+                            ) : (
+                                <div style={styles.matchesGrid}>
+                                    {suggestedMatches.map((m, i) => (
+                                        <div key={m._id || i} style={styles.matchCard}>
+                                            <div style={styles.matchPhoto}>
+                                                {m.photo ? (
+                                                    <img src={`${API}${m.photo}`} alt={m.name}
+                                                        style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    m.gender === 'Female' ? '👩' : '👨'
+                                                )}
+                                            </div>
+                                            <div style={styles.matchInfo}>
+                                                <div style={styles.matchName}>{m.name}</div>
+                                                <div style={styles.matchMeta}>{m.occupation} • {m.city}</div>
+                                                <div style={styles.matchMeta}>{m.religion} • {m.caste}</div>
+                                            </div>
+                                            <div style={styles.matchActions}>
+                                                <button style={styles.interestBtn}>💌 Interest</button>
+                                                <button style={styles.viewBtn}
+                                                    onClick={() => navigate(`/profile/${m._id}`)}>
+                                                    View
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -541,6 +665,51 @@ const Dashboard = () => {
                     {activeTab === 'settings' && (
                         <div>
                             <h2 style={styles.pageTitle}>⚙️ Settings</h2>
+
+                            {/* ✅ Number Privacy */}
+                            <div style={styles.formSection}>
+                                <h3 style={styles.formSectionTitle}>🔒 Number Privacy</h3>
+                                <div style={{
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    padding: '16px', borderRadius: '10px',
+                                    background: profile?.numberProtected ? '#FFF0F0' : '#F0FFF4',
+                                    border: `1px solid ${profile?.numberProtected ? '#FFCDD2' : '#C8E6C9'}`
+                                }}>
+                                    <div>
+                                        <div style={{ fontWeight: '700', color: '#1A0A0A', marginBottom: '4px', fontSize: '15px' }}>
+                                            {profile?.numberProtected ? '🔒 Number Protected' : '📞 Number Public'}
+                                        </div>
+                                        <div style={{ fontSize: '13px', color: '#7A6055' }}>
+                                            {profile?.numberProtected
+                                                ? 'Only approved users can see your number'
+                                                : 'Premium users can see your number directly'}
+                                        </div>
+                                    </div>
+                                    <button style={{
+                                        padding: '10px 20px', border: 'none', borderRadius: '8px',
+                                        fontSize: '13px', fontWeight: '700',
+                                        cursor: profile ? 'pointer' : 'not-allowed',
+                                        background: profile
+                                            ? (profile?.numberProtected ? '#2E7D32' : '#8B1A1A')
+                                            : '#ccc',
+                                        color: '#fff',
+                                        opacity: profile ? 1 : 0.5
+                                    }}
+                                        onClick={handleTogglePrivacy}>
+                                        {profile?.numberProtected ? '🔓 Make Public' : '🔒 Protect Number'}
+                                    </button>
+                                </div>
+
+                                {/* Incoming Requests */}
+                                <div style={{ marginTop: '20px' }}>
+                                    <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#1A0A0A', marginBottom: '12px' }}>
+                                        📬 Number Requests
+                                    </h4>
+                                    <IncomingRequests />
+                                </div>
+                            </div>
+
+                            {/* Account Details */}
                             <div style={styles.formSection}>
                                 <h3 style={styles.formSectionTitle}>Account Details</h3>
                                 <div style={styles.profileView}>
@@ -558,6 +727,7 @@ const Dashboard = () => {
                                     ))}
                                 </div>
                             </div>
+
                             <div style={styles.formSection}>
                                 <h3 style={styles.formSectionTitle}>Danger Zone</h3>
                                 <button style={{ ...styles.saveBtn, background: '#C0392B' }}
@@ -567,7 +737,6 @@ const Dashboard = () => {
                             </div>
                         </div>
                     )}
-
                 </div>
             </div>
 
@@ -617,7 +786,7 @@ const styles = {
     sectionTitle: { fontFamily: "'Playfair Display', serif", fontSize: '20px', color: '#1A0A0A', marginBottom: '16px' },
     matchesGrid: { display: 'flex', flexDirection: 'column', gap: '12px' },
     matchCard: { display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px', background: '#FDF5EE', borderRadius: '12px', border: '1px solid #E8D5C4' },
-    matchPhoto: { fontSize: '36px', width: '52px', height: '52px', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    matchPhoto: { fontSize: '36px', width: '52px', height: '52px', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 },
     matchInfo: { flex: 1 },
     matchName: { fontWeight: '700', color: '#1A0A0A', fontSize: '15px', marginBottom: '2px' },
     matchMeta: { fontSize: '12px', color: '#7A6055' },
