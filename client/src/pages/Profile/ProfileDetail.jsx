@@ -12,7 +12,7 @@ const API = 'http://localhost:5000';
 
 const ProfileDetail = () => {
     const { id } = useParams();
-    const { user, refreshUser } = useAuth(); // ✅ added refreshUser
+    const { user, refreshUser } = useAuth();
     const navigate = useNavigate();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -21,13 +21,20 @@ const ProfileDetail = () => {
     const [interestSent, setInterestSent] = useState(false);
     const [numberRequest, setNumberRequest] = useState(null);
     const [requesting, setRequesting] = useState(false);
+    const [shortlisted, setShortlisted] = useState(false);       // ✅ new
+    const [shortlistLoading, setShortlistLoading] = useState(false);   // ✅ new
 
     useEffect(() => {
         fetchProfile();
-        if (refreshUser) refreshUser(); // ✅ always get latest premium status
+        if (refreshUser) refreshUser();
     }, [id]);
 
-    useEffect(() => { if (user && profile) checkNumberRequest(); }, [user, profile]);
+    useEffect(() => {
+        if (user && profile) {
+            checkNumberRequest();
+            checkShortlist(); // ✅ new
+        }
+    }, [user, profile]);
 
     const fetchProfile = async () => {
         try {
@@ -48,6 +55,17 @@ const ProfileDetail = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setNumberRequest(res.data.request);
+        } catch (err) { }
+    };
+
+    // ✅ Check if profile is shortlisted
+    const checkShortlist = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/shortlist/check/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setShortlisted(res.data.shortlisted);
         } catch (err) { }
     };
 
@@ -82,6 +100,33 @@ const ProfileDetail = () => {
             navigate(`/messages?with=${profileUserId}`);
         } else {
             toast.error('Cannot start chat with this profile');
+        }
+    };
+
+    // ✅ Toggle shortlist
+    const handleShortlist = async () => {
+        if (!user) { setShowLogin(true); return; }
+        setShortlistLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            if (shortlisted) {
+                await axios.delete(`${API}/api/shortlist/remove/${id}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setShortlisted(false);
+                toast.success('Removed from shortlist!');
+            } else {
+                await axios.post(`${API}/api/shortlist/add`,
+                    { profileId: id },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setShortlisted(true);
+                toast.success('Profile shortlisted! ⭐');
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed!');
+        } finally {
+            setShortlistLoading(false);
         }
     };
 
@@ -157,7 +202,7 @@ const ProfileDetail = () => {
                                 💬 Send Message
                             </button>
 
-                            {/* ✅ Number Privacy Section */}
+                            {/* Number Privacy Section */}
                             <div style={styles.numberSection}>
                                 <div style={styles.numberTitle}>
                                     {profile.numberProtected ? '🔒 Protected Number' : '📞 Contact Number'}
@@ -232,7 +277,17 @@ const ProfileDetail = () => {
                                 )}
                             </div>
 
-                            <button style={styles.shortlistBtn}>⭐ Shortlist Profile</button>
+                            {/* ✅ Shortlist Button */}
+                            <button style={{
+                                ...styles.shortlistBtn,
+                                background: shortlisted ? '#FFF8E1' : '#FFFBF0',
+                                border: shortlisted ? '1.5px solid #F5C518' : '1.5px solid #F5E6C0',
+                                color: shortlisted ? '#F57F17' : '#7A6055'
+                            }}
+                                onClick={handleShortlist}
+                                disabled={shortlistLoading}>
+                                {shortlistLoading ? '⏳' : shortlisted ? '⭐ Shortlisted' : '⭐ Shortlist Profile'}
+                            </button>
                         </div>
                     </div>
 
@@ -383,7 +438,7 @@ const styles = {
     lockBox: { background: '#FFF9E6', border: '1px solid #F5E6C0', borderRadius: '10px', padding: '16px', textAlign: 'center' },
     upgradeBtn: { padding: '9px 20px', background: '#C9A84C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
     requestBtn: { width: '100%', padding: '10px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
-    shortlistBtn: { width: '100%', padding: '10px', background: '#FFFBF0', border: '1.5px solid #F5E6C0', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', color: '#7A6055' },
+    shortlistBtn: { width: '100%', padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
     rightCol: {},
     nameCard: { background: '#fff', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
     profileName: { fontFamily: "'Playfair Display', serif", fontSize: '28px', color: '#1A0A0A', marginBottom: '6px' },

@@ -8,6 +8,8 @@ import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+const API = 'http://localhost:5000';
+
 const Browse = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -20,16 +22,17 @@ const Browse = () => {
     });
     const [allProfiles, setAllProfiles] = useState([]);
     const [displayProfiles, setDisplayProfiles] = useState([]);
+    const [shortlistedIds, setShortlistedIds] = useState([]); // ✅ track shortlisted
 
     useEffect(() => { fetchProfiles(); }, [user]);
+    useEffect(() => { if (user) fetchShortlistedIds(); }, [user]); // ✅ load shortlisted
 
     const fetchProfiles = async () => {
         setLoading(true);
         try {
-            // ✅ Send token so server can exclude own profile
             const token = localStorage.getItem('token');
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
-            const res = await axios.get('http://localhost:5000/api/profiles', { headers });
+            const res = await axios.get(`${API}/api/profiles`, { headers });
             const profiles = res.data.profiles || [];
             setAllProfiles(profiles);
             setDisplayProfiles(profiles);
@@ -38,6 +41,43 @@ const Browse = () => {
             setDisplayProfiles([]);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // ✅ Fetch already shortlisted profile IDs
+    const fetchShortlistedIds = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/shortlist/my`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const ids = (res.data.profiles || []).map(p => p._id);
+            setShortlistedIds(ids);
+        } catch (err) { }
+    };
+
+    // ✅ Toggle shortlist
+    const handleShortlist = async (profile) => {
+        if (!user) { setShowLogin(true); return; }
+        const isShortlisted = shortlistedIds.includes(profile._id);
+        try {
+            const token = localStorage.getItem('token');
+            if (isShortlisted) {
+                await axios.delete(`${API}/api/shortlist/remove/${profile._id}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setShortlistedIds(prev => prev.filter(id => id !== profile._id));
+                toast.success('Removed from shortlist!');
+            } else {
+                await axios.post(`${API}/api/shortlist/add`,
+                    { profileId: profile._id },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setShortlistedIds(prev => [...prev, profile._id]);
+                toast.success('Profile shortlisted! ⭐');
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed!');
         }
     };
 
@@ -217,71 +257,82 @@ const Browse = () => {
                         </div>
                     ) : (
                         <div style={styles.profilesGrid}>
-                            {displayProfiles.map((profile) => (
-                                <div key={profile._id} style={styles.profileCard}>
-                                    <div style={{
-                                        ...styles.photoSection,
-                                        background: profile.gender === 'Female'
-                                            ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
-                                            : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
-                                    }}>
-                                        {profile.photo ? (
-                                            <img src={`http://localhost:5000${profile.photo}`}
-                                                alt={getName(profile)}
-                                                style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A' }} />
-                                        ) : (
-                                            <span style={styles.profileEmoji}>
-                                                {profile.gender === 'Female' ? '👩' : '👨'}
+                            {displayProfiles.map((profile) => {
+                                const isShortlisted = shortlistedIds.includes(profile._id);
+                                return (
+                                    <div key={profile._id} style={styles.profileCard}>
+                                        <div style={{
+                                            ...styles.photoSection,
+                                            background: profile.gender === 'Female'
+                                                ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
+                                                : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
+                                        }}>
+                                            {profile.photo ? (
+                                                <img src={`${API}${profile.photo}`}
+                                                    alt={getName(profile)}
+                                                    style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A' }} />
+                                            ) : (
+                                                <span style={styles.profileEmoji}>
+                                                    {profile.gender === 'Female' ? '👩' : '👨'}
+                                                </span>
+                                            )}
+                                            <span style={styles.verifiedBadge}>✓ Verified</span>
+                                            <span style={styles.genderBadge}>
+                                                {profile.gender === 'Female' ? 'Bride' : 'Groom'}
                                             </span>
-                                        )}
-                                        <span style={styles.verifiedBadge}>✓ Verified</span>
-                                        <span style={styles.genderBadge}>
-                                            {profile.gender === 'Female' ? 'Bride' : 'Groom'}
-                                        </span>
-                                        {/* ✅ Show lock icon if number protected */}
-                                        {profile.numberProtected && (
-                                            <span style={styles.privacyBadge}>🔒</span>
-                                        )}
-                                    </div>
-
-                                    <div style={styles.cardInfo}>
-                                        <div style={styles.cardName}>{getName(profile)}</div>
-                                        <div style={styles.cardMeta}>{profile.occupation} • {profile.city}</div>
-                                        <div style={styles.cardMeta}>{profile.religion} • {profile.caste}</div>
-
-                                        <div style={styles.detailsRow}>
-                                            {[
-                                                { icon: '📏', value: profile.height },
-                                                { icon: '🎓', value: profile.education },
-                                                { icon: '💰', value: profile.annualIncome },
-                                                { icon: '⭐', value: profile.rasi },
-                                            ].filter(d => d.value).map(d => (
-                                                <div key={d.icon} style={styles.detailTag}>
-                                                    {d.icon} {d.value}
-                                                </div>
-                                            ))}
+                                            {profile.numberProtected && (
+                                                <span style={styles.privacyBadge}>🔒</span>
+                                            )}
                                         </div>
 
-                                        {profile.about && (
-                                            <p style={styles.cardAbout}>
-                                                {profile.about.substring(0, 80)}...
-                                            </p>
-                                        )}
+                                        <div style={styles.cardInfo}>
+                                            <div style={styles.cardName}>{getName(profile)}</div>
+                                            <div style={styles.cardMeta}>{profile.occupation} • {profile.city}</div>
+                                            <div style={styles.cardMeta}>{profile.religion} • {profile.caste}</div>
 
-                                        <div style={styles.cardActions}>
-                                            <button style={styles.interestBtn}
-                                                onClick={() => handleSendInterest(profile)}>
-                                                💌 Send Interest
-                                            </button>
-                                            <button style={styles.viewBtn}
-                                                onClick={() => handleViewProfile(profile)}>
-                                                View Profile
-                                            </button>
-                                            <button style={styles.shortlistBtn}>⭐</button>
+                                            <div style={styles.detailsRow}>
+                                                {[
+                                                    { icon: '📏', value: profile.height },
+                                                    { icon: '🎓', value: profile.education },
+                                                    { icon: '💰', value: profile.annualIncome },
+                                                    { icon: '⭐', value: profile.rasi },
+                                                ].filter(d => d.value).map(d => (
+                                                    <div key={d.icon} style={styles.detailTag}>
+                                                        {d.icon} {d.value}
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {profile.about && (
+                                                <p style={styles.cardAbout}>
+                                                    {profile.about.substring(0, 80)}...
+                                                </p>
+                                            )}
+
+                                            <div style={styles.cardActions}>
+                                                <button style={styles.interestBtn}
+                                                    onClick={() => handleSendInterest(profile)}>
+                                                    💌 Send Interest
+                                                </button>
+                                                <button style={styles.viewBtn}
+                                                    onClick={() => handleViewProfile(profile)}>
+                                                    View Profile
+                                                </button>
+                                                {/* ✅ Shortlist button with toggle */}
+                                                <button style={{
+                                                    ...styles.shortlistBtn,
+                                                    background: isShortlisted ? '#FFF8E1' : '#FFFBF0',
+                                                    border: isShortlisted ? '1.5px solid #F5C518' : '1.5px solid #F5E6C0',
+                                                }}
+                                                    onClick={() => handleShortlist(profile)}
+                                                    title={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}>
+                                                    {isShortlisted ? '⭐' : '☆'}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -341,7 +392,7 @@ const styles = {
     cardActions: { display: 'flex', gap: '6px' },
     interestBtn: { flex: 1, padding: '8px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
     viewBtn: { flex: 1, padding: '8px', background: 'transparent', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
-    shortlistBtn: { padding: '8px 10px', background: '#FFFBF0', border: '1.5px solid #F5E6C0', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' },
+    shortlistBtn: { padding: '8px 10px', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' },
     noResults: { textAlign: 'center', padding: '60px 20px' },
     resetBtn2: { padding: '10px 24px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginTop: '16px' },
 };

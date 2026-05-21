@@ -102,6 +102,7 @@ const Dashboard = () => {
     const [photoUrl, setPhotoUrl] = useState(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [suggestedMatches, setSuggestedMatches] = useState([]);
+    const [shortlistedProfiles, setShortlistedProfiles] = useState([]); // ✅ new
 
     const [form, setForm] = useState({
         name: '', dateOfBirth: '', height: '', weight: '',
@@ -118,6 +119,7 @@ const Dashboard = () => {
         if (!user) { navigate('/'); return; }
         fetchProfile();
         fetchSuggestedMatches();
+        fetchShortlist(); // ✅ new
     }, [user]);
 
     const fetchProfile = async () => {
@@ -144,6 +146,19 @@ const Dashboard = () => {
             setSuggestedMatches(res.data.profiles || []);
         } catch (err) {
             setSuggestedMatches([]);
+        }
+    };
+
+    // ✅ Fetch shortlisted profiles
+    const fetchShortlist = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/shortlist/my`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setShortlistedProfiles(res.data.profiles || []);
+        } catch (err) {
+            setShortlistedProfiles([]);
         }
     };
 
@@ -216,6 +231,7 @@ const Dashboard = () => {
         { id: 'profile', label: '👤 My Profile' },
         { id: 'interests', label: '💌 Interests' },
         { id: 'matches', label: '💍 Matches' },
+        { id: 'shortlist', label: '⭐ Shortlist' },  // ✅ new
         { id: 'settings', label: '⚙️ Settings' },
     ];
 
@@ -295,7 +311,7 @@ const Dashboard = () => {
                                     { icon: '👁️', label: 'Profile Views', value: '24', color: '#FDF0F0' },
                                     { icon: '💌', label: 'Interests Received', value: '8', color: '#F0F4FF' },
                                     { icon: '💍', label: 'Matches Found', value: suggestedMatches.length.toString(), color: '#F0FFF4' },
-                                    { icon: '⭐', label: 'Shortlisted', value: '5', color: '#FFFBF0' },
+                                    { icon: '⭐', label: 'Shortlisted', value: shortlistedProfiles.length.toString(), color: '#FFFBF0' }, // ✅ real count
                                 ].map(s => (
                                     <div key={s.label} style={{ ...styles.statCard, background: s.color }}>
                                         <div style={styles.statIcon}>{s.icon}</div>
@@ -661,6 +677,51 @@ const Dashboard = () => {
                         </div>
                     )}
 
+                    {/* ✅ SHORTLIST TAB */}
+                    {activeTab === 'shortlist' && (
+                        <div>
+                            <h2 style={styles.pageTitle}>⭐ Shortlisted Profiles</h2>
+                            {shortlistedProfiles.length === 0 ? (
+                                <div style={styles.emptyProfile}>
+                                    <div style={{ fontSize: '60px', marginBottom: '16px' }}>⭐</div>
+                                    <h3>No Shortlisted Profiles!</h3>
+                                    <p style={{ color: '#7A6055', marginBottom: '20px' }}>
+                                        Browse profiles and click ⭐ Shortlist to save them here
+                                    </p>
+                                    <button style={styles.saveBtn} onClick={() => navigate('/browse')}>
+                                        Browse Profiles →
+                                    </button>
+                                </div>
+                            ) : (
+                                <div style={styles.matchesGrid}>
+                                    {shortlistedProfiles.map((p, i) => (
+                                        <div key={p._id || i} style={styles.matchCard}>
+                                            <div style={styles.matchPhoto}>
+                                                {p.photo ? (
+                                                    <img src={`${API}${p.photo}`} alt={p.name}
+                                                        style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    p.gender === 'Female' ? '👩' : '👨'
+                                                )}
+                                            </div>
+                                            <div style={styles.matchInfo}>
+                                                <div style={styles.matchName}>{p.name}</div>
+                                                <div style={styles.matchMeta}>{p.occupation} • {p.city}</div>
+                                                <div style={styles.matchMeta}>{p.religion} • {p.caste}</div>
+                                            </div>
+                                            <div style={styles.matchActions}>
+                                                <button style={styles.viewBtn}
+                                                    onClick={() => navigate(`/profile/${p._id}`)}>
+                                                    View
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* SETTINGS TAB */}
                     {activeTab === 'settings' && (
                         <div>
@@ -689,18 +750,14 @@ const Dashboard = () => {
                                         padding: '10px 20px', border: 'none', borderRadius: '8px',
                                         fontSize: '13px', fontWeight: '700',
                                         cursor: profile ? 'pointer' : 'not-allowed',
-                                        background: profile
-                                            ? (profile?.numberProtected ? '#2E7D32' : '#8B1A1A')
-                                            : '#ccc',
-                                        color: '#fff',
-                                        opacity: profile ? 1 : 0.5
+                                        background: profile ? (profile?.numberProtected ? '#2E7D32' : '#8B1A1A') : '#ccc',
+                                        color: '#fff', opacity: profile ? 1 : 0.5
                                     }}
                                         onClick={handleTogglePrivacy}>
                                         {profile?.numberProtected ? '🔓 Make Public' : '🔒 Protect Number'}
                                     </button>
                                 </div>
 
-                                {/* Incoming Requests */}
                                 <div style={{ marginTop: '20px' }}>
                                     <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#1A0A0A', marginBottom: '12px' }}>
                                         📬 Number Requests
