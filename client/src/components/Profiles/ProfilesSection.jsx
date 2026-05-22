@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const API = 'http://localhost:5000';
 
@@ -10,18 +11,19 @@ const ProfilesSection = ({ onLoginClick }) => {
     const { user } = useAuth();
     const [profiles, setProfiles] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [shortlistedIds, setShortlistedIds] = useState([]);
+    const [likedIds, setLikedIds] = useState([]);
+    const [sentInterestIds, setSentInterestIds] = useState([]);
 
     useEffect(() => { fetchProfiles(); }, [user]);
+    useEffect(() => { if (user) { fetchShortlistedIds(); fetchLikedIds(); } }, [user]);
 
     const fetchProfiles = async () => {
         try {
-            // ✅ Send token to exclude own profile
             const token = localStorage.getItem('token');
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
             const res = await axios.get(`${API}/api/profiles`, { headers });
-            const real = res.data.profiles || [];
-            // ✅ Show max 6 profiles
-            setProfiles(real.slice(0, 6));
+            setProfiles((res.data.profiles || []).slice(0, 6));
         } catch (err) {
             setProfiles([]);
         } finally {
@@ -29,8 +31,82 @@ const ProfilesSection = ({ onLoginClick }) => {
         }
     };
 
-    const handleSendInterest = () => {
+    const fetchShortlistedIds = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/shortlist/my`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setShortlistedIds((res.data.profiles || []).map(p => p._id));
+        } catch (err) { }
+    };
+
+    const fetchLikedIds = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/likes/my-likes`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setLikedIds((res.data.profiles || []).map(p => p._id));
+        } catch (err) { }
+    };
+
+    const handleSendInterest = async (p) => {
         if (!user) { onLoginClick(); return; }
+        if (sentInterestIds.includes(p._id)) {
+            toast.success('Interest already sent!');
+            return;
+        }
+        setSentInterestIds(prev => [...prev, p._id]);
+        toast.success(`Interest sent to ${getName(p)}! 💌`);
+    };
+
+    const handleShortlist = async (p) => {
+        if (!user) { onLoginClick(); return; }
+        const isShortlisted = shortlistedIds.includes(p._id);
+        try {
+            const token = localStorage.getItem('token');
+            if (isShortlisted) {
+                await axios.delete(`${API}/api/shortlist/remove/${p._id}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setShortlistedIds(prev => prev.filter(id => id !== p._id));
+                toast.success('Removed from shortlist!');
+            } else {
+                await axios.post(`${API}/api/shortlist/add`,
+                    { profileId: p._id },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setShortlistedIds(prev => [...prev, p._id]);
+                toast.success('Shortlisted! ⭐');
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed!');
+        }
+    };
+
+    const handleLike = async (p) => {
+        if (!user) { onLoginClick(); return; }
+        const isLiked = likedIds.includes(p._id);
+        try {
+            const token = localStorage.getItem('token');
+            if (isLiked) {
+                await axios.delete(`${API}/api/likes/remove/${p._id}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setLikedIds(prev => prev.filter(id => id !== p._id));
+                toast.success('Like removed!');
+            } else {
+                await axios.post(`${API}/api/likes/add`,
+                    { profileId: p._id },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setLikedIds(prev => [...prev, p._id]);
+                toast.success('Liked! 👍');
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed!');
+        }
     };
 
     const getName = (p) => p.name || p.user?.name || 'Unknown';
@@ -54,45 +130,87 @@ const ProfilesSection = ({ onLoginClick }) => {
                 </div>
 
                 <div style={styles.grid}>
-                    {profiles.map((p, i) => (
-                        <div key={p._id || i} style={styles.card}>
-                            <div style={{
-                                ...styles.photo,
-                                background: p.gender === 'Female'
-                                    ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
-                                    : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
-                            }}>
-                                {p.photo ? (
-                                    <img src={`${API}${p.photo}`} alt={getName(p)}
-                                        style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A' }} />
-                                ) : (
-                                    <span style={styles.avatar}>
-                                        {p.gender === 'Female' ? '👩' : '👨'}
-                                    </span>
-                                )}
-                                <span style={styles.verified}>✓ Verified</span>
-                            </div>
-                            <div style={styles.info}>
-                                <div style={styles.name}>{getName(p)}</div>
-                                <div style={styles.meta}>{p.occupation} • {p.city}</div>
-                                <div style={styles.meta}>{p.religion} • {p.caste}</div>
-                                <div style={styles.tags}>
-                                    {p.maritalStatus && <span style={styles.tag}>{p.maritalStatus}</span>}
-                                    {p.education && <span style={styles.tag}>{p.education}</span>}
-                                    {p.district && <span style={styles.tag}>{p.district}</span>}
-                                </div>
-                                <div style={styles.actions}>
-                                    <button style={styles.btnPrimary} onClick={handleSendInterest}>
-                                        💌 Send Interest
+                    {profiles.map((p, i) => {
+                        const isShortlisted = shortlistedIds.includes(p._id);
+                        const isLiked = likedIds.includes(p._id);
+                        const isSent = sentInterestIds.includes(p._id);
+
+                        return (
+                            <div key={p._id || i} style={styles.card}>
+                                <div style={{
+                                    ...styles.photo,
+                                    background: p.gender === 'Female'
+                                        ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
+                                        : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
+                                }}>
+                                    {p.photo ? (
+                                        <img src={`${API}${p.photo}`} alt={getName(p)}
+                                            style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A' }}
+                                            onClick={() => navigate(`/profile/${p._id}`)} />
+                                    ) : (
+                                        <span style={styles.avatar}
+                                            onClick={() => navigate(`/profile/${p._id}`)}>
+                                            {p.gender === 'Female' ? '👩' : '👨'}
+                                        </span>
+                                    )}
+                                    <span style={styles.verified}>✓ Verified</span>
+
+                                    {/* ✅ Shortlist heart button */}
+                                    <button style={styles.heartBtn}
+                                        onClick={() => handleShortlist(p)}
+                                        title={isShortlisted ? 'Remove shortlist' : 'Shortlist'}>
+                                        {isShortlisted ? '❤️' : '🤍'}
                                     </button>
-                                    <button style={styles.btnOutline}
+                                </div>
+
+                                <div style={styles.info}>
+                                    <div style={styles.name}
                                         onClick={() => navigate(`/profile/${p._id}`)}>
-                                        View Profile
-                                    </button>
+                                        {getName(p)}
+                                    </div>
+                                    <div style={styles.meta}>{p.occupation} • {p.city}</div>
+                                    <div style={styles.meta}>{p.religion} • {p.caste}</div>
+
+                                    <div style={styles.tags}>
+                                        {p.maritalStatus && <span style={styles.tag}>{p.maritalStatus}</span>}
+                                        {p.education && <span style={styles.tag}>{p.education}</span>}
+                                        {p.district && <span style={styles.tag}>{p.district}</span>}
+                                    </div>
+
+                                    <div style={styles.actions}>
+                                        {/* ✅ Send Interest */}
+                                        <button style={{
+                                            ...styles.btnPrimary,
+                                            opacity: isSent ? 0.7 : 1,
+                                            background: isSent ? '#888' : '#8B1A1A'
+                                        }}
+                                            onClick={() => handleSendInterest(p)}
+                                            disabled={isSent}>
+                                            {isSent ? '✅ Sent' : '💌 Send Interest'}
+                                        </button>
+
+                                        {/* ✅ View Profile */}
+                                        <button style={styles.btnOutline}
+                                            onClick={() => navigate(`/profile/${p._id}`)}>
+                                            View Profile
+                                        </button>
+
+                                        {/* ✅ Like button */}
+                                        <button style={{
+                                            ...styles.btnLike,
+                                            background: isLiked ? '#2E7D32' : '#fff',
+                                            color: isLiked ? '#fff' : '#8B1A1A',
+                                            border: isLiked ? 'none' : '1.5px solid #8B1A1A'
+                                        }}
+                                            onClick={() => handleLike(p)}
+                                            title={isLiked ? 'Unlike' : 'Like'}>
+                                            👍
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
 
                     {profiles.length === 0 && (
                         <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#7A6055' }}>
@@ -120,18 +238,20 @@ const styles = {
     title: { fontFamily: "'Playfair Display', serif", fontSize: '38px', color: '#1A0A0A', marginBottom: '12px' },
     desc: { fontSize: '16px', color: '#7A6055' },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' },
-    card: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(139,26,26,0.08)', cursor: 'pointer' },
-    photo: { height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' },
-    avatar: { fontSize: '56px' },
-    verified: { position: 'absolute', top: '12px', right: '12px', background: '#1E6B3C', color: '#fff', fontSize: '11px', fontWeight: '600', padding: '4px 10px', borderRadius: '20px' },
+    card: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
+    photo: { height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', cursor: 'pointer' },
+    avatar: { fontSize: '56px', cursor: 'pointer' },
+    verified: { position: 'absolute', top: '12px', right: '44px', background: '#1E6B3C', color: '#fff', fontSize: '11px', fontWeight: '600', padding: '4px 10px', borderRadius: '20px' },
+    heartBtn: { position: 'absolute', top: '10px', right: '10px', background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' },
     info: { padding: '18px' },
-    name: { fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: '600', color: '#1A0A0A', marginBottom: '4px' },
+    name: { fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: '600', color: '#1A0A0A', marginBottom: '4px', cursor: 'pointer' },
     meta: { fontSize: '13px', color: '#7A6055', marginBottom: '2px', lineHeight: 1.6 },
     tags: { display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '10px 0' },
     tag: { fontSize: '11px', fontWeight: '500', padding: '4px 10px', borderRadius: '20px', background: '#FDF0F0', color: '#8B1A1A' },
-    actions: { display: 'flex', gap: '8px', marginTop: '10px' },
-    btnPrimary: { flex: 1, padding: '9px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' },
-    btnOutline: { flex: 1, padding: '9px', background: 'transparent', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' },
+    actions: { display: 'flex', gap: '6px', marginTop: '10px' },
+    btnPrimary: { flex: 1, padding: '9px', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' },
+    btnOutline: { flex: 1, padding: '9px', background: 'transparent', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' },
+    btnLike: { padding: '9px 12px', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
     center: { textAlign: 'center', marginTop: '36px' },
     viewAll: { padding: '12px 32px', background: 'transparent', border: '1.5px solid #8B1A1A', color: '#8B1A1A', borderRadius: '8px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' },
 };
