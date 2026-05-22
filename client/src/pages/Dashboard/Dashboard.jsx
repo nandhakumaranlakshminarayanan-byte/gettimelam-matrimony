@@ -94,6 +94,7 @@ const Dashboard = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
+    const [shortlistSubTab, setShortlistSubTab] = useState('shortlisted'); // ✅ new
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
     const [profile, setProfile] = useState(null);
@@ -102,7 +103,9 @@ const Dashboard = () => {
     const [photoUrl, setPhotoUrl] = useState(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [suggestedMatches, setSuggestedMatches] = useState([]);
-    const [shortlistedProfiles, setShortlistedProfiles] = useState([]); // ✅ new
+    const [shortlistedProfiles, setShortlistedProfiles] = useState([]);
+    const [likedProfiles, setLikedProfiles] = useState([]); // ✅ new
+    const [likedMeProfiles, setLikedMeProfiles] = useState([]); // ✅ new
 
     const [form, setForm] = useState({
         name: '', dateOfBirth: '', height: '', weight: '',
@@ -119,7 +122,9 @@ const Dashboard = () => {
         if (!user) { navigate('/'); return; }
         fetchProfile();
         fetchSuggestedMatches();
-        fetchShortlist(); // ✅ new
+        fetchShortlist();
+        fetchLikedProfiles();  // ✅ new
+        fetchLikedMe();        // ✅ new
     }, [user]);
 
     const fetchProfile = async () => {
@@ -144,12 +149,9 @@ const Dashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setSuggestedMatches(res.data.profiles || []);
-        } catch (err) {
-            setSuggestedMatches([]);
-        }
+        } catch (err) { setSuggestedMatches([]); }
     };
 
-    // ✅ Fetch shortlisted profiles
     const fetchShortlist = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -157,9 +159,29 @@ const Dashboard = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setShortlistedProfiles(res.data.profiles || []);
-        } catch (err) {
-            setShortlistedProfiles([]);
-        }
+        } catch (err) { setShortlistedProfiles([]); }
+    };
+
+    // ✅ Fetch profiles I liked
+    const fetchLikedProfiles = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/likes/my-likes`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setLikedProfiles(res.data.profiles || []);
+        } catch (err) { setLikedProfiles([]); }
+    };
+
+    // ✅ Fetch profiles who liked me
+    const fetchLikedMe = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/likes/liked-me`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setLikedMeProfiles(res.data.likes || []);
+        } catch (err) { setLikedMeProfiles([]); }
     };
 
     const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -231,11 +253,36 @@ const Dashboard = () => {
         { id: 'profile', label: '👤 My Profile' },
         { id: 'interests', label: '💌 Interests' },
         { id: 'matches', label: '💍 Matches' },
-        { id: 'shortlist', label: '⭐ Shortlist' },  // ✅ new
+        { id: 'shortlist', label: '⭐ Shortlist' },
         { id: 'settings', label: '⚙️ Settings' },
     ];
 
     const completionPct = photoUrl && profile ? '80%' : profile ? '60%' : '20%';
+
+    // ✅ Reusable profile card
+    const ProfileCard = ({ p, showLikerName = false, likerName = '' }) => (
+        <div style={styles.matchCard}>
+            <div style={styles.matchPhoto}>
+                {p?.photo ? (
+                    <img src={`${API}${p.photo}`} alt={p.name}
+                        style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                    p?.gender === 'Female' ? '👩' : '👨'
+                )}
+            </div>
+            <div style={styles.matchInfo}>
+                <div style={styles.matchName}>{showLikerName ? likerName : p?.name}</div>
+                <div style={styles.matchMeta}>{p?.occupation} • {p?.city}</div>
+                <div style={styles.matchMeta}>{p?.religion} • {p?.caste}</div>
+            </div>
+            <div style={styles.matchActions}>
+                <button style={styles.viewBtn}
+                    onClick={() => navigate(`/profile/${p?._id}`)}>
+                    View
+                </button>
+            </div>
+        </div>
+    );
 
     return (
         <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
@@ -311,7 +358,7 @@ const Dashboard = () => {
                                     { icon: '👁️', label: 'Profile Views', value: '24', color: '#FDF0F0' },
                                     { icon: '💌', label: 'Interests Received', value: '8', color: '#F0F4FF' },
                                     { icon: '💍', label: 'Matches Found', value: suggestedMatches.length.toString(), color: '#F0FFF4' },
-                                    { icon: '⭐', label: 'Shortlisted', value: shortlistedProfiles.length.toString(), color: '#FFFBF0' }, // ✅ real count
+                                    { icon: '⭐', label: 'Shortlisted', value: shortlistedProfiles.length.toString(), color: '#FFFBF0' },
                                 ].map(s => (
                                     <div key={s.label} style={{ ...styles.statCard, background: s.color }}>
                                         <div style={styles.statIcon}>{s.icon}</div>
@@ -677,46 +724,103 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {/* ✅ SHORTLIST TAB */}
+                    {/* ✅ SHORTLIST TAB — 3 sub-tabs */}
                     {activeTab === 'shortlist' && (
                         <div>
-                            <h2 style={styles.pageTitle}>⭐ Shortlisted Profiles</h2>
-                            {shortlistedProfiles.length === 0 ? (
-                                <div style={styles.emptyProfile}>
-                                    <div style={{ fontSize: '60px', marginBottom: '16px' }}>⭐</div>
-                                    <h3>No Shortlisted Profiles!</h3>
-                                    <p style={{ color: '#7A6055', marginBottom: '20px' }}>
-                                        Browse profiles and click ⭐ Shortlist to save them here
-                                    </p>
-                                    <button style={styles.saveBtn} onClick={() => navigate('/browse')}>
-                                        Browse Profiles →
+                            <h2 style={styles.pageTitle}>⭐ Shortlist & Likes</h2>
+
+                            {/* ✅ Sub-tab buttons */}
+                            <div style={styles.subTabRow}>
+                                {[
+                                    { id: 'shortlisted', label: `⭐ Shortlisted (${shortlistedProfiles.length})` },
+                                    { id: 'liked', label: `👍 Profiles I Liked (${likedProfiles.length})` },
+                                    { id: 'liked-me', label: `💝 Liked Me (${likedMeProfiles.length})` },
+                                ].map(sub => (
+                                    <button key={sub.id}
+                                        style={{
+                                            ...styles.subTabBtn,
+                                            ...(shortlistSubTab === sub.id ? styles.subTabActive : {})
+                                        }}
+                                        onClick={() => setShortlistSubTab(sub.id)}>
+                                        {sub.label}
                                     </button>
-                                </div>
-                            ) : (
-                                <div style={styles.matchesGrid}>
-                                    {shortlistedProfiles.map((p, i) => (
-                                        <div key={p._id || i} style={styles.matchCard}>
-                                            <div style={styles.matchPhoto}>
-                                                {p.photo ? (
-                                                    <img src={`${API}${p.photo}`} alt={p.name}
-                                                        style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
-                                                ) : (
-                                                    p.gender === 'Female' ? '👩' : '👨'
-                                                )}
-                                            </div>
-                                            <div style={styles.matchInfo}>
-                                                <div style={styles.matchName}>{p.name}</div>
-                                                <div style={styles.matchMeta}>{p.occupation} • {p.city}</div>
-                                                <div style={styles.matchMeta}>{p.religion} • {p.caste}</div>
-                                            </div>
-                                            <div style={styles.matchActions}>
-                                                <button style={styles.viewBtn}
-                                                    onClick={() => navigate(`/profile/${p._id}`)}>
-                                                    View
-                                                </button>
-                                            </div>
+                                ))}
+                            </div>
+
+                            {/* ✅ Shortlisted profiles */}
+                            {shortlistSubTab === 'shortlisted' && (
+                                <div>
+                                    {shortlistedProfiles.length === 0 ? (
+                                        <div style={styles.emptyProfile}>
+                                            <div style={{ fontSize: '48px', marginBottom: '12px' }}>⭐</div>
+                                            <h3>No Shortlisted Profiles!</h3>
+                                            <p style={{ color: '#7A6055', marginBottom: '16px' }}>
+                                                Browse profiles and click ❤️ to shortlist
+                                            </p>
+                                            <button style={styles.saveBtn} onClick={() => navigate('/browse')}>
+                                                Browse Profiles →
+                                            </button>
                                         </div>
-                                    ))}
+                                    ) : (
+                                        <div style={styles.matchesGrid}>
+                                            {shortlistedProfiles.map((p, i) => (
+                                                <ProfileCard key={p._id || i} p={p} />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ✅ Profiles I liked */}
+                            {shortlistSubTab === 'liked' && (
+                                <div>
+                                    {likedProfiles.length === 0 ? (
+                                        <div style={styles.emptyProfile}>
+                                            <div style={{ fontSize: '48px', marginBottom: '12px' }}>👍</div>
+                                            <h3>No Liked Profiles!</h3>
+                                            <p style={{ color: '#7A6055', marginBottom: '16px' }}>
+                                                Browse profiles and click 👍 Like to save them here
+                                            </p>
+                                            <button style={styles.saveBtn} onClick={() => navigate('/browse')}>
+                                                Browse Profiles →
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={styles.matchesGrid}>
+                                            {likedProfiles.map((p, i) => (
+                                                <ProfileCard key={p._id || i} p={p} />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* ✅ Profiles that liked me */}
+                            {shortlistSubTab === 'liked-me' && (
+                                <div>
+                                    {likedMeProfiles.length === 0 ? (
+                                        <div style={styles.emptyProfile}>
+                                            <div style={{ fontSize: '48px', marginBottom: '12px' }}>💝</div>
+                                            <h3>No one liked your profile yet!</h3>
+                                            <p style={{ color: '#7A6055', marginBottom: '16px' }}>
+                                                Complete your profile to attract more likes
+                                            </p>
+                                            <button style={styles.saveBtn} onClick={() => setActiveTab('profile')}>
+                                                Complete Profile →
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div style={styles.matchesGrid}>
+                                            {likedMeProfiles.map((like, i) => (
+                                                <ProfileCard
+                                                    key={like._id || i}
+                                                    p={like.profile}
+                                                    showLikerName={true}
+                                                    likerName={like.liker?.name || 'Unknown'}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -727,7 +831,6 @@ const Dashboard = () => {
                         <div>
                             <h2 style={styles.pageTitle}>⚙️ Settings</h2>
 
-                            {/* ✅ Number Privacy */}
                             <div style={styles.formSection}>
                                 <h3 style={styles.formSectionTitle}>🔒 Number Privacy</h3>
                                 <div style={{
@@ -766,7 +869,6 @@ const Dashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Account Details */}
                             <div style={styles.formSection}>
                                 <h3 style={styles.formSectionTitle}>Account Details</h3>
                                 <div style={styles.profileView}>
@@ -866,6 +968,11 @@ const styles = {
     aboutSection: { gridColumn: '1 / -1', padding: '12px 16px' },
     aboutText: { fontSize: '14px', color: '#2C1810', lineHeight: 1.7, marginTop: '4px' },
     emptyProfile: { textAlign: 'center', padding: '60px 20px' },
+
+    // ✅ Sub-tab styles
+    subTabRow: { display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' },
+    subTabBtn: { padding: '9px 16px', background: '#F5F5F5', border: '1.5px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#555', cursor: 'pointer' },
+    subTabActive: { background: '#FDF0F0', border: '1.5px solid #8B1A1A', color: '#8B1A1A' },
 };
 
 export default Dashboard;

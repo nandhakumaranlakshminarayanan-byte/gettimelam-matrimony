@@ -76,7 +76,8 @@ app.use('/api/messages', require('./routes/messages'));
 app.use('/api/testimonials', require('./routes/testimonials'));
 app.use('/api/banners', require('./routes/banners'));
 app.use('/api/privacy', require('./routes/privacy'));
-app.use('/api/shortlist', require('./routes/shortlist'));   // ✅ new
+app.use('/api/shortlist', require('./routes/shortlist'));
+app.use('/api/likes', require('./routes/likes'));        // ✅ new
 app.use('/api/admin', require('./routes/admin'));
 
 app.get('/', (req, res) => {

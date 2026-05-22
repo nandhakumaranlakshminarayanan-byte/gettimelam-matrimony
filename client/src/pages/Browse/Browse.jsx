@@ -17,15 +17,17 @@ const Browse = () => {
     const [showRegister, setShowRegister] = useState(false);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({
-        gender: '', religion: '', caste: '',
-        district: '', maritalStatus: '', minAge: '', maxAge: ''
+        gender: '', religion: '', caste: '', district: '', maritalStatus: '', minAge: '', maxAge: ''
     });
     const [allProfiles, setAllProfiles] = useState([]);
     const [displayProfiles, setDisplayProfiles] = useState([]);
-    const [shortlistedIds, setShortlistedIds] = useState([]); // ✅ track shortlisted
+    const [shortlistedIds, setShortlistedIds] = useState([]);
+    const [hiddenIds, setHiddenIds] = useState([]);
+    const [likedIds, setLikedIds] = useState([]); // ✅ new
 
     useEffect(() => { fetchProfiles(); }, [user]);
-    useEffect(() => { if (user) fetchShortlistedIds(); }, [user]); // ✅ load shortlisted
+    useEffect(() => { if (user) fetchShortlistedIds(); }, [user]);
+    useEffect(() => { if (user) fetchLikedIds(); }, [user]); // ✅ new
 
     const fetchProfiles = async () => {
         setLoading(true);
@@ -44,19 +46,27 @@ const Browse = () => {
         }
     };
 
-    // ✅ Fetch already shortlisted profile IDs
     const fetchShortlistedIds = async () => {
         try {
             const token = localStorage.getItem('token');
             const res = await axios.get(`${API}/api/shortlist/my`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            const ids = (res.data.profiles || []).map(p => p._id);
-            setShortlistedIds(ids);
+            setShortlistedIds((res.data.profiles || []).map(p => p._id));
         } catch (err) { }
     };
 
-    // ✅ Toggle shortlist
+    // ✅ Fetch liked profile IDs
+    const fetchLikedIds = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/likes/my-likes`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setLikedIds((res.data.profiles || []).map(p => p._id));
+        } catch (err) { }
+    };
+
     const handleShortlist = async (profile) => {
         if (!user) { setShowLogin(true); return; }
         const isShortlisted = shortlistedIds.includes(profile._id);
@@ -74,11 +84,56 @@ const Browse = () => {
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
                 setShortlistedIds(prev => [...prev, profile._id]);
-                toast.success('Profile shortlisted! ⭐');
+                toast.success('Shortlisted! ⭐');
             }
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed!');
         }
+    };
+
+    // ✅ Like with API
+    const handleLike = async (profile) => {
+        if (!user) { setShowLogin(true); return; }
+        const isLiked = likedIds.includes(profile._id);
+        try {
+            const token = localStorage.getItem('token');
+            if (isLiked) {
+                await axios.delete(`${API}/api/likes/remove/${profile._id}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setLikedIds(prev => prev.filter(id => id !== profile._id));
+                toast.success('Like removed!');
+            } else {
+                await axios.post(`${API}/api/likes/add`,
+                    { profileId: profile._id },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                setLikedIds(prev => [...prev, profile._id]);
+                toast.success('Liked! 👍');
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed!');
+        }
+    };
+
+    const handleDontShow = (profileId) => {
+        setHiddenIds(prev => [...prev, profileId]);
+        toast.success('Profile hidden');
+    };
+
+    const handleViewNumber = (profile) => {
+        if (!user) { setShowLogin(true); return; }
+        if (!user?.isPremium) { toast.error('Upgrade to Premium! ⭐'); return; }
+        const mobile = profile.user?.mobile;
+        if (mobile) window.open(`tel:+91${mobile}`);
+        else toast.error('Number not available');
+    };
+
+    const handleWhatsApp = (profile) => {
+        if (!user) { setShowLogin(true); return; }
+        if (!user?.isPremium) { toast.error('Upgrade to Premium! ⭐'); return; }
+        const mobile = profile.user?.mobile;
+        if (mobile) window.open(`https://wa.me/91${mobile}`, '_blank');
     };
 
     const handleFilterChange = (e) => {
@@ -101,36 +156,43 @@ const Browse = () => {
         setDisplayProfiles(allProfiles);
     };
 
-    const handleSendInterest = async (profile) => {
-        if (!user) { setShowLogin(true); return; }
-        toast.success(`Interest sent to ${getName(profile)}! 💌`);
-    };
-
-    const handleViewProfile = (profile) => {
-        navigate(`/profile/${profile._id}`);
-    };
-
     const getName = (p) => p.name || p.user?.name || 'Unknown';
+    const getAge = (dob) => {
+        if (!dob) return null;
+        const age = Math.floor((new Date() - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000));
+        return age > 0 ? age : null;
+    };
+    const getInfoLine = (p) => {
+        const parts = [];
+        const age = getAge(p.dateOfBirth);
+        if (age) parts.push(`${age} years`);
+        if (p.height) parts.push(p.height);
+        if (p.caste) parts.push(p.caste);
+        if (p.education) parts.push(p.education);
+        if (p.occupation) parts.push(p.occupation);
+        if (p.city) parts.push(`${p.city}, ${p.state || 'Tamil Nadu'}`);
+        return parts.join(' | ');
+    };
+
+    const visibleProfiles = displayProfiles.filter(p => !hiddenIds.includes(p._id));
 
     return (
-        <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
+        <div style={{ background: '#F2F2F2', minHeight: '100vh' }}>
             <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
 
             <div style={styles.header}>
                 <div style={styles.headerInner}>
                     <h1 style={styles.headerTitle}>Browse Profiles</h1>
-                    <p style={styles.headerDesc}>
-                        Find your perfect match from {allProfiles.length}+ verified profiles
-                    </p>
+                    <p style={styles.headerDesc}>{allProfiles.length}+ verified profiles</p>
                 </div>
             </div>
 
             <div style={styles.container}>
 
-                {/* FILTERS SIDEBAR */}
+                {/* LEFT SIDEBAR */}
                 <div style={styles.filterSidebar}>
                     <div style={styles.filterCard}>
-                        <h3 style={styles.filterTitle}>Filter Profiles</h3>
+                        <h3 style={styles.filterTitle}>🔍 Filter Profiles</h3>
 
                         <div style={styles.filterGroup}>
                             <label style={styles.filterLabel}>Looking For</label>
@@ -192,7 +254,6 @@ const Browse = () => {
                         <button style={styles.resetBtn} onClick={resetFilters}>Reset</button>
                     </div>
 
-                    {/* Quick Filters */}
                     <div style={styles.quickFilters}>
                         <h4 style={styles.quickTitle}>Quick Filters</h4>
                         {[
@@ -201,8 +262,6 @@ const Browse = () => {
                             { label: 'Hindu', filter: { religion: 'Hindu' } },
                             { label: 'Muslim', filter: { religion: 'Muslim' } },
                             { label: 'Christian', filter: { religion: 'Christian' } },
-                            { label: 'Chennai', filter: { district: 'Chennai' } },
-                            { label: 'Coimbatore', filter: { district: 'Coimbatore' } },
                             { label: 'Puducherry', filter: { district: 'Puducherry' } },
                         ].map(q => (
                             <span key={q.label} style={styles.quickTag}
@@ -213,122 +272,113 @@ const Browse = () => {
                     </div>
                 </div>
 
-                {/* PROFILES AREA */}
+                {/* RIGHT — profiles */}
                 <div style={styles.profilesArea}>
                     <div style={styles.resultsHeader}>
                         <span style={styles.resultsCount}>
-                            Showing <strong>{displayProfiles.length}</strong> profiles
+                            Showing <strong>{visibleProfiles.length}</strong> profiles
                         </span>
-                        <select style={styles.sortSelect}>
-                            <option>Sort by: Latest</option>
-                            <option>Sort by: Age</option>
-                            <option>Sort by: Location</option>
-                        </select>
-                    </div>
-
-                    {!user && (
-                        <div style={styles.loginAlert}>
-                            <span>🔒 Login to send interests and connect with profiles</span>
-                            <button style={styles.loginAlertBtn} onClick={() => setShowLogin(true)}>
-                                Login Now
+                        {!user && (
+                            <button style={styles.loginBtn} onClick={() => setShowLogin(true)}>
+                                🔒 Login to Connect
                             </button>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                             <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
                             <p style={{ color: '#7A6055' }}>Loading profiles...</p>
                         </div>
-                    ) : displayProfiles.length === 0 ? (
-                        <div style={styles.noResults}>
-                            <div style={{ fontSize: '60px' }}>💍</div>
+                    ) : visibleProfiles.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: '12px' }}>
+                            <div style={{ fontSize: '48px' }}>💍</div>
                             <h3>No profiles found!</h3>
-                            <p style={{ color: '#7A6055' }}>
-                                {allProfiles.length === 0
-                                    ? 'No profiles registered yet. Be the first!'
-                                    : 'Try adjusting your filters'}
-                            </p>
-                            {allProfiles.length > 0 && (
-                                <button style={styles.resetBtn2} onClick={resetFilters}>
-                                    Reset Filters
-                                </button>
-                            )}
+                            <button style={styles.applyBtn} onClick={resetFilters}>Reset Filters</button>
                         </div>
                     ) : (
                         <div style={styles.profilesGrid}>
-                            {displayProfiles.map((profile) => {
+                            {visibleProfiles.map((profile) => {
                                 const isShortlisted = shortlistedIds.includes(profile._id);
+                                const isLiked = likedIds.includes(profile._id); // ✅
+                                const name = getName(profile);
+                                const infoLine = getInfoLine(profile);
+                                const isFemale = profile.gender === 'Female';
+
                                 return (
-                                    <div key={profile._id} style={styles.profileCard}>
-                                        <div style={{
-                                            ...styles.photoSection,
-                                            background: profile.gender === 'Female'
-                                                ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
-                                                : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
-                                        }}>
+                                    <div key={profile._id} style={styles.card}>
+
+                                        {/* Photo */}
+                                        <div style={styles.photoBox}>
                                             {profile.photo ? (
-                                                <img src={`${API}${profile.photo}`}
-                                                    alt={getName(profile)}
-                                                    style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A' }} />
+                                                <img src={`${API}${profile.photo}`} alt={name}
+                                                    style={styles.photo}
+                                                    onClick={() => navigate(`/profile/${profile._id}`)} />
                                             ) : (
-                                                <span style={styles.profileEmoji}>
-                                                    {profile.gender === 'Female' ? '👩' : '👨'}
-                                                </span>
+                                                <div style={{
+                                                    ...styles.photoPlaceholder,
+                                                    background: isFemale
+                                                        ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
+                                                        : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
+                                                }}
+                                                    onClick={() => navigate(`/profile/${profile._id}`)}>
+                                                    <span style={{ fontSize: '52px' }}>
+                                                        {isFemale ? '👩' : '👨'}
+                                                    </span>
+                                                </div>
                                             )}
-                                            <span style={styles.verifiedBadge}>✓ Verified</span>
-                                            <span style={styles.genderBadge}>
-                                                {profile.gender === 'Female' ? 'Bride' : 'Groom'}
-                                            </span>
-                                            {profile.numberProtected && (
-                                                <span style={styles.privacyBadge}>🔒</span>
-                                            )}
+                                            <div style={styles.verifiedBadge}>✓ Verified</div>
+                                            <button style={styles.heartBtn} onClick={() => handleShortlist(profile)}>
+                                                {isShortlisted ? '❤️' : '🤍'}
+                                            </button>
                                         </div>
 
-                                        <div style={styles.cardInfo}>
-                                            <div style={styles.cardName}>{getName(profile)}</div>
-                                            <div style={styles.cardMeta}>{profile.occupation} • {profile.city}</div>
-                                            <div style={styles.cardMeta}>{profile.religion} • {profile.caste}</div>
-
-                                            <div style={styles.detailsRow}>
-                                                {[
-                                                    { icon: '📏', value: profile.height },
-                                                    { icon: '🎓', value: profile.education },
-                                                    { icon: '💰', value: profile.annualIncome },
-                                                    { icon: '⭐', value: profile.rasi },
-                                                ].filter(d => d.value).map(d => (
-                                                    <div key={d.icon} style={styles.detailTag}>
-                                                        {d.icon} {d.value}
-                                                    </div>
-                                                ))}
+                                        {/* Card body */}
+                                        <div style={styles.cardBody}>
+                                            <div style={styles.nameRow}>
+                                                <span style={styles.cardName}>{name}</span>
+                                                <div style={styles.contactIcons}>
+                                                    <button style={styles.phoneIcon}
+                                                        onClick={() => handleViewNumber(profile)} title="Call">
+                                                        📞
+                                                    </button>
+                                                    <button style={styles.waIcon}
+                                                        onClick={() => handleWhatsApp(profile)} title="WhatsApp">
+                                                        💬
+                                                    </button>
+                                                </div>
                                             </div>
 
-                                            {profile.about && (
-                                                <p style={styles.cardAbout}>
-                                                    {profile.about.substring(0, 80)}...
-                                                </p>
-                                            )}
+                                            <p style={styles.infoLine}>
+                                                {infoLine || `${profile.religion || ''} • ${profile.city || ''}`}
+                                            </p>
 
-                                            <div style={styles.cardActions}>
-                                                <button style={styles.interestBtn}
-                                                    onClick={() => handleSendInterest(profile)}>
-                                                    💌 Send Interest
+                                            <button style={styles.viewFullLink}
+                                                onClick={() => navigate(`/profile/${profile._id}`)}>
+                                                View full profile &rsaquo;
+                                            </button>
+
+                                            <div style={styles.secondaryRow}>
+                                                <button style={styles.dontShowBtn}
+                                                    onClick={() => handleDontShow(profile._id)}>
+                                                    ✕ Don't show
                                                 </button>
-                                                <button style={styles.viewBtn}
-                                                    onClick={() => handleViewProfile(profile)}>
-                                                    View Profile
-                                                </button>
-                                                {/* ✅ Shortlist button with toggle */}
-                                                <button style={{
-                                                    ...styles.shortlistBtn,
-                                                    background: isShortlisted ? '#FFF8E1' : '#FFFBF0',
-                                                    border: isShortlisted ? '1.5px solid #F5C518' : '1.5px solid #F5E6C0',
-                                                }}
-                                                    onClick={() => handleShortlist(profile)}
-                                                    title={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}>
-                                                    {isShortlisted ? '⭐' : '☆'}
+                                                <button style={styles.viewLaterBtn}
+                                                    onClick={() => handleShortlist(profile)}>
+                                                    🕐 {isShortlisted ? 'Shortlisted' : 'View later'}
                                                 </button>
                                             </div>
+
+                                            {/* ✅ Like button with toggle */}
+                                            <button style={{
+                                                ...styles.likeBtn,
+                                                background: isLiked
+                                                    ? 'linear-gradient(135deg, #2E7D32, #388E3C)'
+                                                    : 'linear-gradient(135deg, #8B1A1A, #C0392B)'
+                                            }}
+                                                onClick={() => handleLike(profile)}>
+                                                {isLiked ? '👍 Liked' : '👍 Like'}
+                                            </button>
                                         </div>
                                     </div>
                                 );
@@ -353,48 +403,46 @@ const Browse = () => {
 };
 
 const styles = {
-    header: { background: 'linear-gradient(135deg, #1A0A0A, #3D1A1A)', padding: '40px 24px' },
+    header: { background: 'linear-gradient(135deg, #1A0A0A, #3D1A1A)', padding: '24px' },
     headerInner: { maxWidth: '1200px', margin: '0 auto' },
-    headerTitle: { fontFamily: "'Playfair Display', serif", fontSize: '36px', color: '#fff', marginBottom: '8px' },
-    headerDesc: { color: 'rgba(255,255,255,0.6)', fontSize: '15px' },
-    container: { maxWidth: '1200px', margin: '0 auto', padding: '32px 24px', display: 'grid', gridTemplateColumns: '260px 1fr', gap: '28px', alignItems: 'start' },
+    headerTitle: { fontFamily: "'Playfair Display', serif", fontSize: '28px', color: '#fff', marginBottom: '4px' },
+    headerDesc: { fontSize: '14px', color: 'rgba(255,255,255,0.6)' },
+    container: { maxWidth: '1200px', margin: '0 auto', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr', gap: '20px', alignItems: 'start' },
     filterSidebar: {},
-    filterCard: { background: '#fff', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)', marginBottom: '16px' },
-    filterTitle: { fontFamily: "'Playfair Display', serif", fontSize: '18px', color: '#1A0A0A', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #E8D5C4' },
-    filterGroup: { marginBottom: '14px' },
-    filterLabel: { display: 'block', fontSize: '11px', fontWeight: '700', color: '#7A6055', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-    filterInput: { width: '100%', padding: '9px 12px', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '13px', color: '#2C1810', background: '#FFFDF9', outline: 'none', fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box' },
-    ageRow: { display: 'flex', gap: '8px' },
-    applyBtn: { width: '100%', padding: '11px', background: 'linear-gradient(135deg, #8B1A1A, #C0392B)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '8px' },
-    resetBtn: { width: '100%', padding: '9px', background: 'transparent', color: '#7A6055', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' },
-    quickFilters: { background: '#fff', borderRadius: '16px', padding: '16px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
-    quickTitle: { fontSize: '13px', fontWeight: '700', color: '#7A6055', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-    quickTag: { display: 'inline-block', padding: '5px 12px', background: '#FDF0F0', border: '1px solid #E8C4C4', borderRadius: '20px', fontSize: '12px', fontWeight: '500', color: '#8B1A1A', cursor: 'pointer', margin: '3px' },
+    filterCard: { background: '#fff', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '12px' },
+    filterTitle: { fontSize: '15px', fontWeight: '700', color: '#1A0A0A', marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid #E8D5C4' },
+    filterGroup: { marginBottom: '12px' },
+    filterLabel: { display: 'block', fontSize: '10px', fontWeight: '700', color: '#7A6055', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    filterInput: { width: '100%', padding: '8px 10px', border: '1.5px solid #E8D5C4', borderRadius: '7px', fontSize: '12px', color: '#2C1810', background: '#FFFDF9', outline: 'none', boxSizing: 'border-box' },
+    ageRow: { display: 'flex', gap: '6px' },
+    applyBtn: { width: '100%', padding: '10px', background: 'linear-gradient(135deg, #8B1A1A, #C0392B)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '6px' },
+    resetBtn: { width: '100%', padding: '8px', background: 'transparent', color: '#7A6055', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' },
+    quickFilters: { background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
+    quickTitle: { fontSize: '11px', fontWeight: '700', color: '#7A6055', marginBottom: '8px', textTransform: 'uppercase' },
+    quickTag: { display: 'inline-block', padding: '4px 10px', background: '#FDF0F0', border: '1px solid #E8C4C4', borderRadius: '20px', fontSize: '11px', color: '#8B1A1A', cursor: 'pointer', margin: '2px' },
     profilesArea: {},
-    resultsHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
-    resultsCount: { fontSize: '14px', color: '#7A6055' },
-    sortSelect: { padding: '7px 12px', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '13px', color: '#2C1810', background: '#fff', cursor: 'pointer' },
-    loginAlert: { background: '#FFF9E6', border: '1px solid #F5E6C0', borderRadius: '10px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', fontSize: '14px', color: '#7A6055' },
-    loginAlertBtn: { padding: '7px 16px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
-    profilesGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' },
-    profileCard: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
-    photoSection: { height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' },
-    profileEmoji: { fontSize: '52px' },
-    verifiedBadge: { position: 'absolute', top: '10px', right: '10px', background: '#1E6B3C', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px' },
-    genderBadge: { position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(255,255,255,0.9)', color: '#2C1810', fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '20px' },
-    privacyBadge: { position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(139,26,26,0.8)', color: '#fff', fontSize: '10px', padding: '3px 6px', borderRadius: '20px' },
-    cardInfo: { padding: '14px' },
-    cardName: { fontFamily: "'Playfair Display', serif", fontSize: '17px', fontWeight: '700', color: '#1A0A0A', marginBottom: '3px' },
-    cardMeta: { fontSize: '12px', color: '#7A6055', marginBottom: '2px', lineHeight: 1.5 },
-    detailsRow: { display: 'flex', flexWrap: 'wrap', gap: '4px', margin: '8px 0' },
-    detailTag: { fontSize: '10px', padding: '3px 8px', background: '#FDF0F0', color: '#8B1A1A', borderRadius: '20px', fontWeight: '500' },
-    cardAbout: { fontSize: '12px', color: '#7A6055', lineHeight: 1.5, marginBottom: '10px' },
-    cardActions: { display: 'flex', gap: '6px' },
-    interestBtn: { flex: 1, padding: '8px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
-    viewBtn: { flex: 1, padding: '8px', background: 'transparent', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
-    shortlistBtn: { padding: '8px 10px', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' },
-    noResults: { textAlign: 'center', padding: '60px 20px' },
-    resetBtn2: { padding: '10px 24px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginTop: '16px' },
+    resultsHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' },
+    resultsCount: { fontSize: '13px', color: '#7A6055' },
+    loginBtn: { padding: '7px 14px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+    profilesGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' },
+    card: { background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' },
+    photoBox: { position: 'relative', width: '100%', height: '200px', overflow: 'hidden', cursor: 'pointer' },
+    photo: { width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', background: '#f9f0f0' },
+    photoPlaceholder: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+    verifiedBadge: { position: 'absolute', top: '6px', left: '6px', background: '#1E6B3C', color: '#fff', fontSize: '9px', fontWeight: '700', padding: '2px 6px', borderRadius: '20px' },
+    heartBtn: { position: 'absolute', top: '6px', right: '6px', background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: '26px', height: '26px', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' },
+    cardBody: { padding: '10px 12px 12px' },
+    nameRow: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' },
+    cardName: { fontFamily: "'Playfair Display', serif", fontSize: '14px', fontWeight: '700', color: '#1A0A0A', flex: 1 },
+    contactIcons: { display: 'flex', gap: '5px' },
+    phoneIcon: { width: '26px', height: '26px', borderRadius: '50%', border: '2px solid #4CAF50', background: '#fff', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    waIcon: { width: '26px', height: '26px', borderRadius: '50%', border: '2px solid #25D366', background: '#25D366', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    infoLine: { fontSize: '11px', color: '#555', lineHeight: 1.4, marginBottom: '6px' },
+    viewFullLink: { background: 'none', border: 'none', color: '#8B1A1A', fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: '0', marginBottom: '8px', textDecoration: 'underline', display: 'block' },
+    secondaryRow: { display: 'flex', gap: '6px', marginBottom: '6px' },
+    dontShowBtn: { flex: 1, padding: '6px', background: '#fff', border: '1.5px solid #D0D0D0', borderRadius: '7px', fontSize: '11px', fontWeight: '500', color: '#444', cursor: 'pointer' },
+    viewLaterBtn: { flex: 1, padding: '6px', background: '#fff', border: '1.5px solid #D0D0D0', borderRadius: '7px', fontSize: '11px', fontWeight: '500', color: '#444', cursor: 'pointer' },
+    likeBtn: { width: '100%', padding: '8px', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' },
 };
 
 export default Browse;
