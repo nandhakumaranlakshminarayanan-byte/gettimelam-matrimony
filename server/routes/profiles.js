@@ -29,14 +29,14 @@ const upload = multer({
 });
 
 // ── Profile routes ──
-router.get('/', optionalProtect, getProfiles);   // ✅ exclude own profile
+router.get('/', optionalProtect, getProfiles);
 router.post('/', protect, createProfile);
 router.get('/my', protect, getMyProfile);
-router.get('/suggested', protect, getSuggestedMatches);   // ✅ opposite gender matches
+router.get('/suggested', protect, getSuggestedMatches);
 router.get('/:id', getProfileById);
 router.put('/:id', protect, updateProfile);
 
-// ── Upload profile photo ──
+// ── Upload single profile photo ──
 router.post('/upload-photo', protect, upload.single('photo'), async (req, res) => {
     try {
         if (!req.file) {
@@ -53,6 +53,56 @@ router.post('/upload-photo', protect, upload.single('photo'), async (req, res) =
             photoUrl,
             fullUrl: `http://localhost:5000${photoUrl}`
         });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ✅ Upload multiple photos (up to 15)
+router.post('/upload-photos', protect, upload.array('photos', 15), async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ success: false, message: 'No files uploaded' });
+        }
+        const photoUrls = req.files.map(f => `/uploads/${f.filename}`);
+        const profile = await Profile.findOne({ user: req.user.id });
+        if (!profile) {
+            return res.status(404).json({ success: false, message: 'Create your profile first!' });
+        }
+        const existingPhotos = profile.photos || [];
+        const totalPhotos = existingPhotos.length + photoUrls.length;
+        if (totalPhotos > 15) {
+            return res.status(400).json({
+                success: false,
+                message: `Max 15 photos. You have ${existingPhotos.length}. Can add ${15 - existingPhotos.length} more.`
+            });
+        }
+        const updatedProfile = await Profile.findOneAndUpdate(
+            { user: req.user.id },
+            { $push: { photos: { $each: photoUrls } } },
+            { new: true }
+        );
+        res.json({
+            success: true,
+            message: `${photoUrls.length} photo(s) uploaded! ✅`,
+            photos: updatedProfile.photos,
+            fullUrls: photoUrls.map(url => `http://localhost:5000${url}`)
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ✅ Delete a gallery photo
+router.delete('/photos/:filename', protect, async (req, res) => {
+    try {
+        const photoUrl = `/uploads/${req.params.filename}`;
+        await Profile.findOneAndUpdate(
+            { user: req.user.id },
+            { $pull: { photos: photoUrl } },
+            { new: true }
+        );
+        res.json({ success: true, message: 'Photo deleted!' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
