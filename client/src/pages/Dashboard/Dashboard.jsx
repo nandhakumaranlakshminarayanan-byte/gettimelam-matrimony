@@ -35,9 +35,7 @@ const IncomingRequests = () => {
             );
             toast.success(`Request ${status}!`);
             fetchRequests();
-        } catch (err) {
-            toast.error('Failed!');
-        }
+        } catch (err) { toast.error('Failed!'); }
     };
 
     if (requests.length === 0) return (
@@ -66,13 +64,9 @@ const IncomingRequests = () => {
                         {req.status === 'pending' ? (
                             <>
                                 <button style={{ padding: '6px 14px', background: '#E8F5E9', color: '#2E7D32', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                                    onClick={() => respond(req._id, 'approved')}>
-                                    ✅ Approve
-                                </button>
+                                    onClick={() => respond(req._id, 'approved')}>✅ Approve</button>
                                 <button style={{ padding: '6px 14px', background: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                                    onClick={() => respond(req._id, 'rejected')}>
-                                    ❌ Reject
-                                </button>
+                                    onClick={() => respond(req._id, 'rejected')}>❌ Reject</button>
                             </>
                         ) : (
                             <span style={{
@@ -94,7 +88,7 @@ const Dashboard = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
-    const [shortlistSubTab, setShortlistSubTab] = useState('shortlisted'); // ✅ new
+    const [shortlistSubTab, setShortlistSubTab] = useState('shortlisted');
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
     const [profile, setProfile] = useState(null);
@@ -102,10 +96,12 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(false);
     const [photoUrl, setPhotoUrl] = useState(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [galleryPhotos, setGalleryPhotos] = useState([]);       // ✅ new
+    const [uploadingGallery, setUploadingGallery] = useState(false);   // ✅ new
     const [suggestedMatches, setSuggestedMatches] = useState([]);
     const [shortlistedProfiles, setShortlistedProfiles] = useState([]);
-    const [likedProfiles, setLikedProfiles] = useState([]); // ✅ new
-    const [likedMeProfiles, setLikedMeProfiles] = useState([]); // ✅ new
+    const [likedProfiles, setLikedProfiles] = useState([]);
+    const [likedMeProfiles, setLikedMeProfiles] = useState([]);
 
     const [form, setForm] = useState({
         name: '', dateOfBirth: '', height: '', weight: '',
@@ -123,8 +119,8 @@ const Dashboard = () => {
         fetchProfile();
         fetchSuggestedMatches();
         fetchShortlist();
-        fetchLikedProfiles();  // ✅ new
-        fetchLikedMe();        // ✅ new
+        fetchLikedProfiles();
+        fetchLikedMe();
     }, [user]);
 
     const fetchProfile = async () => {
@@ -139,6 +135,8 @@ const Dashboard = () => {
                 const photo = res.data.profile.photo;
                 setPhotoUrl(photo.startsWith('http') ? photo : `${API}${photo}`);
             }
+            // ✅ Load gallery photos
+            setGalleryPhotos(res.data.profile.photos || []);
         } catch (err) { }
     };
 
@@ -162,7 +160,6 @@ const Dashboard = () => {
         } catch (err) { setShortlistedProfiles([]); }
     };
 
-    // ✅ Fetch profiles I liked
     const fetchLikedProfiles = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -173,7 +170,6 @@ const Dashboard = () => {
         } catch (err) { setLikedProfiles([]); }
     };
 
-    // ✅ Fetch profiles who liked me
     const fetchLikedMe = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -203,8 +199,44 @@ const Dashboard = () => {
             toast.success('Photo uploaded! ✅');
         } catch (err) {
             toast.error(err.response?.data?.message || 'Upload failed!');
-        } finally {
-            setUploadingPhoto(false);
+        } finally { setUploadingPhoto(false); }
+    };
+
+    // ✅ Upload multiple gallery photos
+    const handleGalleryUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        if (!profile) { toast.error('Create your profile first!'); return; }
+        if (galleryPhotos.length + files.length > 15) {
+            toast.error(`You can only upload ${15 - galleryPhotos.length} more photos!`);
+            return;
+        }
+        setUploadingGallery(true);
+        const formData = new FormData();
+        files.forEach(f => formData.append('photos', f));
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.post(`${API}/api/profiles/upload-photos`, formData, {
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+            });
+            setGalleryPhotos(res.data.photos || []);
+            toast.success(`${files.length} photo(s) uploaded! ✅`);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Upload failed!');
+        } finally { setUploadingGallery(false); }
+    };
+
+    // ✅ Delete gallery photo
+    const handleDeleteGalleryPhoto = async (filename) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.delete(`${API}/api/profiles/photos/${filename}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setGalleryPhotos(prev => prev.filter(p => !p.includes(filename)));
+            toast.success('Photo deleted!');
+        } catch (err) {
+            toast.error('Failed to delete!');
         }
     };
 
@@ -229,9 +261,7 @@ const Dashboard = () => {
             fetchSuggestedMatches();
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to save profile');
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     const handleTogglePrivacy = async () => {
@@ -243,9 +273,7 @@ const Dashboard = () => {
             );
             toast.success(res.data.message);
             fetchProfile();
-        } catch (err) {
-            toast.error('Failed to update privacy!');
-        }
+        } catch (err) { toast.error('Failed to update privacy!'); }
     };
 
     const tabs = [
@@ -259,7 +287,6 @@ const Dashboard = () => {
 
     const completionPct = photoUrl && profile ? '80%' : profile ? '60%' : '20%';
 
-    // ✅ Reusable profile card
     const ProfileCard = ({ p, showLikerName = false, likerName = '' }) => (
         <div style={styles.matchCard}>
             <div style={styles.matchPhoto}>
@@ -276,10 +303,7 @@ const Dashboard = () => {
                 <div style={styles.matchMeta}>{p?.religion} • {p?.caste}</div>
             </div>
             <div style={styles.matchActions}>
-                <button style={styles.viewBtn}
-                    onClick={() => navigate(`/profile/${p?._id}`)}>
-                    View
-                </button>
+                <button style={styles.viewBtn} onClick={() => navigate(`/profile/${p?._id}`)}>View</button>
             </div>
         </div>
     );
@@ -615,35 +639,91 @@ const Dashboard = () => {
                             ) : (
                                 <div>
                                     {profile ? (
-                                        <div style={styles.profileView}>
-                                            {[
-                                                { label: 'Height', value: profile.height },
-                                                { label: 'Complexion', value: profile.complexion },
-                                                { label: 'Marital Status', value: profile.maritalStatus },
-                                                { label: 'Religion', value: profile.religion },
-                                                { label: 'Caste', value: profile.caste },
-                                                { label: 'Rasi', value: profile.rasi },
-                                                { label: 'Nakshatra', value: profile.nakshatra },
-                                                { label: 'Dosham', value: profile.dosham },
-                                                { label: 'Education', value: profile.education },
-                                                { label: 'Occupation', value: profile.occupation },
-                                                { label: 'Annual Income', value: profile.annualIncome },
-                                                { label: 'City', value: profile.city },
-                                                { label: 'District', value: profile.district },
-                                                { label: 'Family Type', value: profile.familyType },
-                                            ].filter(i => i.value).map(item => (
-                                                <div key={item.label} style={styles.profileField}>
-                                                    <span style={styles.fieldLabel}>{item.label}</span>
-                                                    <span style={styles.fieldValue}>{item.value}</span>
+                                        <>
+                                            <div style={styles.profileView}>
+                                                {[
+                                                    { label: 'Height', value: profile.height },
+                                                    { label: 'Complexion', value: profile.complexion },
+                                                    { label: 'Marital Status', value: profile.maritalStatus },
+                                                    { label: 'Religion', value: profile.religion },
+                                                    { label: 'Caste', value: profile.caste },
+                                                    { label: 'Rasi', value: profile.rasi },
+                                                    { label: 'Nakshatra', value: profile.nakshatra },
+                                                    { label: 'Dosham', value: profile.dosham },
+                                                    { label: 'Education', value: profile.education },
+                                                    { label: 'Occupation', value: profile.occupation },
+                                                    { label: 'Annual Income', value: profile.annualIncome },
+                                                    { label: 'City', value: profile.city },
+                                                    { label: 'District', value: profile.district },
+                                                    { label: 'Family Type', value: profile.familyType },
+                                                ].filter(i => i.value).map(item => (
+                                                    <div key={item.label} style={styles.profileField}>
+                                                        <span style={styles.fieldLabel}>{item.label}</span>
+                                                        <span style={styles.fieldValue}>{item.value}</span>
+                                                    </div>
+                                                ))}
+                                                {profile.about && (
+                                                    <div style={styles.aboutSection}>
+                                                        <h4 style={styles.fieldLabel}>About Me</h4>
+                                                        <p style={styles.aboutText}>{profile.about}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* ✅ Photo Gallery Section */}
+                                            <div style={styles.gallerySection}>
+                                                <div style={styles.galleryHeader}>
+                                                    <h3 style={styles.galleryTitle}>
+                                                        📸 My Photos ({galleryPhotos.length}/15)
+                                                    </h3>
+                                                    {galleryPhotos.length < 15 && (
+                                                        <label style={styles.editBtn} htmlFor="galleryUpload">
+                                                            {uploadingGallery ? '⏳ Uploading...' : '➕ Add Photos'}
+                                                        </label>
+                                                    )}
+                                                    <input id="galleryUpload" type="file" multiple accept="image/*"
+                                                        style={{ display: 'none' }}
+                                                        onChange={handleGalleryUpload}
+                                                        disabled={uploadingGallery} />
                                                 </div>
-                                            ))}
-                                            {profile.about && (
-                                                <div style={styles.aboutSection}>
-                                                    <h4 style={styles.fieldLabel}>About Me</h4>
-                                                    <p style={styles.aboutText}>{profile.about}</p>
-                                                </div>
-                                            )}
-                                        </div>
+
+                                                {galleryPhotos.length === 0 ? (
+                                                    <div style={styles.galleryEmpty}>
+                                                        <div style={{ fontSize: '40px', marginBottom: '8px' }}>📷</div>
+                                                        <p style={{ color: '#7A6055', fontSize: '14px', marginBottom: '12px' }}>
+                                                            No photos yet. Add up to 15 photos!
+                                                        </p>
+                                                        <label htmlFor="galleryUpload"
+                                                            style={{ ...styles.saveBtn, cursor: 'pointer', fontSize: '13px', padding: '10px 20px' }}>
+                                                            Upload Photos
+                                                        </label>
+                                                    </div>
+                                                ) : (
+                                                    <div style={styles.galleryGrid}>
+                                                        {galleryPhotos.map((photo, i) => {
+                                                            const filename = photo.split('/').pop();
+                                                            return (
+                                                                <div key={i} style={styles.galleryItem}>
+                                                                    <img src={`${API}${photo}`} alt={`Photo ${i + 1}`}
+                                                                        style={styles.galleryImg} />
+                                                                    <button onClick={() => handleDeleteGalleryPhoto(filename)}
+                                                                        style={styles.galleryDeleteBtn}>
+                                                                        ✕
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {/* Add more */}
+                                                        {galleryPhotos.length < 15 && (
+                                                            <label htmlFor="galleryUpload" style={styles.galleryAddMore}>
+                                                                <span style={{ fontSize: '28px' }}>➕</span>
+                                                                <span style={{ fontSize: '11px', color: '#7A6055', marginTop: '4px' }}>Add More</span>
+                                                            </label>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
                                     ) : (
                                         <div style={styles.emptyProfile}>
                                             <div style={{ fontSize: '60px', marginBottom: '16px' }}>👤</div>
@@ -724,12 +804,10 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {/* ✅ SHORTLIST TAB — 3 sub-tabs */}
+                    {/* SHORTLIST TAB */}
                     {activeTab === 'shortlist' && (
                         <div>
                             <h2 style={styles.pageTitle}>⭐ Shortlist & Likes</h2>
-
-                            {/* ✅ Sub-tab buttons */}
                             <div style={styles.subTabRow}>
                                 {[
                                     { id: 'shortlisted', label: `⭐ Shortlisted (${shortlistedProfiles.length})` },
@@ -737,91 +815,59 @@ const Dashboard = () => {
                                     { id: 'liked-me', label: `💝 Liked Me (${likedMeProfiles.length})` },
                                 ].map(sub => (
                                     <button key={sub.id}
-                                        style={{
-                                            ...styles.subTabBtn,
-                                            ...(shortlistSubTab === sub.id ? styles.subTabActive : {})
-                                        }}
+                                        style={{ ...styles.subTabBtn, ...(shortlistSubTab === sub.id ? styles.subTabActive : {}) }}
                                         onClick={() => setShortlistSubTab(sub.id)}>
                                         {sub.label}
                                     </button>
                                 ))}
                             </div>
 
-                            {/* ✅ Shortlisted profiles */}
                             {shortlistSubTab === 'shortlisted' && (
-                                <div>
-                                    {shortlistedProfiles.length === 0 ? (
-                                        <div style={styles.emptyProfile}>
-                                            <div style={{ fontSize: '48px', marginBottom: '12px' }}>⭐</div>
-                                            <h3>No Shortlisted Profiles!</h3>
-                                            <p style={{ color: '#7A6055', marginBottom: '16px' }}>
-                                                Browse profiles and click ❤️ to shortlist
-                                            </p>
-                                            <button style={styles.saveBtn} onClick={() => navigate('/browse')}>
-                                                Browse Profiles →
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div style={styles.matchesGrid}>
-                                            {shortlistedProfiles.map((p, i) => (
-                                                <ProfileCard key={p._id || i} p={p} />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                shortlistedProfiles.length === 0 ? (
+                                    <div style={styles.emptyProfile}>
+                                        <div style={{ fontSize: '48px', marginBottom: '12px' }}>⭐</div>
+                                        <h3>No Shortlisted Profiles!</h3>
+                                        <p style={{ color: '#7A6055', marginBottom: '16px' }}>Browse profiles and click ❤️ to shortlist</p>
+                                        <button style={styles.saveBtn} onClick={() => navigate('/browse')}>Browse Profiles →</button>
+                                    </div>
+                                ) : (
+                                    <div style={styles.matchesGrid}>
+                                        {shortlistedProfiles.map((p, i) => <ProfileCard key={p._id || i} p={p} />)}
+                                    </div>
+                                )
                             )}
 
-                            {/* ✅ Profiles I liked */}
                             {shortlistSubTab === 'liked' && (
-                                <div>
-                                    {likedProfiles.length === 0 ? (
-                                        <div style={styles.emptyProfile}>
-                                            <div style={{ fontSize: '48px', marginBottom: '12px' }}>👍</div>
-                                            <h3>No Liked Profiles!</h3>
-                                            <p style={{ color: '#7A6055', marginBottom: '16px' }}>
-                                                Browse profiles and click 👍 Like to save them here
-                                            </p>
-                                            <button style={styles.saveBtn} onClick={() => navigate('/browse')}>
-                                                Browse Profiles →
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div style={styles.matchesGrid}>
-                                            {likedProfiles.map((p, i) => (
-                                                <ProfileCard key={p._id || i} p={p} />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                likedProfiles.length === 0 ? (
+                                    <div style={styles.emptyProfile}>
+                                        <div style={{ fontSize: '48px', marginBottom: '12px' }}>👍</div>
+                                        <h3>No Liked Profiles!</h3>
+                                        <p style={{ color: '#7A6055', marginBottom: '16px' }}>Browse profiles and click 👍 Like to save them here</p>
+                                        <button style={styles.saveBtn} onClick={() => navigate('/browse')}>Browse Profiles →</button>
+                                    </div>
+                                ) : (
+                                    <div style={styles.matchesGrid}>
+                                        {likedProfiles.map((p, i) => <ProfileCard key={p._id || i} p={p} />)}
+                                    </div>
+                                )
                             )}
 
-                            {/* ✅ Profiles that liked me */}
                             {shortlistSubTab === 'liked-me' && (
-                                <div>
-                                    {likedMeProfiles.length === 0 ? (
-                                        <div style={styles.emptyProfile}>
-                                            <div style={{ fontSize: '48px', marginBottom: '12px' }}>💝</div>
-                                            <h3>No one liked your profile yet!</h3>
-                                            <p style={{ color: '#7A6055', marginBottom: '16px' }}>
-                                                Complete your profile to attract more likes
-                                            </p>
-                                            <button style={styles.saveBtn} onClick={() => setActiveTab('profile')}>
-                                                Complete Profile →
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div style={styles.matchesGrid}>
-                                            {likedMeProfiles.map((like, i) => (
-                                                <ProfileCard
-                                                    key={like._id || i}
-                                                    p={like.profile}
-                                                    showLikerName={true}
-                                                    likerName={like.liker?.name || 'Unknown'}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
+                                likedMeProfiles.length === 0 ? (
+                                    <div style={styles.emptyProfile}>
+                                        <div style={{ fontSize: '48px', marginBottom: '12px' }}>💝</div>
+                                        <h3>No one liked your profile yet!</h3>
+                                        <p style={{ color: '#7A6055', marginBottom: '16px' }}>Complete your profile to attract more likes</p>
+                                        <button style={styles.saveBtn} onClick={() => setActiveTab('profile')}>Complete Profile →</button>
+                                    </div>
+                                ) : (
+                                    <div style={styles.matchesGrid}>
+                                        {likedMeProfiles.map((like, i) => (
+                                            <ProfileCard key={like._id || i} p={like.profile}
+                                                showLikerName={true} likerName={like.liker?.name || 'Unknown'} />
+                                        ))}
+                                    </div>
+                                )
                             )}
                         </div>
                     )}
@@ -830,7 +876,6 @@ const Dashboard = () => {
                     {activeTab === 'settings' && (
                         <div>
                             <h2 style={styles.pageTitle}>⚙️ Settings</h2>
-
                             <div style={styles.formSection}>
                                 <h3 style={styles.formSectionTitle}>🔒 Number Privacy</h3>
                                 <div style={{
@@ -855,12 +900,10 @@ const Dashboard = () => {
                                         cursor: profile ? 'pointer' : 'not-allowed',
                                         background: profile ? (profile?.numberProtected ? '#2E7D32' : '#8B1A1A') : '#ccc',
                                         color: '#fff', opacity: profile ? 1 : 0.5
-                                    }}
-                                        onClick={handleTogglePrivacy}>
+                                    }} onClick={handleTogglePrivacy}>
                                         {profile?.numberProtected ? '🔓 Make Public' : '🔒 Protect Number'}
                                     </button>
                                 </div>
-
                                 <div style={{ marginTop: '20px' }}>
                                     <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#1A0A0A', marginBottom: '12px' }}>
                                         📬 Number Requests
@@ -968,11 +1011,20 @@ const styles = {
     aboutSection: { gridColumn: '1 / -1', padding: '12px 16px' },
     aboutText: { fontSize: '14px', color: '#2C1810', lineHeight: 1.7, marginTop: '4px' },
     emptyProfile: { textAlign: 'center', padding: '60px 20px' },
-
-    // ✅ Sub-tab styles
     subTabRow: { display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' },
     subTabBtn: { padding: '9px 16px', background: '#F5F5F5', border: '1.5px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#555', cursor: 'pointer' },
     subTabActive: { background: '#FDF0F0', border: '1.5px solid #8B1A1A', color: '#8B1A1A' },
+
+    // ✅ Gallery styles
+    gallerySection: { marginTop: '28px', padding: '20px', background: '#FFFDF9', border: '1px solid #E8D5C4', borderRadius: '12px' },
+    galleryHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
+    galleryTitle: { fontFamily: "'Playfair Display', serif", fontSize: '18px', color: '#1A0A0A', fontWeight: '700' },
+    galleryEmpty: { textAlign: 'center', padding: '32px', background: '#F9F9F9', borderRadius: '10px', border: '2px dashed #E8D5C4' },
+    galleryGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' },
+    galleryItem: { position: 'relative', borderRadius: '10px', overflow: 'hidden', aspectRatio: '1' },
+    galleryImg: { width: '100%', height: '100%', objectFit: 'cover' },
+    galleryDeleteBtn: { position: 'absolute', top: '6px', right: '6px', background: 'rgba(198,40,40,0.9)', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700' },
+    galleryAddMore: { aspectRatio: '1', border: '2px dashed #E8D5C4', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: '#FFFDF9' },
 };
 
 export default Dashboard;

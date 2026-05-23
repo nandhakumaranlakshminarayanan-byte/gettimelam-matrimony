@@ -7,18 +7,6 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
     const navigate = useNavigate();
     const [browseOpen, setBrowseOpen] = useState(false);
 
-    const handleDashboard = () => {
-        if (user?.role === 'service') navigate('/service-provider');
-        else if (user?.role === 'admin') navigate('/admin');
-        else navigate('/dashboard');
-    };
-
-    const getDashboardLabel = () => {
-        if (user?.role === 'service') return '🏪 My Business';
-        if (user?.role === 'admin') return '⚙️ Admin Panel';
-        return 'Dashboard';
-    };
-
     return (
         <nav style={styles.nav}>
             <div style={styles.inner}>
@@ -67,7 +55,6 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
                     <span style={styles.link} onClick={() => navigate('/plans')}>Plans</span>
                     <span style={styles.link} onClick={() => navigate('/contact')}>Contact</span>
 
-                    {/* ✅ Messages link — only show when logged in */}
                     {user && (
                         <span style={styles.link} onClick={() => navigate('/messages')}>
                             💬 Messages
@@ -87,9 +74,28 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
                             <span style={styles.userName}>
                                 {user.role === 'service' ? '🏪' : '👤'} {user.name || user.businessName}
                             </span>
-                            <button style={styles.btnOutline} onClick={handleDashboard}>
-                                {getDashboardLabel()}
-                            </button>
+
+                            {/* ✅ Admin — only Admin Panel */}
+                            {user?.role === 'admin' && (
+                                <button style={styles.btnAdmin} onClick={() => navigate('/admin')}>
+                                    ⚙️ Admin Panel
+                                </button>
+                            )}
+
+                            {/* ✅ Member — Dashboard only */}
+                            {user?.role === 'member' && (
+                                <button style={styles.btnOutline} onClick={() => navigate('/dashboard')}>
+                                    Dashboard
+                                </button>
+                            )}
+
+                            {/* ✅ Service — My Business only */}
+                            {user?.role === 'service' && (
+                                <button style={styles.btnOutline} onClick={() => navigate('/service-provider')}>
+                                    🏪 My Business
+                                </button>
+                            )}
+
                             <button style={styles.btnPrimary} onClick={() => { logout(); navigate('/'); }}>
                                 Logout
                             </button>
@@ -107,33 +113,21 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
 };
 
 const styles = {
-    nav: {
-        background: '#fff', borderBottom: '1px solid #E8D5C4',
-        position: 'sticky', top: 0, zIndex: 100,
-        boxShadow: '0 2px 12px rgba(139,26,26,0.06)'
-    },
-    inner: {
-        maxWidth: '1200px', margin: '0 auto', padding: '0 24px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '80px'
-    },
+    nav: { background: '#fff', borderBottom: '1px solid #E8D5C4', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(139,26,26,0.06)' },
+    inner: { maxWidth: '1200px', margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '80px' },
     logo: { cursor: 'pointer', display: 'flex', alignItems: 'center' },
     logoImg: { height: '80px', objectFit: 'contain' },
     links: { display: 'flex', gap: '2px', alignItems: 'center' },
     link: { fontSize: '13px', fontWeight: '500', color: '#7A6055', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer' },
     dropdown: { position: 'relative' },
-    dropMenu: {
-        position: 'absolute', top: '100%', left: 0,
-        background: '#fff', borderRadius: '12px',
-        boxShadow: '0 8px 32px rgba(139,26,26,0.15)',
-        border: '1px solid #E8D5C4', padding: '8px',
-        minWidth: '200px', zIndex: 200
-    },
+    dropMenu: { position: 'absolute', top: '100%', left: 0, background: '#fff', borderRadius: '12px', boxShadow: '0 8px 32px rgba(139,26,26,0.15)', border: '1px solid #E8D5C4', padding: '8px', minWidth: '200px', zIndex: 200 },
     dropItem: { display: 'block', padding: '9px 14px', fontSize: '13px', color: '#2C1810', borderRadius: '8px', cursor: 'pointer' },
     dropDivider: { height: '1px', background: '#E8D5C4', margin: '6px 0' },
     actions: { display: 'flex', alignItems: 'center', gap: '8px' },
     langSelect: { padding: '6px 10px', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '13px', color: '#7A6055', background: '#FFFDF9', cursor: 'pointer' },
     btnOutline: { padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', background: 'transparent', border: '1.5px solid #8B1A1A', color: '#8B1A1A', cursor: 'pointer' },
     btnPrimary: { padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', background: '#8B1A1A', border: 'none', color: '#fff', cursor: 'pointer' },
+    btnAdmin: { padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '500', background: '#1A237E', border: 'none', color: '#fff', cursor: 'pointer' },
     userMenu: { display: 'flex', alignItems: 'center', gap: '8px' },
     userName: { fontSize: '13px', fontWeight: '600', color: '#8B1A1A' },
 };

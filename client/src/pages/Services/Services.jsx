@@ -8,13 +8,15 @@ import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
+const API = 'http://localhost:5000';
+
 const ALL_CATEGORIES = [
     { id: 'all', label: 'All Services', icon: '✨' },
     { id: 'Wedding Hall/Venue', label: 'Wedding Hall/Venue', icon: '🏛️' },
     { id: 'Photography', label: 'Photography', icon: '📸' },
     { id: 'Videography', label: 'Videography', icon: '🎥' },
     { id: 'Catering', label: 'Catering', icon: '🍽️' },
-    { id: 'Event Decoration', label: 'Event Decoration', icon: '💐' },
+    { id: 'Event Decoration', label: 'Event Decoration', icon: '🌸' },
     { id: 'Wedding Rentals', label: 'Wedding Rentals', icon: '🪑' },
     { id: 'DJ & Entertainment', label: 'DJ & Entertainment', icon: '🎵' },
     { id: 'Choreography', label: 'Choreography', icon: '💃' },
@@ -39,31 +41,24 @@ const getCategoryIcon = (category) => {
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
 
-// ── Availability Calendar Component ──────────────────────────────────────
+// ── Availability Calendar ──
 const AvailabilityCalendar = ({ serviceId, onDateSelect, selectedDate }) => {
     const [calMonth, setCalMonth] = useState(new Date());
     const [availability, setAvailability] = useState([]);
     const [loadingCal, setLoadingCal] = useState(false);
 
-    useEffect(() => {
-        if (serviceId) loadAvailability();
-    }, [serviceId]);
+    useEffect(() => { if (serviceId) loadAvailability(); }, [serviceId]);
 
     const loadAvailability = async () => {
         setLoadingCal(true);
         try {
-            const res = await axios.get(`http://localhost:5000/api/services/${serviceId}/availability`);
+            const res = await axios.get(`${API}/api/services/${serviceId}/availability`);
             setAvailability(res.data.availability || []);
-        } catch {
-            setAvailability([]);
-        } finally {
-            setLoadingCal(false);
-        }
+        } catch { setAvailability([]); }
+        finally { setLoadingCal(false); }
     };
 
-    const toLocalStr = (date) =>
-        `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-
+    const toLocalStr = (date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
     const getStatus = (date) => {
         const dStr = toLocalStr(date);
         const found = availability.find(a => {
@@ -77,21 +72,15 @@ const AvailabilityCalendar = ({ serviceId, onDateSelect, selectedDate }) => {
     const month = calMonth.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-
     const cellColors = {
         available: { bg: '#E8F5E9', border: '#A5D6A7', text: '#2E7D32' },
         blocked: { bg: '#FFEBEE', border: '#EF9A9A', text: '#C62828' },
         booked: { bg: '#FFF8E1', border: '#FFE082', text: '#F57F17' },
     };
-
-    const isSelectedDate = (date) => {
-        if (!selectedDate) return false;
-        return new Date(selectedDate).toDateString() === date.toDateString();
-    };
+    const isSelectedDate = (date) => selectedDate && new Date(selectedDate).toDateString() === date.toDateString();
 
     return (
         <div style={calStyles.wrap}>
-            {/* Legend */}
             <div style={calStyles.legend}>
                 {[
                     { color: '#E8F5E9', border: '#A5D6A7', label: 'Available' },
@@ -104,14 +93,11 @@ const AvailabilityCalendar = ({ serviceId, onDateSelect, selectedDate }) => {
                     </div>
                 ))}
             </div>
-
-            {/* Month nav */}
             <div style={calStyles.nav}>
                 <button style={calStyles.navBtn} onClick={() => setCalMonth(new Date(year, month - 1))}>←</button>
                 <span style={calStyles.monthLabel}>{monthNames[month]} {year}</span>
                 <button style={calStyles.navBtn} onClick={() => setCalMonth(new Date(year, month + 1))}>→</button>
             </div>
-
             {loadingCal ? (
                 <div style={{ textAlign: 'center', padding: '20px', color: '#7A6055' }}>Loading calendar...</div>
             ) : (
@@ -119,50 +105,40 @@ const AvailabilityCalendar = ({ serviceId, onDateSelect, selectedDate }) => {
                     {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
                         <div key={d} style={calStyles.dayHeader}>{d}</div>
                     ))}
-                    {Array.from({ length: firstDay }).map((_, i) => (
-                        <div key={`e-${i}`} />
-                    ))}
+                    {Array.from({ length: firstDay }).map((_, i) => <div key={`e-${i}`} />)}
                     {Array.from({ length: daysInMonth }).map((_, i) => {
                         const date = new Date(year, month, i + 1);
                         const status = getStatus(date);
                         const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
                         const isToday = date.toDateString() === new Date().toDateString();
                         const isSel = isSelectedDate(date);
-                        const colors = isPast
-                            ? { bg: '#F5F5F5', border: '#E0E0E0', text: '#BDBDBD' }
-                            : cellColors[status];
-
+                        const colors = isPast ? { bg: '#F5F5F5', border: '#E0E0E0', text: '#BDBDBD' } : cellColors[status];
                         return (
-                            <div
-                                key={i}
-                                style={{
-                                    ...calStyles.dayCell,
-                                    background: isSel ? '#8B1A1A' : colors.bg,
-                                    border: isSel ? '2px solid #8B1A1A' : `1px solid ${colors.border}`,
-                                    color: isSel ? '#fff' : colors.text,
-                                    cursor: isPast || status !== 'available' ? 'not-allowed' : 'pointer',
-                                    fontWeight: isToday || isSel ? '800' : '500',
-                                    opacity: isPast ? 0.5 : 1,
-                                }}
+                            <div key={i} style={{
+                                ...calStyles.dayCell,
+                                background: isSel ? '#8B1A1A' : colors.bg,
+                                border: isSel ? '2px solid #8B1A1A' : `1px solid ${colors.border}`,
+                                color: isSel ? '#fff' : colors.text,
+                                cursor: isPast || status !== 'available' ? 'not-allowed' : 'pointer',
+                                fontWeight: isToday || isSel ? '800' : '500',
+                                opacity: isPast ? 0.5 : 1,
+                            }}
                                 onClick={() => {
                                     if (isPast || status !== 'available') {
                                         if (status === 'blocked') toast.error('This date is blocked by the provider');
                                         if (status === 'booked') toast.error('This date is already booked');
                                         return;
                                     }
-                                    // ✅ Timezone safe date
                                     const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
                                     onDateSelect(localDate.toISOString().split('T')[0]);
-                                }}
-                            >
+                                }}>
                                 {i + 1}
-                                {isToday && <div style={{ fontSize: '6px', marginTop: '1px' }}>●</div>}
+                                {isToday && <div style={{ fontSize: '6px', marginTop: '1px' }}>◉</div>}
                             </div>
                         );
                     })}
                 </div>
             )}
-
             {selectedDate && (
                 <div style={calStyles.selectedInfo}>
                     Selected: <strong>{new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong>
@@ -184,7 +160,7 @@ const calStyles = {
     selectedInfo: { marginTop: '10px', fontSize: '13px', color: '#2E7D32', background: '#E8F5E9', padding: '8px 12px', borderRadius: '8px', border: '1px solid #A5D6A7' },
 };
 
-// ── Main Services Component ───────────────────────────────────────────────
+// ── Main Services Component ──
 const Services = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -201,9 +177,14 @@ const Services = () => {
     const [searchDate, setSearchDate] = useState('');
     const [bookingLoading, setBookingLoading] = useState(false);
     const [booking, setBooking] = useState({
-        eventDate: '', eventType: 'Wedding',
-        guestCount: '', specialRequirements: ''
+        eventDate: '', eventType: 'Wedding', guestCount: '', specialRequirements: ''
     });
+
+    // ✅ Packages state
+    const [servicePackages, setServicePackages] = useState([]);
+    const [loadingPackages, setLoadingPackages] = useState(false);
+    const [selectedPackage, setSelectedPackage] = useState(null);
+    const [showPackages, setShowPackages] = useState(false);
 
     useEffect(() => { fetchServices(); }, [activeCategory, searchCity, searchDate]);
 
@@ -214,22 +195,26 @@ const Services = () => {
             if (activeCategory !== 'all') params.category = activeCategory;
             if (searchCity) params.city = searchCity;
             if (searchDate) params.date = searchDate;
-            const res = await axios.get('http://localhost:5000/api/services', { params });
+            const res = await axios.get(`${API}/api/services`, { params });
             setServices(res.data.services || []);
-        } catch (err) {
-            toast.error('Failed to load services');
-        } finally {
-            setLoading(false);
-        }
+        } catch (err) { toast.error('Failed to load services'); }
+        finally { setLoading(false); }
+    };
+
+    // ✅ Fetch packages for a service
+    const fetchPackages = async (serviceId) => {
+        setLoadingPackages(true);
+        try {
+            const res = await axios.get(`${API}/api/service-menu/${serviceId}`);
+            setServicePackages(res.data.menus || []);
+        } catch (err) { setServicePackages([]); }
+        finally { setLoadingPackages(false); }
     };
 
     const checkAvailability = async (serviceId, date) => {
         if (!date) return;
         try {
-            const res = await axios.post(
-                `http://localhost:5000/api/services/${serviceId}/check-availability`,
-                { date }
-            );
+            const res = await axios.post(`${API}/api/services/${serviceId}/check-availability`, { date });
             setAvailability(res.data);
         } catch { toast.error('Could not check availability'); }
     };
@@ -238,7 +223,9 @@ const Services = () => {
         if (!user) { setShowLogin(true); return; }
         setSelectedService(service);
         setAvailability(null);
+        setSelectedPackage(null);
         setBooking({ eventDate: '', eventType: 'Wedding', guestCount: '', specialRequirements: '' });
+        fetchPackages(service._id);
         setShowBooking(true);
     };
 
@@ -248,21 +235,21 @@ const Services = () => {
         setBookingLoading(true);
         try {
             const token = localStorage.getItem('token');
-            await axios.post('http://localhost:5000/api/bookings', {
+            await axios.post(`${API}/api/bookings`, {
                 service: selectedService._id,
                 eventDate: booking.eventDate,
                 eventType: booking.eventType,
                 guestCount: booking.guestCount,
                 specialRequirements: booking.specialRequirements,
+                selectedPackage: selectedPackage ? selectedPackage.name : null,
             }, { headers: { Authorization: `Bearer ${token}` } });
-            toast.success(`Booking request sent to ${selectedService.businessName}!`);
+            toast.success(`Booking request sent to ${selectedService.businessName}! 🎉`);
             setShowBooking(false);
             setSelectedService(null);
+            setSelectedPackage(null);
         } catch (err) {
             toast.error(err.response?.data?.message || 'Booking failed');
-        } finally {
-            setBookingLoading(false);
-        }
+        } finally { setBookingLoading(false); }
     };
 
     const handleViewDetail = (service) => {
@@ -270,6 +257,9 @@ const Services = () => {
         setAvailability(null);
         setCheckingDate('');
         setShowBooking(false);
+        setShowPackages(false);
+        setSelectedPackage(null);
+        fetchPackages(service._id);
     };
 
     const getPrice = (s) => {
@@ -349,8 +339,7 @@ const Services = () => {
                             <div key={service._id} style={styles.serviceCard}>
                                 <div style={styles.servicePhoto}>
                                     {service.photos && service.photos.length > 0 ? (
-                                        <img src={`http://localhost:5000${service.photos[0]}`}
-                                            alt={service.businessName} style={styles.serviceImg} />
+                                        <img src={`${API}${service.photos[0]}`} alt={service.businessName} style={styles.serviceImg} />
                                     ) : (
                                         <div style={styles.serviceEmoji}>{getCategoryIcon(service.category)}</div>
                                     )}
@@ -370,8 +359,7 @@ const Services = () => {
                                     )}
                                     <div style={styles.serviceActions}>
                                         <button style={styles.bookBtn} onClick={() => handleBook(service)}>Book Now</button>
-                                        <button style={styles.viewBtn} onClick={() => handleViewDetail(service)}>View</button>
-                                    </div>
+                                        <button style={styles.viewBtn} onClick={() => window.open(`/services/${service._id}`, '_blank')}>View</button>                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -398,8 +386,7 @@ const Services = () => {
                         <button style={styles.closeBtn} onClick={() => setSelectedService(null)}>✕</button>
                         <div style={styles.modalPhoto}>
                             {selectedService.photos && selectedService.photos.length > 0 ? (
-                                <img src={`http://localhost:5000${selectedService.photos[0]}`}
-                                    alt={selectedService.businessName}
+                                <img src={`${API}${selectedService.photos[0]}`} alt={selectedService.businessName}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
                                 <div style={{ fontSize: '60px' }}>{getCategoryIcon(selectedService.category)}</div>
@@ -430,7 +417,57 @@ const Services = () => {
                                 ))}
                             </div>
 
-                            {/* ✅ Visual Availability Calendar in Detail Modal */}
+                            {/* ✅ Packages Section in Detail Modal */}
+                            {servicePackages.length > 0 && (
+                                <div style={styles.packagesSection}>
+                                    <h4 style={styles.packagesSectionTitle}>📦 Available Packages</h4>
+                                    <div style={styles.packagesList}>
+                                        {servicePackages.map(pkg => (
+                                            <div key={pkg._id} style={{
+                                                ...styles.pkgCard,
+                                                border: selectedPackage?._id === pkg._id
+                                                    ? '2px solid #8B1A1A'
+                                                    : '1.5px solid #E8D5C4',
+                                                background: selectedPackage?._id === pkg._id
+                                                    ? '#FDF0F0'
+                                                    : '#fff'
+                                            }}
+                                                onClick={() => setSelectedPackage(pkg)}>
+                                                {/* Package photos */}
+                                                {pkg.photos && pkg.photos.length > 0 && (
+                                                    <div style={styles.pkgPhotoRow}>
+                                                        {pkg.photos.slice(0, 3).map((photo, i) => (
+                                                            <img key={i} src={`${API}${photo}`} alt=""
+                                                                style={styles.pkgPhoto} />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <div style={styles.pkgContent}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                                        <span style={styles.pkgName}>{pkg.name}</span>
+                                                        <span style={styles.pkgPrice}>{pkg.price}</span>
+                                                    </div>
+                                                    {pkg.description && (
+                                                        <p style={styles.pkgDesc}>{pkg.description}</p>
+                                                    )}
+                                                    {pkg.features && pkg.features.length > 0 && (
+                                                        <div style={styles.featuresRow}>
+                                                            {pkg.features.map((f, i) => (
+                                                                <span key={i} style={styles.featureTag}>✓ {f}</span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    {selectedPackage?._id === pkg._id && (
+                                                        <div style={styles.selectedPkgBadge}>✅ Selected</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Availability Calendar */}
                             <div style={styles.availSection}>
                                 <h4 style={styles.availTitle}>Availability Calendar</h4>
                                 <AvailabilityCalendar
@@ -457,6 +494,7 @@ const Services = () => {
                                 <button style={styles.bookBtn} onClick={() => {
                                     if (!user) { setShowLogin(true); return; }
                                     setBooking(b => ({ ...b, eventDate: checkingDate }));
+                                    fetchPackages(selectedService._id);
                                     setShowBooking(true);
                                 }}>
                                     Book This Service
@@ -473,10 +511,10 @@ const Services = () => {
                 </div>
             )}
 
-            {/* ── Booking Modal with Visual Calendar ── */}
+            {/* ── Booking Modal ── */}
             {showBooking && selectedService && (
                 <div style={styles.overlay} onClick={() => setShowBooking(false)}>
-                    <div style={{ ...styles.modal, maxWidth: '560px' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ ...styles.modal, maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
                         <button style={styles.closeBtn} onClick={() => setShowBooking(false)}>✕</button>
                         <div style={styles.modalBody}>
                             <h2 style={styles.modalName}>Book {selectedService.businessName}</h2>
@@ -484,15 +522,67 @@ const Services = () => {
 
                             <form onSubmit={handleBookingSubmit}>
 
-                                {/* ✅ Visual Calendar for date selection */}
+                                {/* ✅ Package Selection */}
+                                {servicePackages.length > 0 && (
+                                    <div style={styles.formGroup}>
+                                        <label style={styles.label}>📦 Select Package (Optional)</label>
+                                        <div style={styles.packagesList}>
+                                            {servicePackages.map(pkg => (
+                                                <div key={pkg._id} style={{
+                                                    ...styles.pkgCard,
+                                                    border: selectedPackage?._id === pkg._id
+                                                        ? '2px solid #8B1A1A'
+                                                        : '1.5px solid #E8D5C4',
+                                                    background: selectedPackage?._id === pkg._id
+                                                        ? '#FDF0F0'
+                                                        : '#fff',
+                                                    cursor: 'pointer'
+                                                }}
+                                                    onClick={() => setSelectedPackage(
+                                                        selectedPackage?._id === pkg._id ? null : pkg
+                                                    )}>
+                                                    {pkg.photos && pkg.photos.length > 0 && (
+                                                        <div style={styles.pkgPhotoRow}>
+                                                            {pkg.photos.slice(0, 3).map((photo, i) => (
+                                                                <img key={i} src={`${API}${photo}`} alt=""
+                                                                    style={styles.pkgPhoto} />
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    <div style={styles.pkgContent}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                            <span style={styles.pkgName}>{pkg.name}</span>
+                                                            <span style={styles.pkgPrice}>{pkg.price}</span>
+                                                        </div>
+                                                        {pkg.features && pkg.features.length > 0 && (
+                                                            <div style={styles.featuresRow}>
+                                                                {pkg.features.map((f, i) => (
+                                                                    <span key={i} style={styles.featureTag}>✓ {f}</span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        {selectedPackage?._id === pkg._id && (
+                                                            <div style={styles.selectedPkgBadge}>✅ Selected</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {selectedPackage && (
+                                            <div style={{ fontSize: '13px', color: '#2E7D32', marginTop: '8px', fontWeight: '600' }}>
+                                                Selected: {selectedPackage.name} — {selectedPackage.price}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Calendar */}
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>Select Event Date *</label>
                                     <AvailabilityCalendar
                                         serviceId={selectedService._id}
                                         selectedDate={booking.eventDate}
-                                        onDateSelect={(date) => {
-                                            setBooking(b => ({ ...b, eventDate: date }));
-                                        }}
+                                        onDateSelect={(date) => setBooking(b => ({ ...b, eventDate: date }))}
                                     />
                                     {!booking.eventDate && (
                                         <p style={{ fontSize: '12px', color: '#C62828', marginTop: '4px' }}>
@@ -527,9 +617,9 @@ const Services = () => {
                                 </div>
 
                                 <button type="submit"
-                                    style={{ ...styles.bookBtn, opacity: bookingLoading || !booking.eventDate ? 0.6 : 1 }}
+                                    style={{ ...styles.bookBtn, width: '100%', padding: '14px', fontSize: '15px', opacity: bookingLoading || !booking.eventDate ? 0.6 : 1 }}
                                     disabled={bookingLoading || !booking.eventDate}>
-                                    {bookingLoading ? 'Sending...' : 'Confirm Booking Request'}
+                                    {bookingLoading ? 'Sending...' : `Confirm Booking Request${selectedPackage ? ` — ${selectedPackage.name}` : ''}`}
                                 </button>
                             </form>
                         </div>
@@ -608,14 +698,27 @@ const styles = {
     modalFieldValue: { fontSize: '13px', fontWeight: '600', color: '#1A0A0A' },
     availSection: { background: '#F8F9FA', borderRadius: '10px', padding: '16px', marginBottom: '16px' },
     availTitle: { fontSize: '14px', fontWeight: '700', color: '#1A0A0A', marginBottom: '10px' },
-    availRow: { display: 'flex', gap: '8px' },
-    checkBtn: { padding: '0 16px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
     availResult: { padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', marginTop: '8px' },
     modalActions: { display: 'flex', gap: '10px' },
     whatsappBtn: { flex: 1, padding: '12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
     formGroup: { marginBottom: '16px' },
     label: { display: 'block', fontSize: '11px', fontWeight: '700', color: '#7A6055', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
     input: { width: '100%', padding: '11px 14px', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '14px', color: '#2C1810', background: '#FFFDF9', outline: 'none', boxSizing: 'border-box' },
+
+    // ✅ Package styles
+    packagesSection: { marginBottom: '16px' },
+    packagesSectionTitle: { fontSize: '15px', fontWeight: '700', color: '#1A0A0A', marginBottom: '12px' },
+    packagesList: { display: 'flex', flexDirection: 'column', gap: '10px' },
+    pkgCard: { borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s' },
+    pkgPhotoRow: { display: 'flex', height: '80px', overflow: 'hidden' },
+    pkgPhoto: { flex: 1, objectFit: 'cover', height: '100%' },
+    pkgContent: { padding: '10px 12px' },
+    pkgName: { fontFamily: "'Playfair Display', serif", fontSize: '15px', fontWeight: '700', color: '#1A0A0A' },
+    pkgPrice: { fontSize: '14px', fontWeight: '700', color: '#8B1A1A' },
+    pkgDesc: { fontSize: '12px', color: '#7A6055', lineHeight: 1.5, marginBottom: '8px' },
+    featuresRow: { display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' },
+    featureTag: { fontSize: '11px', padding: '2px 7px', background: '#F0FFF4', color: '#2E7D32', borderRadius: '20px', border: '1px solid #C8E6C9' },
+    selectedPkgBadge: { marginTop: '8px', fontSize: '12px', fontWeight: '700', color: '#8B1A1A' },
 };
 
 export default Services;
