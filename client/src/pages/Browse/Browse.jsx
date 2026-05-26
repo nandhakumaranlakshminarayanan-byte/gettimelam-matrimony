@@ -23,11 +23,11 @@ const Browse = () => {
     const [displayProfiles, setDisplayProfiles] = useState([]);
     const [shortlistedIds, setShortlistedIds] = useState([]);
     const [hiddenIds, setHiddenIds] = useState([]);
-    const [likedIds, setLikedIds] = useState([]); // ✅ new
+    const [likedIds, setLikedIds] = useState([]);
 
     useEffect(() => { fetchProfiles(); }, [user]);
     useEffect(() => { if (user) fetchShortlistedIds(); }, [user]);
-    useEffect(() => { if (user) fetchLikedIds(); }, [user]); // ✅ new
+    useEffect(() => { if (user) fetchLikedIds(); }, [user]);
 
     const fetchProfiles = async () => {
         setLoading(true);
@@ -41,28 +41,21 @@ const Browse = () => {
         } catch (err) {
             setAllProfiles([]);
             setDisplayProfiles([]);
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     const fetchShortlistedIds = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get(`${API}/api/shortlist/my`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.get(`${API}/api/shortlist/my`, { headers: { Authorization: `Bearer ${token}` } });
             setShortlistedIds((res.data.profiles || []).map(p => p._id));
         } catch (err) { }
     };
 
-    // ✅ Fetch liked profile IDs
     const fetchLikedIds = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get(`${API}/api/likes/my-likes`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.get(`${API}/api/likes/my-likes`, { headers: { Authorization: `Bearer ${token}` } });
             setLikedIds((res.data.profiles || []).map(p => p._id));
         } catch (err) { }
     };
@@ -73,54 +66,35 @@ const Browse = () => {
         try {
             const token = localStorage.getItem('token');
             if (isShortlisted) {
-                await axios.delete(`${API}/api/shortlist/remove/${profile._id}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                await axios.delete(`${API}/api/shortlist/remove/${profile._id}`, { headers: { Authorization: `Bearer ${token}` } });
                 setShortlistedIds(prev => prev.filter(id => id !== profile._id));
                 toast.success('Removed from shortlist!');
             } else {
-                await axios.post(`${API}/api/shortlist/add`,
-                    { profileId: profile._id },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                await axios.post(`${API}/api/shortlist/add`, { profileId: profile._id }, { headers: { Authorization: `Bearer ${token}` } });
                 setShortlistedIds(prev => [...prev, profile._id]);
                 toast.success('Shortlisted! ⭐');
             }
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed!');
-        }
+        } catch (err) { toast.error(err.response?.data?.message || 'Failed!'); }
     };
 
-    // ✅ Like with API
     const handleLike = async (profile) => {
         if (!user) { setShowLogin(true); return; }
         const isLiked = likedIds.includes(profile._id);
         try {
             const token = localStorage.getItem('token');
             if (isLiked) {
-                await axios.delete(`${API}/api/likes/remove/${profile._id}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                await axios.delete(`${API}/api/likes/remove/${profile._id}`, { headers: { Authorization: `Bearer ${token}` } });
                 setLikedIds(prev => prev.filter(id => id !== profile._id));
                 toast.success('Like removed!');
             } else {
-                await axios.post(`${API}/api/likes/add`,
-                    { profileId: profile._id },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                await axios.post(`${API}/api/likes/add`, { profileId: profile._id }, { headers: { Authorization: `Bearer ${token}` } });
                 setLikedIds(prev => [...prev, profile._id]);
                 toast.success('Liked! 👍');
             }
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed!');
-        }
+        } catch (err) { toast.error(err.response?.data?.message || 'Failed!'); }
     };
 
-    const handleDontShow = (profileId) => {
-        setHiddenIds(prev => [...prev, profileId]);
-        toast.success('Profile hidden');
-    };
-
+    const handleDontShow = (profileId) => { setHiddenIds(prev => [...prev, profileId]); toast.success('Profile hidden'); };
     const handleViewNumber = (profile) => {
         if (!user) { setShowLogin(true); return; }
         if (!user?.isPremium) { toast.error('Upgrade to Premium! ⭐'); return; }
@@ -128,7 +102,6 @@ const Browse = () => {
         if (mobile) window.open(`tel:+91${mobile}`);
         else toast.error('Number not available');
     };
-
     const handleWhatsApp = (profile) => {
         if (!user) { setShowLogin(true); return; }
         if (!user?.isPremium) { toast.error('Upgrade to Premium! ⭐'); return; }
@@ -136,9 +109,7 @@ const Browse = () => {
         if (mobile) window.open(`https://wa.me/91${mobile}`, '_blank');
     };
 
-    const handleFilterChange = (e) => {
-        setFilters({ ...filters, [e.target.name]: e.target.value });
-    };
+    const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
 
     const applyFilters = () => {
         let filtered = allProfiles;
@@ -157,11 +128,7 @@ const Browse = () => {
     };
 
     const getName = (p) => p.name || p.user?.name || 'Unknown';
-    const getAge = (dob) => {
-        if (!dob) return null;
-        const age = Math.floor((new Date() - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000));
-        return age > 0 ? age : null;
-    };
+    const getAge = (dob) => { if (!dob) return null; const age = Math.floor((new Date() - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000)); return age > 0 ? age : null; };
     const getInfoLine = (p) => {
         const parts = [];
         const age = getAge(p.dateOfBirth);
@@ -177,9 +144,10 @@ const Browse = () => {
     const visibleProfiles = displayProfiles.filter(p => !hiddenIds.includes(p._id));
 
     return (
-        <div style={{ background: '#F2F2F2', minHeight: '100vh' }}>
+        <div style={{ background: '#FFF8E1', minHeight: '100vh' }}>
             <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
 
+            {/* Header */}
             <div style={styles.header}>
                 <div style={styles.headerInner}>
                     <h1 style={styles.headerTitle}>Browse Profiles</h1>
@@ -194,24 +162,18 @@ const Browse = () => {
                     <div style={styles.filterCard}>
                         <h3 style={styles.filterTitle}>🔍 Filter Profiles</h3>
 
-                        <div style={styles.filterGroup}>
-                            <label style={styles.filterLabel}>Looking For</label>
-                            <select name="gender" value={filters.gender} onChange={handleFilterChange} style={styles.filterInput}>
-                                <option value="">All</option>
-                                <option value="Female">Bride (Female)</option>
-                                <option value="Male">Groom (Male)</option>
-                            </select>
-                        </div>
-
-                        <div style={styles.filterGroup}>
-                            <label style={styles.filterLabel}>Religion</label>
-                            <select name="religion" value={filters.religion} onChange={handleFilterChange} style={styles.filterInput}>
-                                <option value="">All Religions</option>
-                                <option value="Hindu">Hindu</option>
-                                <option value="Muslim">Muslim</option>
-                                <option value="Christian">Christian</option>
-                            </select>
-                        </div>
+                        {[
+                            { label: 'Looking For', name: 'gender', type: 'select', options: [['', 'All'], ['Female', 'Bride (Female)'], ['Male', 'Groom (Male)']] },
+                            { label: 'Religion', name: 'religion', type: 'select', options: [['', 'All Religions'], ['Hindu', 'Hindu'], ['Muslim', 'Muslim'], ['Christian', 'Christian']] },
+                            { label: 'Marital Status', name: 'maritalStatus', type: 'select', options: [['', 'Any'], ['Never Married', 'Never Married'], ['Divorced', 'Divorced'], ['Widowed', 'Widowed']] },
+                        ].map(f => (
+                            <div key={f.name} style={styles.filterGroup}>
+                                <label style={styles.filterLabel}>{f.label}</label>
+                                <select name={f.name} value={filters[f.name]} onChange={handleFilterChange} style={styles.filterInput}>
+                                    {f.options.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+                                </select>
+                            </div>
+                        ))}
 
                         <div style={styles.filterGroup}>
                             <label style={styles.filterLabel}>Caste</label>
@@ -223,30 +185,17 @@ const Browse = () => {
                             <label style={styles.filterLabel}>District</label>
                             <select name="district" value={filters.district} onChange={handleFilterChange} style={styles.filterInput}>
                                 <option value="">All Districts</option>
-                                {['Chennai', 'Coimbatore', 'Madurai', 'Trichy', 'Salem', 'Erode',
-                                    'Tirunelveli', 'Vellore', 'Puducherry', 'Thoothukudi'].map(d => (
-                                        <option key={d}>{d}</option>
-                                    ))}
-                            </select>
-                        </div>
-
-                        <div style={styles.filterGroup}>
-                            <label style={styles.filterLabel}>Marital Status</label>
-                            <select name="maritalStatus" value={filters.maritalStatus} onChange={handleFilterChange} style={styles.filterInput}>
-                                <option value="">Any</option>
-                                <option value="Never Married">Never Married</option>
-                                <option value="Divorced">Divorced</option>
-                                <option value="Widowed">Widowed</option>
+                                {['Chennai', 'Coimbatore', 'Madurai', 'Trichy', 'Salem', 'Erode', 'Tirunelveli', 'Vellore', 'Puducherry', 'Thoothukudi'].map(d => (
+                                    <option key={d}>{d}</option>
+                                ))}
                             </select>
                         </div>
 
                         <div style={styles.filterGroup}>
                             <label style={styles.filterLabel}>Age Range</label>
                             <div style={styles.ageRow}>
-                                <input name="minAge" type="number" placeholder="Min" value={filters.minAge}
-                                    onChange={handleFilterChange} style={{ ...styles.filterInput, width: '48%' }} />
-                                <input name="maxAge" type="number" placeholder="Max" value={filters.maxAge}
-                                    onChange={handleFilterChange} style={{ ...styles.filterInput, width: '48%' }} />
+                                <input name="minAge" type="number" placeholder="Min" value={filters.minAge} onChange={handleFilterChange} style={{ ...styles.filterInput, width: '48%' }} />
+                                <input name="maxAge" type="number" placeholder="Max" value={filters.maxAge} onChange={handleFilterChange} style={{ ...styles.filterInput, width: '48%' }} />
                             </div>
                         </div>
 
@@ -288,7 +237,7 @@ const Browse = () => {
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                             <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-                            <p style={{ color: '#7A6055' }}>Loading profiles...</p>
+                            <p style={{ color: '#7A5C00' }}>Loading profiles...</p>
                         </div>
                     ) : visibleProfiles.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: '12px' }}>
@@ -300,14 +249,13 @@ const Browse = () => {
                         <div style={styles.profilesGrid}>
                             {visibleProfiles.map((profile) => {
                                 const isShortlisted = shortlistedIds.includes(profile._id);
-                                const isLiked = likedIds.includes(profile._id); // ✅
+                                const isLiked = likedIds.includes(profile._id);
                                 const name = getName(profile);
                                 const infoLine = getInfoLine(profile);
                                 const isFemale = profile.gender === 'Female';
 
                                 return (
                                     <div key={profile._id} style={styles.card}>
-
                                         {/* Photo */}
                                         <div style={styles.photoBox}>
                                             {profile.photo ? (
@@ -318,8 +266,8 @@ const Browse = () => {
                                                 <div style={{
                                                     ...styles.photoPlaceholder,
                                                     background: isFemale
-                                                        ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
-                                                        : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
+                                                        ? 'linear-gradient(135deg, #FFF8E1, #F5BE17)'
+                                                        : 'linear-gradient(135deg, #FFF3E0, #DF9B08)'
                                                 }}
                                                     onClick={() => navigate(`/profile/${profile._id}`)}>
                                                     <span style={{ fontSize: '52px' }}>
@@ -338,14 +286,8 @@ const Browse = () => {
                                             <div style={styles.nameRow}>
                                                 <span style={styles.cardName}>{name}</span>
                                                 <div style={styles.contactIcons}>
-                                                    <button style={styles.phoneIcon}
-                                                        onClick={() => handleViewNumber(profile)} title="Call">
-                                                        📞
-                                                    </button>
-                                                    <button style={styles.waIcon}
-                                                        onClick={() => handleWhatsApp(profile)} title="WhatsApp">
-                                                        💬
-                                                    </button>
+                                                    <button style={styles.phoneIcon} onClick={() => handleViewNumber(profile)} title="Call">📞</button>
+                                                    <button style={styles.waIcon} onClick={() => handleWhatsApp(profile)} title="WhatsApp">💬</button>
                                                 </div>
                                             </div>
 
@@ -355,26 +297,23 @@ const Browse = () => {
 
                                             <button style={styles.viewFullLink}
                                                 onClick={() => navigate(`/profile/${profile._id}`)}>
-                                                View full profile &rsaquo;
+                                                View full profile ›
                                             </button>
 
                                             <div style={styles.secondaryRow}>
-                                                <button style={styles.dontShowBtn}
-                                                    onClick={() => handleDontShow(profile._id)}>
+                                                <button style={styles.dontShowBtn} onClick={() => handleDontShow(profile._id)}>
                                                     ✕ Don't show
                                                 </button>
-                                                <button style={styles.viewLaterBtn}
-                                                    onClick={() => handleShortlist(profile)}>
+                                                <button style={styles.viewLaterBtn} onClick={() => handleShortlist(profile)}>
                                                     🕐 {isShortlisted ? 'Shortlisted' : 'View later'}
                                                 </button>
                                             </div>
 
-                                            {/* ✅ Like button with toggle */}
                                             <button style={{
                                                 ...styles.likeBtn,
                                                 background: isLiked
                                                     ? 'linear-gradient(135deg, #2E7D32, #388E3C)'
-                                                    : 'linear-gradient(135deg, #8B1A1A, #C0392B)'
+                                                    : 'linear-gradient(135deg, #B71C1C, #D32F2F)'
                                             }}
                                                 onClick={() => handleLike(profile)}>
                                                 {isLiked ? '👍 Liked' : '👍 Like'}
@@ -403,45 +342,45 @@ const Browse = () => {
 };
 
 const styles = {
-    header: { background: 'linear-gradient(135deg, #1A0A0A, #3D1A1A)', padding: '24px' },
+    header: { background: 'linear-gradient(135deg, #F5BE17, #DF9B08)', padding: '24px' },
     headerInner: { maxWidth: '1200px', margin: '0 auto' },
-    headerTitle: { fontFamily: "'Playfair Display', serif", fontSize: '28px', color: '#fff', marginBottom: '4px' },
-    headerDesc: { fontSize: '14px', color: 'rgba(255,255,255,0.6)' },
+    headerTitle: { fontFamily: "'Playfair Display', serif", fontSize: '28px', color: '#5F0909', marginBottom: '4px' },
+    headerDesc: { fontSize: '14px', color: 'rgba(95,9,9,0.7)' },
     container: { maxWidth: '1200px', margin: '0 auto', padding: '24px', display: 'grid', gridTemplateColumns: '240px 1fr', gap: '20px', alignItems: 'start' },
     filterSidebar: {},
-    filterCard: { background: '#fff', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '12px' },
-    filterTitle: { fontSize: '15px', fontWeight: '700', color: '#1A0A0A', marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid #E8D5C4' },
+    filterCard: { background: '#fff', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 8px rgba(223,155,8,0.1)', marginBottom: '12px', border: '1px solid #F5BE17' },
+    filterTitle: { fontSize: '15px', fontWeight: '700', color: '#5F0909', marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid #F5BE17' },
     filterGroup: { marginBottom: '12px' },
-    filterLabel: { display: 'block', fontSize: '10px', fontWeight: '700', color: '#7A6055', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-    filterInput: { width: '100%', padding: '8px 10px', border: '1.5px solid #E8D5C4', borderRadius: '7px', fontSize: '12px', color: '#2C1810', background: '#FFFDF9', outline: 'none', boxSizing: 'border-box' },
+    filterLabel: { display: 'block', fontSize: '10px', fontWeight: '700', color: '#7A5C00', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    filterInput: { width: '100%', padding: '8px 10px', border: '1.5px solid #F5BE17', borderRadius: '7px', fontSize: '12px', color: '#5F0909', background: '#FFFDF4', outline: 'none', boxSizing: 'border-box' },
     ageRow: { display: 'flex', gap: '6px' },
-    applyBtn: { width: '100%', padding: '10px', background: 'linear-gradient(135deg, #8B1A1A, #C0392B)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '6px' },
-    resetBtn: { width: '100%', padding: '8px', background: 'transparent', color: '#7A6055', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' },
-    quickFilters: { background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
-    quickTitle: { fontSize: '11px', fontWeight: '700', color: '#7A6055', marginBottom: '8px', textTransform: 'uppercase' },
-    quickTag: { display: 'inline-block', padding: '4px 10px', background: '#FDF0F0', border: '1px solid #E8C4C4', borderRadius: '20px', fontSize: '11px', color: '#8B1A1A', cursor: 'pointer', margin: '2px' },
+    applyBtn: { width: '100%', padding: '10px', background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '6px' },
+    resetBtn: { width: '100%', padding: '8px', background: 'transparent', color: '#7A5C00', border: '1.5px solid #F5BE17', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' },
+    quickFilters: { background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 8px rgba(223,155,8,0.1)', border: '1px solid #F5BE17' },
+    quickTitle: { fontSize: '11px', fontWeight: '700', color: '#7A5C00', marginBottom: '8px', textTransform: 'uppercase' },
+    quickTag: { display: 'inline-block', padding: '4px 10px', background: '#FFF8E1', border: '1px solid #F5BE17', borderRadius: '20px', fontSize: '11px', color: '#B71C1C', cursor: 'pointer', margin: '2px' },
     profilesArea: {},
     resultsHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' },
-    resultsCount: { fontSize: '13px', color: '#7A6055' },
-    loginBtn: { padding: '7px 14px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+    resultsCount: { fontSize: '13px', color: '#7A5C00' },
+    loginBtn: { padding: '7px 14px', background: '#B71C1C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
     profilesGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' },
-    card: { background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' },
+    card: { background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 10px rgba(223,155,8,0.12)', border: '1px solid #F5E6A0' },
     photoBox: { position: 'relative', width: '100%', height: '200px', overflow: 'hidden', cursor: 'pointer' },
-    photo: { width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', background: '#f9f0f0' },
+    photo: { width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'center', background: '#FFF8E1' },
     photoPlaceholder: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
     verifiedBadge: { position: 'absolute', top: '6px', left: '6px', background: '#1E6B3C', color: '#fff', fontSize: '9px', fontWeight: '700', padding: '2px 6px', borderRadius: '20px' },
     heartBtn: { position: 'absolute', top: '6px', right: '6px', background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: '26px', height: '26px', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' },
     cardBody: { padding: '10px 12px 12px' },
     nameRow: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' },
-    cardName: { fontFamily: "'Playfair Display', serif", fontSize: '14px', fontWeight: '700', color: '#1A0A0A', flex: 1 },
+    cardName: { fontFamily: "'Playfair Display', serif", fontSize: '14px', fontWeight: '700', color: '#5F0909', flex: 1 },
     contactIcons: { display: 'flex', gap: '5px' },
     phoneIcon: { width: '26px', height: '26px', borderRadius: '50%', border: '2px solid #4CAF50', background: '#fff', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     waIcon: { width: '26px', height: '26px', borderRadius: '50%', border: '2px solid #25D366', background: '#25D366', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    infoLine: { fontSize: '11px', color: '#555', lineHeight: 1.4, marginBottom: '6px' },
-    viewFullLink: { background: 'none', border: 'none', color: '#8B1A1A', fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: '0', marginBottom: '8px', textDecoration: 'underline', display: 'block' },
+    infoLine: { fontSize: '11px', color: '#7A5C00', lineHeight: 1.4, marginBottom: '6px' },
+    viewFullLink: { background: 'none', border: 'none', color: '#B71C1C', fontSize: '11px', fontWeight: '600', cursor: 'pointer', padding: '0', marginBottom: '8px', textDecoration: 'underline', display: 'block' },
     secondaryRow: { display: 'flex', gap: '6px', marginBottom: '6px' },
-    dontShowBtn: { flex: 1, padding: '6px', background: '#fff', border: '1.5px solid #D0D0D0', borderRadius: '7px', fontSize: '11px', fontWeight: '500', color: '#444', cursor: 'pointer' },
-    viewLaterBtn: { flex: 1, padding: '6px', background: '#fff', border: '1.5px solid #D0D0D0', borderRadius: '7px', fontSize: '11px', fontWeight: '500', color: '#444', cursor: 'pointer' },
+    dontShowBtn: { flex: 1, padding: '6px', background: '#fff', border: '1.5px solid #F5BE17', borderRadius: '7px', fontSize: '11px', fontWeight: '500', color: '#7A5C00', cursor: 'pointer' },
+    viewLaterBtn: { flex: 1, padding: '6px', background: '#fff', border: '1.5px solid #F5BE17', borderRadius: '7px', fontSize: '11px', fontWeight: '500', color: '#7A5C00', cursor: 'pointer' },
     likeBtn: { width: '100%', padding: '8px', color: '#fff', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' },
 };
 

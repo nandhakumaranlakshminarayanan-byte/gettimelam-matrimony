@@ -41,7 +41,6 @@ const getCategoryIcon = (category) => {
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
 
-// ── Availability Calendar ──
 const AvailabilityCalendar = ({ serviceId, onDateSelect, selectedDate }) => {
     const [calMonth, setCalMonth] = useState(new Date());
     const [availability, setAvailability] = useState([]);
@@ -89,7 +88,7 @@ const AvailabilityCalendar = ({ serviceId, onDateSelect, selectedDate }) => {
                 ].map(l => (
                     <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: l.color, border: `1px solid ${l.border}` }} />
-                        <span style={{ fontSize: '11px', color: '#7A6055' }}>{l.label}</span>
+                        <span style={{ fontSize: '11px', color: '#7A5C00' }}>{l.label}</span>
                     </div>
                 ))}
             </div>
@@ -99,7 +98,7 @@ const AvailabilityCalendar = ({ serviceId, onDateSelect, selectedDate }) => {
                 <button style={calStyles.navBtn} onClick={() => setCalMonth(new Date(year, month + 1))}>→</button>
             </div>
             {loadingCal ? (
-                <div style={{ textAlign: 'center', padding: '20px', color: '#7A6055' }}>Loading calendar...</div>
+                <div style={{ textAlign: 'center', padding: '20px', color: '#7A5C00' }}>Loading calendar...</div>
             ) : (
                 <div style={calStyles.grid}>
                     {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
@@ -116,8 +115,8 @@ const AvailabilityCalendar = ({ serviceId, onDateSelect, selectedDate }) => {
                         return (
                             <div key={i} style={{
                                 ...calStyles.dayCell,
-                                background: isSel ? '#8B1A1A' : colors.bg,
-                                border: isSel ? '2px solid #8B1A1A' : `1px solid ${colors.border}`,
+                                background: isSel ? '#B71C1C' : colors.bg,
+                                border: isSel ? '2px solid #B71C1C' : `1px solid ${colors.border}`,
                                 color: isSel ? '#fff' : colors.text,
                                 cursor: isPast || status !== 'available' ? 'not-allowed' : 'pointer',
                                 fontWeight: isToday || isSel ? '800' : '500',
@@ -149,18 +148,17 @@ const AvailabilityCalendar = ({ serviceId, onDateSelect, selectedDate }) => {
 };
 
 const calStyles = {
-    wrap: { background: '#F8F9FA', borderRadius: '12px', padding: '14px', marginBottom: '16px' },
+    wrap: { background: '#FFF8E1', borderRadius: '12px', padding: '14px', marginBottom: '16px', border: '1px solid #F5BE17' },
     legend: { display: 'flex', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' },
     nav: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' },
-    navBtn: { padding: '4px 12px', background: '#fff', border: '1px solid #E8D5C4', borderRadius: '6px', cursor: 'pointer', color: '#8B1A1A', fontWeight: '700', fontSize: '14px' },
-    monthLabel: { fontWeight: '700', color: '#1A0A0A', fontSize: '14px' },
+    navBtn: { padding: '4px 12px', background: '#fff', border: '1px solid #F5BE17', borderRadius: '6px', cursor: 'pointer', color: '#B71C1C', fontWeight: '700', fontSize: '14px' },
+    monthLabel: { fontWeight: '700', color: '#5F0909', fontSize: '14px' },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px' },
-    dayHeader: { textAlign: 'center', fontSize: '10px', fontWeight: '700', color: '#7A6055', padding: '4px 0' },
+    dayHeader: { textAlign: 'center', fontSize: '10px', fontWeight: '700', color: '#7A5C00', padding: '4px 0' },
     dayCell: { height: '36px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', fontSize: '12px', userSelect: 'none', transition: 'all 0.1s' },
     selectedInfo: { marginTop: '10px', fontSize: '13px', color: '#2E7D32', background: '#E8F5E9', padding: '8px 12px', borderRadius: '8px', border: '1px solid #A5D6A7' },
 };
 
-// ── Main Services Component ──
 const Services = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -179,8 +177,6 @@ const Services = () => {
     const [booking, setBooking] = useState({
         eventDate: '', eventType: 'Wedding', guestCount: '', specialRequirements: ''
     });
-
-    // ✅ Packages state
     const [servicePackages, setServicePackages] = useState([]);
     const [loadingPackages, setLoadingPackages] = useState(false);
     const [selectedPackage, setSelectedPackage] = useState(null);
@@ -201,7 +197,6 @@ const Services = () => {
         finally { setLoading(false); }
     };
 
-    // ✅ Fetch packages for a service
     const fetchPackages = async (serviceId) => {
         setLoadingPackages(true);
         try {
@@ -263,16 +258,15 @@ const Services = () => {
     };
 
     const getPrice = (s) => {
-        if (s.priceMin && s.priceMax) return `Rs.${s.priceMin.toLocaleString()} - Rs.${s.priceMax.toLocaleString()}`;
+        if (s.priceMin && s.priceMax) return `₹${s.priceMin.toLocaleString()} - ₹${s.priceMax.toLocaleString()}`;
         if (s.price) return s.price;
         return 'Contact for price';
     };
 
     return (
-        <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
+        <div style={{ background: '#FFF8E1', minHeight: '100vh' }}>
             <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
 
-            {/* Header */}
             <div style={styles.header}>
                 <div style={styles.headerInner}>
                     <div style={styles.headerBadge}>Wedding Services</div>
@@ -296,7 +290,6 @@ const Services = () => {
             </div>
 
             <div style={styles.container}>
-                {/* Category Pills */}
                 <div style={styles.categoryRow}>
                     {ALL_CATEGORIES.map(cat => (
                         <button key={cat.id}
@@ -307,7 +300,6 @@ const Services = () => {
                     ))}
                 </div>
 
-                {/* Results */}
                 <div style={styles.resultsRow}>
                     <span style={styles.resultsCount}>
                         {loading ? 'Loading...' : <><strong>{services.length}</strong> services found</>}
@@ -319,16 +311,15 @@ const Services = () => {
                     )}
                 </div>
 
-                {/* Services Grid */}
                 {loading ? (
                     <div style={styles.loadingBox}>
                         <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-                        <p style={{ color: '#7A6055' }}>Loading services...</p>
+                        <p style={{ color: '#7A5C00' }}>Loading services...</p>
                     </div>
                 ) : services.length === 0 ? (
                     <div style={styles.emptyBox}>
                         <div style={{ fontSize: '52px', marginBottom: '16px' }}>🔍</div>
-                        <h3 style={{ color: '#1A0A0A', marginBottom: '8px' }}>No Services Found</h3>
+                        <h3 style={{ color: '#5F0909', marginBottom: '8px' }}>No Services Found</h3>
                         <button style={styles.clearBtn2} onClick={() => { setActiveCategory('all'); setSearchCity(''); setSearchDate(''); }}>
                             Show All Services
                         </button>
@@ -359,14 +350,14 @@ const Services = () => {
                                     )}
                                     <div style={styles.serviceActions}>
                                         <button style={styles.bookBtn} onClick={() => handleBook(service)}>Book Now</button>
-                                        <button style={styles.viewBtn} onClick={() => window.open(`/services/${service._id}`, '_blank')}>View</button>                                    </div>
+                                        <button style={styles.viewBtn} onClick={() => window.open(`/services/${service._id}`, '_blank')}>View</button>
+                                    </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
 
-                {/* CTA */}
                 <div style={styles.listCta}>
                     <div>
                         <h3 style={styles.listCtaTitle}>Are You a Service Provider?</h3>
@@ -379,7 +370,7 @@ const Services = () => {
                 </div>
             </div>
 
-            {/* ── Service Detail Modal ── */}
+            {/* Service Detail Modal */}
             {selectedService && !showBooking && (
                 <div style={styles.overlay} onClick={() => setSelectedService(null)}>
                     <div style={styles.modal} onClick={e => e.stopPropagation()}>
@@ -417,7 +408,6 @@ const Services = () => {
                                 ))}
                             </div>
 
-                            {/* ✅ Packages Section in Detail Modal */}
                             {servicePackages.length > 0 && (
                                 <div style={styles.packagesSection}>
                                     <h4 style={styles.packagesSectionTitle}>📦 Available Packages</h4>
@@ -425,31 +415,22 @@ const Services = () => {
                                         {servicePackages.map(pkg => (
                                             <div key={pkg._id} style={{
                                                 ...styles.pkgCard,
-                                                border: selectedPackage?._id === pkg._id
-                                                    ? '2px solid #8B1A1A'
-                                                    : '1.5px solid #E8D5C4',
-                                                background: selectedPackage?._id === pkg._id
-                                                    ? '#FDF0F0'
-                                                    : '#fff'
-                                            }}
-                                                onClick={() => setSelectedPackage(pkg)}>
-                                                {/* Package photos */}
+                                                border: selectedPackage?._id === pkg._id ? '2px solid #B71C1C' : '1.5px solid #F5BE17',
+                                                background: selectedPackage?._id === pkg._id ? '#FFF8E1' : '#fff'
+                                            }} onClick={() => setSelectedPackage(pkg)}>
                                                 {pkg.photos && pkg.photos.length > 0 && (
                                                     <div style={styles.pkgPhotoRow}>
                                                         {pkg.photos.slice(0, 3).map((photo, i) => (
-                                                            <img key={i} src={`${API}${photo}`} alt=""
-                                                                style={styles.pkgPhoto} />
+                                                            <img key={i} src={`${API}${photo}`} alt="" style={styles.pkgPhoto} />
                                                         ))}
                                                     </div>
                                                 )}
                                                 <div style={styles.pkgContent}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                                         <span style={styles.pkgName}>{pkg.name}</span>
-                                                        <span style={styles.pkgPrice}>{pkg.price}</span>
+                                                        <span style={styles.pkgPrice}>₹{pkg.price}</span>
                                                     </div>
-                                                    {pkg.description && (
-                                                        <p style={styles.pkgDesc}>{pkg.description}</p>
-                                                    )}
+                                                    {pkg.description && <p style={styles.pkgDesc}>{pkg.description}</p>}
                                                     {pkg.features && pkg.features.length > 0 && (
                                                         <div style={styles.featuresRow}>
                                                             {pkg.features.map((f, i) => (
@@ -467,7 +448,6 @@ const Services = () => {
                                 </div>
                             )}
 
-                            {/* Availability Calendar */}
                             <div style={styles.availSection}>
                                 <h4 style={styles.availTitle}>Availability Calendar</h4>
                                 <AvailabilityCalendar
@@ -496,22 +476,18 @@ const Services = () => {
                                     setBooking(b => ({ ...b, eventDate: checkingDate }));
                                     fetchPackages(selectedService._id);
                                     setShowBooking(true);
-                                }}>
-                                    Book This Service
-                                </button>
+                                }}>Book This Service</button>
                                 <button style={styles.whatsappBtn} onClick={() => {
                                     if (!user) { setShowLogin(true); return; }
                                     window.open(`https://wa.me/91${selectedService.mobile}`, '_blank');
-                                }}>
-                                    WhatsApp
-                                </button>
+                                }}>WhatsApp</button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* ── Booking Modal ── */}
+            {/* Booking Modal */}
             {showBooking && selectedService && (
                 <div style={styles.overlay} onClick={() => setShowBooking(false)}>
                     <div style={{ ...styles.modal, maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
@@ -519,10 +495,7 @@ const Services = () => {
                         <div style={styles.modalBody}>
                             <h2 style={styles.modalName}>Book {selectedService.businessName}</h2>
                             <p style={styles.modalDesc}>{selectedService.city} • {getPrice(selectedService)}</p>
-
                             <form onSubmit={handleBookingSubmit}>
-
-                                {/* ✅ Package Selection */}
                                 {servicePackages.length > 0 && (
                                     <div style={styles.formGroup}>
                                         <label style={styles.label}>📦 Select Package (Optional)</label>
@@ -530,29 +503,21 @@ const Services = () => {
                                             {servicePackages.map(pkg => (
                                                 <div key={pkg._id} style={{
                                                     ...styles.pkgCard,
-                                                    border: selectedPackage?._id === pkg._id
-                                                        ? '2px solid #8B1A1A'
-                                                        : '1.5px solid #E8D5C4',
-                                                    background: selectedPackage?._id === pkg._id
-                                                        ? '#FDF0F0'
-                                                        : '#fff',
+                                                    border: selectedPackage?._id === pkg._id ? '2px solid #B71C1C' : '1.5px solid #F5BE17',
+                                                    background: selectedPackage?._id === pkg._id ? '#FFF8E1' : '#fff',
                                                     cursor: 'pointer'
-                                                }}
-                                                    onClick={() => setSelectedPackage(
-                                                        selectedPackage?._id === pkg._id ? null : pkg
-                                                    )}>
+                                                }} onClick={() => setSelectedPackage(selectedPackage?._id === pkg._id ? null : pkg)}>
                                                     {pkg.photos && pkg.photos.length > 0 && (
                                                         <div style={styles.pkgPhotoRow}>
                                                             {pkg.photos.slice(0, 3).map((photo, i) => (
-                                                                <img key={i} src={`${API}${photo}`} alt=""
-                                                                    style={styles.pkgPhoto} />
+                                                                <img key={i} src={`${API}${photo}`} alt="" style={styles.pkgPhoto} />
                                                             ))}
                                                         </div>
                                                     )}
                                                     <div style={styles.pkgContent}>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                                                             <span style={styles.pkgName}>{pkg.name}</span>
-                                                            <span style={styles.pkgPrice}>{pkg.price}</span>
+                                                            <span style={styles.pkgPrice}>₹{pkg.price}</span>
                                                         </div>
                                                         {pkg.features && pkg.features.length > 0 && (
                                                             <div style={styles.featuresRow}>
@@ -570,13 +535,12 @@ const Services = () => {
                                         </div>
                                         {selectedPackage && (
                                             <div style={{ fontSize: '13px', color: '#2E7D32', marginTop: '8px', fontWeight: '600' }}>
-                                                Selected: {selectedPackage.name} — {selectedPackage.price}
+                                                Selected: {selectedPackage.name} — ₹{selectedPackage.price}
                                             </div>
                                         )}
                                     </div>
                                 )}
 
-                                {/* Calendar */}
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>Select Event Date *</label>
                                     <AvailabilityCalendar
@@ -629,96 +593,88 @@ const Services = () => {
 
             <Footer />
 
-            {showLogin && (
-                <LoginModal onClose={() => setShowLogin(false)}
-                    onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />
-            )}
-            {showRegister && (
-                <RegisterModal onClose={() => setShowRegister(false)}
-                    onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />
-            )}
+            {showLogin && <LoginModal onClose={() => setShowLogin(false)} onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />}
+            {showRegister && <RegisterModal onClose={() => setShowRegister(false)} onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />}
         </div>
     );
 };
 
 const styles = {
-    header: { background: 'linear-gradient(135deg, #1A0A0A, #3D1A1A)', padding: '48px 24px', textAlign: 'center' },
+    header: { background: 'linear-gradient(135deg, #F5BE17, #DF9B08)', padding: '48px 24px', textAlign: 'center' },
     headerInner: { maxWidth: '800px', margin: '0 auto' },
-    headerBadge: { display: 'inline-block', background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.3)', color: '#C9A84C', padding: '6px 16px', borderRadius: '50px', fontSize: '13px', fontWeight: '600', marginBottom: '16px' },
-    headerTitle: { fontFamily: "'Playfair Display', serif", fontSize: '38px', color: '#fff', marginBottom: '12px' },
-    headerDesc: { color: 'rgba(255,255,255,0.6)', fontSize: '15px', marginBottom: '24px' },
-    searchBar: { display: 'flex', background: '#fff', borderRadius: '12px', overflow: 'hidden', maxWidth: '600px', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' },
+    headerBadge: { display: 'inline-block', background: 'rgba(95,9,9,0.12)', border: '1px solid rgba(95,9,9,0.25)', color: '#5F0909', padding: '6px 16px', borderRadius: '50px', fontSize: '13px', fontWeight: '600', marginBottom: '16px' },
+    headerTitle: { fontFamily: "'Playfair Display', serif", fontSize: '38px', color: '#5F0909', marginBottom: '12px' },
+    headerDesc: { color: 'rgba(95,9,9,0.7)', fontSize: '15px', marginBottom: '24px' },
+    searchBar: { display: 'flex', background: '#fff', borderRadius: '12px', overflow: 'hidden', maxWidth: '600px', margin: '0 auto', boxShadow: '0 4px 20px rgba(95,9,9,0.15)' },
     searchField: { display: 'flex', alignItems: 'center', flex: 1, padding: '0 14px' },
     searchIcon: { fontSize: '16px', marginRight: '8px', flexShrink: 0 },
-    searchInput: { border: 'none', outline: 'none', fontSize: '14px', color: '#2C1810', background: 'transparent', width: '100%', padding: '14px 0' },
-    searchDivider: { width: '1px', background: '#E8D5C4', margin: '10px 0' },
-    searchBtn: { padding: '0 24px', background: '#8B1A1A', color: '#fff', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+    searchInput: { border: 'none', outline: 'none', fontSize: '14px', color: '#5F0909', background: 'transparent', width: '100%', padding: '14px 0' },
+    searchDivider: { width: '1px', background: '#F5BE17', margin: '10px 0' },
+    searchBtn: { padding: '0 24px', background: '#B71C1C', color: '#fff', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
     container: { maxWidth: '1200px', margin: '0 auto', padding: '36px 24px' },
     categoryRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '24px' },
-    catBtn: { padding: '7px 14px', border: '1.5px solid #E8D5C4', borderRadius: '50px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: '#fff', color: '#7A6055', whiteSpace: 'nowrap' },
-    catBtnActive: { background: '#8B1A1A', color: '#fff', border: '1.5px solid #8B1A1A' },
+    catBtn: { padding: '7px 14px', border: '1.5px solid #F5BE17', borderRadius: '50px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: '#fff', color: '#7A5C00', whiteSpace: 'nowrap' },
+    catBtnActive: { background: '#B71C1C', color: '#fff', border: '1.5px solid #B71C1C' },
     resultsRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
-    resultsCount: { fontSize: '14px', color: '#7A6055' },
-    clearBtn: { padding: '6px 14px', background: 'transparent', border: '1.5px solid #8B1A1A', color: '#8B1A1A', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+    resultsCount: { fontSize: '14px', color: '#7A5C00' },
+    clearBtn: { padding: '6px 14px', background: 'transparent', border: '1.5px solid #B71C1C', color: '#B71C1C', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
     loadingBox: { textAlign: 'center', padding: '80px 20px' },
     emptyBox: { textAlign: 'center', padding: '80px 20px', background: '#fff', borderRadius: '16px' },
-    clearBtn2: { padding: '10px 24px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
+    clearBtn2: { padding: '10px 24px', background: '#B71C1C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
     servicesGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '48px' },
-    serviceCard: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
-    servicePhoto: { height: '160px', background: 'linear-gradient(135deg, #FDF5EE, #F5E6D0)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
+    serviceCard: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(223,155,8,0.12)', border: '1px solid #F5E6A0' },
+    servicePhoto: { height: '160px', background: 'linear-gradient(135deg, #FFF8E1, #F5BE17)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
     serviceImg: { width: '100%', height: '100%', objectFit: 'cover' },
     serviceEmoji: { fontSize: '52px' },
     verifiedBadge: { position: 'absolute', top: '10px', right: '10px', background: '#1E6B3C', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px' },
-    featuredBadge: { position: 'absolute', top: '10px', left: '10px', background: '#C9A84C', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px' },
-    categoryBadge: { position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(255,255,255,0.9)', color: '#2C1810', fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '20px' },
-    ratingBadge: { position: 'absolute', bottom: '10px', right: '10px', background: '#fff', color: '#2C1810', fontSize: '12px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
+    featuredBadge: { position: 'absolute', top: '10px', left: '10px', background: '#DF9B08', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px' },
+    categoryBadge: { position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(255,255,255,0.92)', color: '#5F0909', fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '20px' },
+    ratingBadge: { position: 'absolute', bottom: '10px', right: '10px', background: '#fff', color: '#5F0909', fontSize: '12px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
     serviceInfo: { padding: '16px' },
-    serviceName: { fontFamily: "'Playfair Display', serif", fontSize: '16px', fontWeight: '700', color: '#1A0A0A', marginBottom: '4px' },
-    serviceMeta: { fontSize: '12px', color: '#7A6055', marginBottom: '2px' },
-    servicePrice: { fontSize: '13px', fontWeight: '700', color: '#8B1A1A', margin: '6px 0' },
-    serviceDesc: { fontSize: '12px', color: '#7A6055', lineHeight: 1.5, marginBottom: '12px' },
+    serviceName: { fontFamily: "'Playfair Display', serif", fontSize: '16px', fontWeight: '700', color: '#5F0909', marginBottom: '4px' },
+    serviceMeta: { fontSize: '12px', color: '#7A5C00', marginBottom: '2px' },
+    servicePrice: { fontSize: '13px', fontWeight: '700', color: '#B71C1C', margin: '6px 0' },
+    serviceDesc: { fontSize: '12px', color: '#7A5C00', lineHeight: 1.5, marginBottom: '12px' },
     serviceActions: { display: 'flex', gap: '8px' },
-    bookBtn: { flex: 1, padding: '10px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
-    viewBtn: { flex: 1, padding: '10px', background: 'transparent', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
-    listCta: { background: 'linear-gradient(135deg, #1A0A0A, #3D1A1A)', borderRadius: '16px', padding: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px' },
+    bookBtn: { flex: 1, padding: '10px', background: '#B71C1C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
+    viewBtn: { flex: 1, padding: '10px', background: 'transparent', color: '#B71C1C', border: '1.5px solid #B71C1C', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
+    listCta: { background: 'linear-gradient(135deg, #5F0909, #B71C1C)', borderRadius: '16px', padding: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px' },
     listCtaTitle: { fontFamily: "'Playfair Display', serif", fontSize: '22px', color: '#fff', marginBottom: '8px' },
-    listCtaDesc: { fontSize: '14px', color: 'rgba(255,255,255,0.6)', maxWidth: '500px' },
-    listCtaBtn: { padding: '12px 28px', background: '#C9A84C', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' },
-    overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
+    listCtaDesc: { fontSize: '14px', color: 'rgba(255,255,255,0.7)', maxWidth: '500px' },
+    listCtaBtn: { padding: '12px 28px', background: '#F5BE17', color: '#5F0909', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' },
+    overlay: { position: 'fixed', inset: 0, background: 'rgba(95,9,9,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
     modal: { background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '540px', maxHeight: '90vh', overflowY: 'auto', position: 'relative' },
-    closeBtn: { position: 'absolute', top: '16px', right: '16px', background: 'rgba(0,0,0,0.3)', color: '#fff', border: 'none', width: '32px', height: '32px', borderRadius: '50%', fontSize: '14px', cursor: 'pointer', zIndex: 10 },
-    modalPhoto: { height: '180px', background: 'linear-gradient(135deg, #FDF5EE, #F5E6D0)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', borderRadius: '20px 20px 0 0', overflow: 'hidden' },
+    closeBtn: { position: 'absolute', top: '16px', right: '16px', background: 'rgba(95,9,9,0.7)', color: '#fff', border: 'none', width: '32px', height: '32px', borderRadius: '50%', fontSize: '14px', cursor: 'pointer', zIndex: 10 },
+    modalPhoto: { height: '180px', background: 'linear-gradient(135deg, #FFF8E1, #F5BE17)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', borderRadius: '20px 20px 0 0', overflow: 'hidden' },
     modalBody: { padding: '24px' },
-    modalName: { fontFamily: "'Playfair Display', serif", fontSize: '22px', color: '#1A0A0A', marginBottom: '4px' },
-    modalRating: { fontSize: '14px', color: '#C9A84C', fontWeight: '600', marginBottom: '12px' },
-    modalDesc: { fontSize: '14px', color: '#7A6055', lineHeight: 1.7, marginBottom: '16px' },
-    modalGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', border: '1px solid #E8D5C4', borderRadius: '10px', overflow: 'hidden', marginBottom: '16px' },
-    modalField: { padding: '10px 14px', borderBottom: '1px solid #E8D5C4', borderRight: '1px solid #E8D5C4' },
-    modalFieldLabel: { display: 'block', fontSize: '10px', fontWeight: '700', color: '#7A6055', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' },
-    modalFieldValue: { fontSize: '13px', fontWeight: '600', color: '#1A0A0A' },
-    availSection: { background: '#F8F9FA', borderRadius: '10px', padding: '16px', marginBottom: '16px' },
-    availTitle: { fontSize: '14px', fontWeight: '700', color: '#1A0A0A', marginBottom: '10px' },
+    modalName: { fontFamily: "'Playfair Display', serif", fontSize: '22px', color: '#5F0909', marginBottom: '4px' },
+    modalRating: { fontSize: '14px', color: '#DF9B08', fontWeight: '600', marginBottom: '12px' },
+    modalDesc: { fontSize: '14px', color: '#7A5C00', lineHeight: 1.7, marginBottom: '16px' },
+    modalGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', border: '1px solid #F5BE17', borderRadius: '10px', overflow: 'hidden', marginBottom: '16px' },
+    modalField: { padding: '10px 14px', borderBottom: '1px solid #FFF8E1', borderRight: '1px solid #F5BE17' },
+    modalFieldLabel: { display: 'block', fontSize: '10px', fontWeight: '700', color: '#7A5C00', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' },
+    modalFieldValue: { fontSize: '13px', fontWeight: '600', color: '#5F0909' },
+    availSection: { background: '#FFF8E1', borderRadius: '10px', padding: '16px', marginBottom: '16px', border: '1px solid #F5BE17' },
+    availTitle: { fontSize: '14px', fontWeight: '700', color: '#5F0909', marginBottom: '10px' },
     availResult: { padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', marginTop: '8px' },
     modalActions: { display: 'flex', gap: '10px' },
     whatsappBtn: { flex: 1, padding: '12px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
     formGroup: { marginBottom: '16px' },
-    label: { display: 'block', fontSize: '11px', fontWeight: '700', color: '#7A6055', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-    input: { width: '100%', padding: '11px 14px', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '14px', color: '#2C1810', background: '#FFFDF9', outline: 'none', boxSizing: 'border-box' },
-
-    // ✅ Package styles
+    label: { display: 'block', fontSize: '11px', fontWeight: '700', color: '#7A5C00', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    input: { width: '100%', padding: '11px 14px', border: '1.5px solid #F5BE17', borderRadius: '8px', fontSize: '14px', color: '#5F0909', background: '#FFFDF4', outline: 'none', boxSizing: 'border-box' },
     packagesSection: { marginBottom: '16px' },
-    packagesSectionTitle: { fontSize: '15px', fontWeight: '700', color: '#1A0A0A', marginBottom: '12px' },
+    packagesSectionTitle: { fontSize: '15px', fontWeight: '700', color: '#5F0909', marginBottom: '12px' },
     packagesList: { display: 'flex', flexDirection: 'column', gap: '10px' },
-    pkgCard: { borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s' },
+    pkgCard: { borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s', border: '1.5px solid #F5BE17' },
     pkgPhotoRow: { display: 'flex', height: '80px', overflow: 'hidden' },
     pkgPhoto: { flex: 1, objectFit: 'cover', height: '100%' },
     pkgContent: { padding: '10px 12px' },
-    pkgName: { fontFamily: "'Playfair Display', serif", fontSize: '15px', fontWeight: '700', color: '#1A0A0A' },
-    pkgPrice: { fontSize: '14px', fontWeight: '700', color: '#8B1A1A' },
-    pkgDesc: { fontSize: '12px', color: '#7A6055', lineHeight: 1.5, marginBottom: '8px' },
+    pkgName: { fontFamily: "'Playfair Display', serif", fontSize: '15px', fontWeight: '700', color: '#5F0909' },
+    pkgPrice: { fontSize: '14px', fontWeight: '700', color: '#B71C1C' },
+    pkgDesc: { fontSize: '12px', color: '#7A5C00', lineHeight: 1.5, marginBottom: '8px' },
     featuresRow: { display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' },
-    featureTag: { fontSize: '11px', padding: '2px 7px', background: '#F0FFF4', color: '#2E7D32', borderRadius: '20px', border: '1px solid #C8E6C9' },
-    selectedPkgBadge: { marginTop: '8px', fontSize: '12px', fontWeight: '700', color: '#8B1A1A' },
+    featureTag: { fontSize: '11px', padding: '2px 7px', background: '#F1F8E9', color: '#2E7D32', borderRadius: '20px', border: '1px solid #C8E6C9' },
+    selectedPkgBadge: { marginTop: '8px', fontSize: '12px', fontWeight: '700', color: '#B71C1C' },
 };
 
 export default Services;

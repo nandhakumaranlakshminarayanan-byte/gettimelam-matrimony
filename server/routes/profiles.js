@@ -33,10 +33,8 @@ router.get('/', optionalProtect, getProfiles);
 router.post('/', protect, createProfile);
 router.get('/my', protect, getMyProfile);
 router.get('/suggested', protect, getSuggestedMatches);
-router.get('/:id', getProfileById);
-router.put('/:id', protect, updateProfile);
 
-// ── Upload single profile photo ──
+// ✅ Upload routes BEFORE /:id
 router.post('/upload-photo', protect, upload.single('photo'), async (req, res) => {
     try {
         if (!req.file) {
@@ -107,5 +105,9 @@ router.delete('/photos/:filename', protect, async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
+// ✅ /:id routes LAST
+router.get('/:id', getProfileById);
+router.put('/:id', protect, updateProfile);
 
 module.exports = router;

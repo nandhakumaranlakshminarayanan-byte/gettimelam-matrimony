@@ -10,70 +10,43 @@ import toast from 'react-hot-toast';
 
 const API = 'http://localhost:5000';
 
-// ✅ Incoming Number Requests Component
 const IncomingRequests = () => {
     const [requests, setRequests] = useState([]);
-
     useEffect(() => { fetchRequests(); }, []);
-
     const fetchRequests = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get(`${API}/api/privacy/incoming`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.get(`${API}/api/privacy/incoming`, { headers: { Authorization: `Bearer ${token}` } });
             setRequests(res.data.requests || []);
         } catch (err) { }
     };
-
     const respond = async (id, status) => {
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`${API}/api/privacy/${id}/respond`,
-                { status },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            await axios.put(`${API}/api/privacy/${id}/respond`, { status }, { headers: { Authorization: `Bearer ${token}` } });
             toast.success(`Request ${status}!`);
             fetchRequests();
         } catch (err) { toast.error('Failed!'); }
     };
-
     if (requests.length === 0) return (
-        <p style={{ fontSize: '13px', color: '#7A6055', textAlign: 'center', padding: '12px' }}>
-            No number requests yet
-        </p>
+        <p style={{ fontSize: '13px', color: '#7A5C00', textAlign: 'center', padding: '12px' }}>No number requests yet</p>
     );
-
     return (
         <div>
             {requests.map(req => (
-                <div key={req._id} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '12px 16px', background: '#fff', borderRadius: '10px',
-                    border: '1px solid #E8D5C4', marginBottom: '8px'
-                }}>
+                <div key={req._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#fff', borderRadius: '10px', border: '1px solid #F5BE17', marginBottom: '8px' }}>
                     <div>
-                        <div style={{ fontWeight: '600', color: '#1A0A0A', fontSize: '14px' }}>
-                            {req.requester?.name || 'Unknown'}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#7A6055' }}>
-                            {req.requester?.gender} • {new Date(req.createdAt).toLocaleDateString('en-IN')}
-                        </div>
+                        <div style={{ fontWeight: '600', color: '#5F0909', fontSize: '14px' }}>{req.requester?.name || 'Unknown'}</div>
+                        <div style={{ fontSize: '12px', color: '#7A5C00' }}>{req.requester?.gender} • {new Date(req.createdAt).toLocaleDateString('en-IN')}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         {req.status === 'pending' ? (
                             <>
-                                <button style={{ padding: '6px 14px', background: '#E8F5E9', color: '#2E7D32', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                                    onClick={() => respond(req._id, 'approved')}>✅ Approve</button>
-                                <button style={{ padding: '6px 14px', background: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                                    onClick={() => respond(req._id, 'rejected')}>❌ Reject</button>
+                                <button style={{ padding: '6px 14px', background: '#E8F5E9', color: '#2E7D32', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }} onClick={() => respond(req._id, 'approved')}>✅ Approve</button>
+                                <button style={{ padding: '6px 14px', background: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }} onClick={() => respond(req._id, 'rejected')}>❌ Reject</button>
                             </>
                         ) : (
-                            <span style={{
-                                padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700',
-                                background: req.status === 'approved' ? '#E8F5E9' : '#FFEBEE',
-                                color: req.status === 'approved' ? '#2E7D32' : '#C62828'
-                            }}>
+                            <span style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700', background: req.status === 'approved' ? '#E8F5E9' : '#FFEBEE', color: req.status === 'approved' ? '#2E7D32' : '#C62828' }}>
                                 {req.status === 'approved' ? '✅ Approved' : '❌ Rejected'}
                             </span>
                         )}
@@ -96,8 +69,8 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(false);
     const [photoUrl, setPhotoUrl] = useState(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
-    const [galleryPhotos, setGalleryPhotos] = useState([]);       // ✅ new
-    const [uploadingGallery, setUploadingGallery] = useState(false);   // ✅ new
+    const [galleryPhotos, setGalleryPhotos] = useState([]);
+    const [uploadingGallery, setUploadingGallery] = useState(false);
     const [suggestedMatches, setSuggestedMatches] = useState([]);
     const [shortlistedProfiles, setShortlistedProfiles] = useState([]);
     const [likedProfiles, setLikedProfiles] = useState([]);
@@ -126,16 +99,13 @@ const Dashboard = () => {
     const fetchProfile = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get(`${API}/api/profiles/my`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.get(`${API}/api/profiles/my`, { headers: { Authorization: `Bearer ${token}` } });
             setProfile(res.data.profile);
             setForm(res.data.profile);
             if (res.data.profile.photo) {
                 const photo = res.data.profile.photo;
                 setPhotoUrl(photo.startsWith('http') ? photo : `${API}${photo}`);
             }
-            // ✅ Load gallery photos
             setGalleryPhotos(res.data.profile.photos || []);
         } catch (err) { }
     };
@@ -143,9 +113,7 @@ const Dashboard = () => {
     const fetchSuggestedMatches = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get(`${API}/api/profiles/suggested`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.get(`${API}/api/profiles/suggested`, { headers: { Authorization: `Bearer ${token}` } });
             setSuggestedMatches(res.data.profiles || []);
         } catch (err) { setSuggestedMatches([]); }
     };
@@ -153,9 +121,7 @@ const Dashboard = () => {
     const fetchShortlist = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get(`${API}/api/shortlist/my`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.get(`${API}/api/shortlist/my`, { headers: { Authorization: `Bearer ${token}` } });
             setShortlistedProfiles(res.data.profiles || []);
         } catch (err) { setShortlistedProfiles([]); }
     };
@@ -163,9 +129,7 @@ const Dashboard = () => {
     const fetchLikedProfiles = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get(`${API}/api/likes/my-likes`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.get(`${API}/api/likes/my-likes`, { headers: { Authorization: `Bearer ${token}` } });
             setLikedProfiles(res.data.profiles || []);
         } catch (err) { setLikedProfiles([]); }
     };
@@ -173,9 +137,7 @@ const Dashboard = () => {
     const fetchLikedMe = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get(`${API}/api/likes/liked-me`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.get(`${API}/api/likes/liked-me`, { headers: { Authorization: `Bearer ${token}` } });
             setLikedMeProfiles(res.data.likes || []);
         } catch (err) { setLikedMeProfiles([]); }
     };
@@ -202,15 +164,11 @@ const Dashboard = () => {
         } finally { setUploadingPhoto(false); }
     };
 
-    // ✅ Upload multiple gallery photos
     const handleGalleryUpload = async (e) => {
         const files = Array.from(e.target.files);
         if (!files.length) return;
         if (!profile) { toast.error('Create your profile first!'); return; }
-        if (galleryPhotos.length + files.length > 15) {
-            toast.error(`You can only upload ${15 - galleryPhotos.length} more photos!`);
-            return;
-        }
+        if (galleryPhotos.length + files.length > 15) { toast.error(`You can only upload ${15 - galleryPhotos.length} more photos!`); return; }
         setUploadingGallery(true);
         const formData = new FormData();
         files.forEach(f => formData.append('photos', f));
@@ -226,18 +184,13 @@ const Dashboard = () => {
         } finally { setUploadingGallery(false); }
     };
 
-    // ✅ Delete gallery photo
     const handleDeleteGalleryPhoto = async (filename) => {
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`${API}/api/profiles/photos/${filename}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axios.delete(`${API}/api/profiles/photos/${filename}`, { headers: { Authorization: `Bearer ${token}` } });
             setGalleryPhotos(prev => prev.filter(p => !p.includes(filename)));
             toast.success('Photo deleted!');
-        } catch (err) {
-            toast.error('Failed to delete!');
-        }
+        } catch (err) { toast.error('Failed to delete!'); }
     };
 
     const handleSaveProfile = async (e) => {
@@ -246,14 +199,10 @@ const Dashboard = () => {
         try {
             const token = localStorage.getItem('token');
             if (profile) {
-                await axios.put(`${API}/api/profiles/${profile._id}`, form, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                await axios.put(`${API}/api/profiles/${profile._id}`, form, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success('Profile updated! ✅');
             } else {
-                await axios.post(`${API}/api/profiles`, {
-                    ...form, name: user.name, gender: user.gender
-                }, { headers: { Authorization: `Bearer ${token}` } });
+                await axios.post(`${API}/api/profiles`, { ...form, name: user.name, gender: user.gender }, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success('Profile created! 🎊');
             }
             setEditing(false);
@@ -268,9 +217,7 @@ const Dashboard = () => {
         if (!profile) { toast.error('Create your profile first!'); return; }
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.put(`${API}/api/privacy/toggle-protection`, {},
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const res = await axios.put(`${API}/api/privacy/toggle-protection`, {}, { headers: { Authorization: `Bearer ${token}` } });
             toast.success(res.data.message);
             fetchProfile();
         } catch (err) { toast.error('Failed to update privacy!'); }
@@ -291,11 +238,8 @@ const Dashboard = () => {
         <div style={styles.matchCard}>
             <div style={styles.matchPhoto}>
                 {p?.photo ? (
-                    <img src={`${API}${p.photo}`} alt={p.name}
-                        style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
-                ) : (
-                    p?.gender === 'Female' ? '👩' : '👨'
-                )}
+                    <img src={`${API}${p.photo}`} alt={p.name} style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (p?.gender === 'Female' ? '👩' : '👨')}
             </div>
             <div style={styles.matchInfo}>
                 <div style={styles.matchName}>{showLikerName ? likerName : p?.name}</div>
@@ -309,11 +253,10 @@ const Dashboard = () => {
     );
 
     return (
-        <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
+        <div style={{ background: '#FFF8E1', minHeight: '100vh' }}>
             <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
 
             <div style={styles.container}>
-
                 {/* SIDEBAR */}
                 <div style={styles.sidebar}>
                     <div style={styles.userCard}>
@@ -321,33 +264,23 @@ const Dashboard = () => {
                             {photoUrl ? (
                                 <img src={photoUrl} alt="Profile" style={styles.avatarImg} />
                             ) : (
-                                <div style={styles.avatarEmoji}>
-                                    {user?.gender === 'Female' ? '👩' : '👨'}
-                                </div>
+                                <div style={styles.avatarEmoji}>{user?.gender === 'Female' ? '👩' : '👨'}</div>
                             )}
-                            <label style={{ ...styles.uploadLabel, opacity: uploadingPhoto ? 0.6 : 1 }}
-                                htmlFor="photoUpload">
+                            <label style={{ ...styles.uploadLabel, opacity: uploadingPhoto ? 0.6 : 1 }} htmlFor="photoUpload">
                                 {uploadingPhoto ? '⏳ Uploading...' : photoUrl ? '📷 Change Photo' : '📷 Upload Photo'}
                             </label>
-                            <input id="photoUpload" type="file"
-                                accept="image/jpeg,image/jpg,image/png,image/webp"
-                                onChange={handlePhotoUpload}
-                                style={{ display: 'none' }}
-                                disabled={uploadingPhoto} />
+                            <input id="photoUpload" type="file" accept="image/jpeg,image/jpg,image/png,image/webp"
+                                onChange={handlePhotoUpload} style={{ display: 'none' }} disabled={uploadingPhoto} />
                         </div>
                         <div style={styles.userName}>{user?.name}</div>
                         <div style={styles.userMobile}>{user?.mobile}</div>
-                        <div style={{
-                            ...styles.planBadge,
-                            background: user?.isPremium ? '#C9A84C' : '#E8D5C4',
-                            color: user?.isPremium ? '#fff' : '#7A6055'
-                        }}>
+                        <div style={{ ...styles.planBadge, background: user?.isPremium ? '#DF9B08' : '#FFF8E1', color: user?.isPremium ? '#fff' : '#7A5C00', border: user?.isPremium ? 'none' : '1px solid #F5BE17' }}>
                             {user?.isPremium ? '⭐ Premium Member' : '🆓 Free Member'}
                         </div>
                         <div style={styles.completion}>
                             <div style={styles.completionLabel}>
                                 <span>Profile Completion</span>
-                                <span style={{ color: '#8B1A1A', fontWeight: '700' }}>{completionPct}</span>
+                                <span style={{ color: '#B71C1C', fontWeight: '700' }}>{completionPct}</span>
                             </div>
                             <div style={styles.progressBar}>
                                 <div style={{ ...styles.progressFill, width: completionPct }} />
@@ -363,8 +296,7 @@ const Dashboard = () => {
                                 {tab.label}
                             </div>
                         ))}
-                        <div style={{ ...styles.tab, color: '#C0392B' }}
-                            onClick={() => { logout(); navigate('/'); }}>
+                        <div style={{ ...styles.tab, color: '#B71C1C' }} onClick={() => { logout(); navigate('/'); }}>
                             🚪 Logout
                         </div>
                     </div>
@@ -379,10 +311,10 @@ const Dashboard = () => {
                             <h2 style={styles.pageTitle}>Welcome back, {user?.name}! 👋</h2>
                             <div style={styles.statsGrid}>
                                 {[
-                                    { icon: '👁️', label: 'Profile Views', value: '24', color: '#FDF0F0' },
-                                    { icon: '💌', label: 'Interests Received', value: '8', color: '#F0F4FF' },
-                                    { icon: '💍', label: 'Matches Found', value: suggestedMatches.length.toString(), color: '#F0FFF4' },
-                                    { icon: '⭐', label: 'Shortlisted', value: shortlistedProfiles.length.toString(), color: '#FFFBF0' },
+                                    { icon: '👁️', label: 'Profile Views', value: '24', color: '#FFF8E1' },
+                                    { icon: '💌', label: 'Interests Received', value: '8', color: '#FFF3E0' },
+                                    { icon: '💍', label: 'Matches Found', value: suggestedMatches.length.toString(), color: '#F1F8E9' },
+                                    { icon: '⭐', label: 'Shortlisted', value: shortlistedProfiles.length.toString(), color: '#FFF9E6' },
                                 ].map(s => (
                                     <div key={s.label} style={{ ...styles.statCard, background: s.color }}>
                                         <div style={styles.statIcon}>{s.icon}</div>
@@ -396,27 +328,21 @@ const Dashboard = () => {
                                 <div style={styles.alert}>
                                     <div>
                                         <strong>⚠️ Complete Your Profile!</strong>
-                                        <p style={{ fontSize: '13px', marginTop: '4px', color: '#7A6055' }}>
-                                            Add your details to get better matches.
-                                        </p>
+                                        <p style={{ fontSize: '13px', marginTop: '4px', color: '#7A5C00' }}>Add your details to get better matches.</p>
                                     </div>
-                                    <button style={styles.alertBtn} onClick={() => setActiveTab('profile')}>
-                                        Complete Now →
-                                    </button>
+                                    <button style={styles.alertBtn} onClick={() => setActiveTab('profile')}>Complete Now →</button>
                                 </div>
                             )}
 
                             {!photoUrl && (
-                                <div style={{ ...styles.alert, background: '#F0F4FF', border: '1px solid #C7D7F5' }}>
+                                <div style={{ ...styles.alert, background: '#FFF3E0', border: '1px solid #F5BE17' }}>
                                     <div>
                                         <strong>📷 Upload Your Photo!</strong>
-                                        <p style={{ fontSize: '13px', marginTop: '4px', color: '#7A6055' }}>
-                                            Profiles with photos get 3x more responses.
-                                            {!profile && ' (Create profile first)'}
+                                        <p style={{ fontSize: '13px', marginTop: '4px', color: '#7A5C00' }}>
+                                            Profiles with photos get 3x more responses.{!profile && ' (Create profile first)'}
                                         </p>
                                     </div>
-                                    <label htmlFor="photoUpload"
-                                        style={{ ...styles.alertBtn, cursor: profile ? 'pointer' : 'not-allowed', opacity: profile ? 1 : 0.5 }}>
+                                    <label htmlFor="photoUpload" style={{ ...styles.alertBtn, cursor: profile ? 'pointer' : 'not-allowed', opacity: profile ? 1 : 0.5 }}>
                                         Upload Now →
                                     </label>
                                 </div>
@@ -426,38 +352,28 @@ const Dashboard = () => {
                                 <div style={styles.upgradeBanner}>
                                     <div>
                                         <h3 style={{ color: '#fff', marginBottom: '4px', fontSize: '18px' }}>⭐ Upgrade to Premium</h3>
-                                        <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px' }}>
-                                            View contact numbers, horoscopes & connect on WhatsApp
-                                        </p>
+                                        <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px' }}>View contact numbers, horoscopes & connect on WhatsApp</p>
                                     </div>
-                                    <button style={styles.upgradeBtn} onClick={() => navigate('/plans')}>
-                                        View Plans →
-                                    </button>
+                                    <button style={styles.upgradeBtn} onClick={() => navigate('/plans')}>View Plans →</button>
                                 </div>
                             )}
 
                             <h3 style={styles.sectionTitle}>💍 Suggested Matches</h3>
                             <div style={styles.matchesGrid}>
                                 {suggestedMatches.length === 0 ? (
-                                    <div style={{ textAlign: 'center', padding: '32px', color: '#7A6055', background: '#FDF5EE', borderRadius: '12px' }}>
+                                    <div style={{ textAlign: 'center', padding: '32px', color: '#7A5C00', background: '#FFF8E1', borderRadius: '12px', border: '1px solid #F5BE17' }}>
                                         <div style={{ fontSize: '40px', marginBottom: '8px' }}>💍</div>
                                         <p style={{ fontWeight: '600', marginBottom: '4px' }}>No matches yet!</p>
                                         <p style={{ fontSize: '13px' }}>Complete your profile to get matched</p>
-                                        <button style={{ ...styles.interestBtn, marginTop: '12px' }}
-                                            onClick={() => setActiveTab('profile')}>
-                                            Complete Profile →
-                                        </button>
+                                        <button style={{ ...styles.interestBtn, marginTop: '12px' }} onClick={() => setActiveTab('profile')}>Complete Profile →</button>
                                     </div>
                                 ) : (
                                     suggestedMatches.map((m, i) => (
                                         <div key={m._id || i} style={styles.matchCard}>
                                             <div style={styles.matchPhoto}>
                                                 {m.photo ? (
-                                                    <img src={`${API}${m.photo}`} alt={m.name}
-                                                        style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
-                                                ) : (
-                                                    m.gender === 'Female' ? '👩' : '👨'
-                                                )}
+                                                    <img src={`${API}${m.photo}`} alt={m.name} style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                ) : (m.gender === 'Female' ? '👩' : '👨')}
                                             </div>
                                             <div style={styles.matchInfo}>
                                                 <div style={styles.matchName}>{m.name}</div>
@@ -466,10 +382,7 @@ const Dashboard = () => {
                                             </div>
                                             <div style={styles.matchActions}>
                                                 <button style={styles.interestBtn}>💌 Interest</button>
-                                                <button style={styles.viewBtn}
-                                                    onClick={() => navigate(`/profile/${m._id}`)}>
-                                                    View
-                                                </button>
+                                                <button style={styles.viewBtn} onClick={() => navigate(`/profile/${m._id}`)}>View</button>
                                             </div>
                                         </div>
                                     ))
@@ -490,117 +403,65 @@ const Dashboard = () => {
 
                             {editing ? (
                                 <form onSubmit={handleSaveProfile}>
-                                    <div style={styles.formSection}>
-                                        <h3 style={styles.formSectionTitle}>Personal Details</h3>
-                                        <div style={styles.formGrid}>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Height</label>
-                                                <select name="height" value={form.height} onChange={handleChange} style={styles.input}>
-                                                    <option value="">Select</option>
-                                                    {["4'6\"", "4'8\"", "4'10\"", "5'0\"", "5'2\"", "5'4\"", "5'6\"", "5'8\"", "5'10\"", "6'0\"", "6'2\""].map(h => (
-                                                        <option key={h}>{h}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Complexion</label>
-                                                <select name="complexion" value={form.complexion} onChange={handleChange} style={styles.input}>
-                                                    <option value="">Select</option>
-                                                    {['Fair', 'Very Fair', 'Wheatish', 'Dark'].map(c => <option key={c}>{c}</option>)}
-                                                </select>
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Marital Status</label>
-                                                <select name="maritalStatus" value={form.maritalStatus} onChange={handleChange} style={styles.input}>
-                                                    {['Never Married', 'Divorced', 'Widowed', 'Separated'].map(m => <option key={m}>{m}</option>)}
-                                                </select>
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Family Type</label>
-                                                <select name="familyType" value={form.familyType} onChange={handleChange} style={styles.input}>
-                                                    {['Nuclear', 'Joint'].map(f => <option key={f}>{f}</option>)}
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style={styles.formSection}>
-                                        <h3 style={styles.formSectionTitle}>Religious Details</h3>
-                                        <div style={styles.formGrid}>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Religion</label>
-                                                <select name="religion" value={form.religion} onChange={handleChange} style={styles.input}>
-                                                    {['Hindu', 'Muslim', 'Christian'].map(r => <option key={r}>{r}</option>)}
-                                                </select>
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Caste</label>
-                                                <input name="caste" type="text" placeholder="Enter caste"
-                                                    value={form.caste} onChange={handleChange} style={styles.input} />
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Rasi</label>
-                                                <select name="rasi" value={form.rasi} onChange={handleChange} style={styles.input}>
-                                                    <option value="">Select Rasi</option>
-                                                    {['Mesham', 'Rishabam', 'Mithunam', 'Kadagam', 'Simmam', 'Kanni', 'Thulam', 'Viruchigam', 'Dhanusu', 'Magaram', 'Kumbam', 'Meenam'].map(r => <option key={r}>{r}</option>)}
-                                                </select>
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Nakshatra</label>
-                                                <select name="nakshatra" value={form.nakshatra} onChange={handleChange} style={styles.input}>
-                                                    <option value="">Select Nakshatra</option>
-                                                    {['Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha', 'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishtha', 'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'].map(n => <option key={n}>{n}</option>)}
-                                                </select>
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Dosham</label>
-                                                <select name="dosham" value={form.dosham} onChange={handleChange} style={styles.input}>
-                                                    {['No', 'Yes', "Doesn't Matter"].map(d => <option key={d}>{d}</option>)}
-                                                </select>
+                                    {[
+                                        {
+                                            title: 'Personal Details', fields: [
+                                                { name: 'height', label: 'Height', type: 'select', options: ["4'6\"", "4'8\"", "4'10\"", "5'0\"", "5'2\"", "5'4\"", "5'6\"", "5'8\"", "5'10\"", "6'0\"", "6'2\""] },
+                                                { name: 'complexion', label: 'Complexion', type: 'select', options: ['Fair', 'Very Fair', 'Wheatish', 'Dark'] },
+                                                { name: 'maritalStatus', label: 'Marital Status', type: 'select', options: ['Never Married', 'Divorced', 'Widowed', 'Separated'] },
+                                                { name: 'familyType', label: 'Family Type', type: 'select', options: ['Nuclear', 'Joint'] },
+                                            ]
+                                        },
+                                        {
+                                            title: 'Religious Details', fields: [
+                                                { name: 'religion', label: 'Religion', type: 'select', options: ['Hindu', 'Muslim', 'Christian'] },
+                                                { name: 'caste', label: 'Caste', type: 'text', placeholder: 'Enter caste' },
+                                                { name: 'rasi', label: 'Rasi', type: 'select', options: ['Mesham', 'Rishabam', 'Mithunam', 'Kadagam', 'Simmam', 'Kanni', 'Thulam', 'Viruchigam', 'Dhanusu', 'Magaram', 'Kumbam', 'Meenam'] },
+                                                { name: 'nakshatra', label: 'Nakshatra', type: 'select', options: ['Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha', 'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishtha', 'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'] },
+                                                { name: 'dosham', label: 'Dosham', type: 'select', options: ['No', 'Yes', "Doesn't Matter"] },
+                                            ]
+                                        },
+                                        {
+                                            title: 'Education & Career', fields: [
+                                                { name: 'education', label: 'Education', type: 'text', placeholder: 'e.g. B.Tech, MBA' },
+                                                { name: 'occupation', label: 'Occupation', type: 'text', placeholder: 'e.g. Software Engineer' },
+                                                { name: 'annualIncome', label: 'Annual Income', type: 'select', options: ['Below 1 Lakh', '1-2 Lakhs', '2-5 Lakhs', '5-10 Lakhs', '10-20 Lakhs', '20+ Lakhs'] },
+                                            ]
+                                        },
+                                        {
+                                            title: 'Location', fields: [
+                                                { name: 'city', label: 'City', type: 'text', placeholder: 'Enter city' },
+                                                { name: 'district', label: 'District', type: 'select', options: ['Chennai', 'Coimbatore', 'Madurai', 'Trichy', 'Salem', 'Erode', 'Tirunelveli', 'Vellore', 'Thoothukudi', 'Puducherry'] },
+                                            ]
+                                        },
+                                        {
+                                            title: 'Family Details', fields: [
+                                                { name: 'fatherOccupation', label: "Father's Occupation", type: 'text', placeholder: "Father's occupation" },
+                                                { name: 'motherOccupation', label: "Mother's Occupation", type: 'text', placeholder: "Mother's occupation" },
+                                                { name: 'siblings', label: 'Siblings', type: 'text', placeholder: 'e.g. 1 Brother, 1 Sister' },
+                                            ]
+                                        },
+                                    ].map(section => (
+                                        <div key={section.title} style={styles.formSection}>
+                                            <h3 style={styles.formSectionTitle}>{section.title}</h3>
+                                            <div style={styles.formGrid}>
+                                                {section.fields.map(f => (
+                                                    <div key={f.name} style={styles.formGroup}>
+                                                        <label style={styles.label}>{f.label}</label>
+                                                        {f.type === 'select' ? (
+                                                            <select name={f.name} value={form[f.name]} onChange={handleChange} style={styles.input}>
+                                                                <option value="">Select</option>
+                                                                {f.options.map(o => <option key={o}>{o}</option>)}
+                                                            </select>
+                                                        ) : (
+                                                            <input name={f.name} type="text" placeholder={f.placeholder}
+                                                                value={form[f.name]} onChange={handleChange} style={styles.input} />
+                                                        )}
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
-                                    </div>
-
-                                    <div style={styles.formSection}>
-                                        <h3 style={styles.formSectionTitle}>Education & Career</h3>
-                                        <div style={styles.formGrid}>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Education</label>
-                                                <input name="education" type="text" placeholder="e.g. B.Tech, MBA"
-                                                    value={form.education} onChange={handleChange} style={styles.input} />
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Occupation</label>
-                                                <input name="occupation" type="text" placeholder="e.g. Software Engineer"
-                                                    value={form.occupation} onChange={handleChange} style={styles.input} />
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Annual Income</label>
-                                                <select name="annualIncome" value={form.annualIncome} onChange={handleChange} style={styles.input}>
-                                                    <option value="">Select</option>
-                                                    {['Below 1 Lakh', '1-2 Lakhs', '2-5 Lakhs', '5-10 Lakhs', '10-20 Lakhs', '20+ Lakhs'].map(i => <option key={i}>{i}</option>)}
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style={styles.formSection}>
-                                        <h3 style={styles.formSectionTitle}>Location</h3>
-                                        <div style={styles.formGrid}>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>City</label>
-                                                <input name="city" type="text" placeholder="Enter city"
-                                                    value={form.city} onChange={handleChange} style={styles.input} />
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>District</label>
-                                                <select name="district" value={form.district} onChange={handleChange} style={styles.input}>
-                                                    <option value="">Select District</option>
-                                                    {['Chennai', 'Coimbatore', 'Madurai', 'Trichy', 'Salem', 'Erode', 'Tirunelveli', 'Vellore', 'Thoothukudi', 'Puducherry'].map(d => <option key={d}>{d}</option>)}
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    ))}
 
                                     <div style={styles.formSection}>
                                         <h3 style={styles.formSectionTitle}>About Me</h3>
@@ -609,30 +470,7 @@ const Dashboard = () => {
                                             style={{ ...styles.input, resize: 'vertical' }} />
                                     </div>
 
-                                    <div style={styles.formSection}>
-                                        <h3 style={styles.formSectionTitle}>Family Details</h3>
-                                        <div style={styles.formGrid}>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Father's Occupation</label>
-                                                <input name="fatherOccupation" type="text" placeholder="Father's occupation"
-                                                    value={form.fatherOccupation} onChange={handleChange} style={styles.input} />
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Mother's Occupation</label>
-                                                <input name="motherOccupation" type="text" placeholder="Mother's occupation"
-                                                    value={form.motherOccupation} onChange={handleChange} style={styles.input} />
-                                            </div>
-                                            <div style={styles.formGroup}>
-                                                <label style={styles.label}>Siblings</label>
-                                                <input name="siblings" type="text" placeholder="e.g. 1 Brother, 1 Sister"
-                                                    value={form.siblings} onChange={handleChange} style={styles.input} />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <button type="submit"
-                                        style={{ ...styles.saveBtn, opacity: loading ? 0.7 : 1 }}
-                                        disabled={loading}>
+                                    <button type="submit" style={{ ...styles.saveBtn, opacity: loading ? 0.7 : 1 }} disabled={loading}>
                                         {loading ? '⏳ Saving...' : '💾 Save Profile'}
                                     </button>
                                 </form>
@@ -670,31 +508,23 @@ const Dashboard = () => {
                                                 )}
                                             </div>
 
-                                            {/* ✅ Photo Gallery Section */}
+                                            {/* Gallery Section */}
                                             <div style={styles.gallerySection}>
                                                 <div style={styles.galleryHeader}>
-                                                    <h3 style={styles.galleryTitle}>
-                                                        📸 My Photos ({galleryPhotos.length}/15)
-                                                    </h3>
+                                                    <h3 style={styles.galleryTitle}>📸 My Photos ({galleryPhotos.length}/15)</h3>
                                                     {galleryPhotos.length < 15 && (
                                                         <label style={styles.editBtn} htmlFor="galleryUpload">
                                                             {uploadingGallery ? '⏳ Uploading...' : '➕ Add Photos'}
                                                         </label>
                                                     )}
                                                     <input id="galleryUpload" type="file" multiple accept="image/*"
-                                                        style={{ display: 'none' }}
-                                                        onChange={handleGalleryUpload}
-                                                        disabled={uploadingGallery} />
+                                                        style={{ display: 'none' }} onChange={handleGalleryUpload} disabled={uploadingGallery} />
                                                 </div>
-
                                                 {galleryPhotos.length === 0 ? (
                                                     <div style={styles.galleryEmpty}>
                                                         <div style={{ fontSize: '40px', marginBottom: '8px' }}>📷</div>
-                                                        <p style={{ color: '#7A6055', fontSize: '14px', marginBottom: '12px' }}>
-                                                            No photos yet. Add up to 15 photos!
-                                                        </p>
-                                                        <label htmlFor="galleryUpload"
-                                                            style={{ ...styles.saveBtn, cursor: 'pointer', fontSize: '13px', padding: '10px 20px' }}>
+                                                        <p style={{ color: '#7A5C00', fontSize: '14px', marginBottom: '12px' }}>No photos yet. Add up to 15 photos!</p>
+                                                        <label htmlFor="galleryUpload" style={{ ...styles.saveBtn, cursor: 'pointer', fontSize: '13px', padding: '10px 20px' }}>
                                                             Upload Photos
                                                         </label>
                                                     </div>
@@ -704,20 +534,15 @@ const Dashboard = () => {
                                                             const filename = photo.split('/').pop();
                                                             return (
                                                                 <div key={i} style={styles.galleryItem}>
-                                                                    <img src={`${API}${photo}`} alt={`Photo ${i + 1}`}
-                                                                        style={styles.galleryImg} />
-                                                                    <button onClick={() => handleDeleteGalleryPhoto(filename)}
-                                                                        style={styles.galleryDeleteBtn}>
-                                                                        ✕
-                                                                    </button>
+                                                                    <img src={`${API}${photo}`} alt={`Photo ${i + 1}`} style={styles.galleryImg} />
+                                                                    <button onClick={() => handleDeleteGalleryPhoto(filename)} style={styles.galleryDeleteBtn}>✕</button>
                                                                 </div>
                                                             );
                                                         })}
-                                                        {/* Add more */}
                                                         {galleryPhotos.length < 15 && (
                                                             <label htmlFor="galleryUpload" style={styles.galleryAddMore}>
                                                                 <span style={{ fontSize: '28px' }}>➕</span>
-                                                                <span style={{ fontSize: '11px', color: '#7A6055', marginTop: '4px' }}>Add More</span>
+                                                                <span style={{ fontSize: '11px', color: '#7A5C00', marginTop: '4px' }}>Add More</span>
                                                             </label>
                                                         )}
                                                     </div>
@@ -728,12 +553,8 @@ const Dashboard = () => {
                                         <div style={styles.emptyProfile}>
                                             <div style={{ fontSize: '60px', marginBottom: '16px' }}>👤</div>
                                             <h3>No Profile Yet!</h3>
-                                            <p style={{ color: '#7A6055', marginBottom: '20px' }}>
-                                                Complete your profile to get better matches
-                                            </p>
-                                            <button style={styles.saveBtn} onClick={() => setEditing(true)}>
-                                                ✏️ Create Profile Now
-                                            </button>
+                                            <p style={{ color: '#7A5C00', marginBottom: '20px' }}>Complete your profile to get better matches</p>
+                                            <button style={styles.saveBtn} onClick={() => setEditing(true)}>✏️ Create Profile Now</button>
                                         </div>
                                     )}
                                 </div>
@@ -748,12 +569,8 @@ const Dashboard = () => {
                             <div style={styles.emptyProfile}>
                                 <div style={{ fontSize: '60px', marginBottom: '16px' }}>💌</div>
                                 <h3>No Interests Yet!</h3>
-                                <p style={{ color: '#7A6055', marginBottom: '20px' }}>
-                                    Browse profiles and send interests to connect
-                                </p>
-                                <button style={styles.saveBtn} onClick={() => navigate('/browse')}>
-                                    Browse Profiles →
-                                </button>
+                                <p style={{ color: '#7A5C00', marginBottom: '20px' }}>Browse profiles and send interests to connect</p>
+                                <button style={styles.saveBtn} onClick={() => navigate('/browse')}>Browse Profiles →</button>
                             </div>
                         </div>
                     )}
@@ -766,12 +583,8 @@ const Dashboard = () => {
                                 <div style={styles.emptyProfile}>
                                     <div style={{ fontSize: '60px', marginBottom: '16px' }}>💍</div>
                                     <h3>Complete your profile to see matches!</h3>
-                                    <p style={{ color: '#7A6055', marginBottom: '20px' }}>
-                                        The more details you add, the better your matches
-                                    </p>
-                                    <button style={styles.saveBtn} onClick={() => setActiveTab('profile')}>
-                                        Complete Profile →
-                                    </button>
+                                    <p style={{ color: '#7A5C00', marginBottom: '20px' }}>The more details you add, the better your matches</p>
+                                    <button style={styles.saveBtn} onClick={() => setActiveTab('profile')}>Complete Profile →</button>
                                 </div>
                             ) : (
                                 <div style={styles.matchesGrid}>
@@ -779,11 +592,8 @@ const Dashboard = () => {
                                         <div key={m._id || i} style={styles.matchCard}>
                                             <div style={styles.matchPhoto}>
                                                 {m.photo ? (
-                                                    <img src={`${API}${m.photo}`} alt={m.name}
-                                                        style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
-                                                ) : (
-                                                    m.gender === 'Female' ? '👩' : '👨'
-                                                )}
+                                                    <img src={`${API}${m.photo}`} alt={m.name} style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                ) : (m.gender === 'Female' ? '👩' : '👨')}
                                             </div>
                                             <div style={styles.matchInfo}>
                                                 <div style={styles.matchName}>{m.name}</div>
@@ -792,10 +602,7 @@ const Dashboard = () => {
                                             </div>
                                             <div style={styles.matchActions}>
                                                 <button style={styles.interestBtn}>💌 Interest</button>
-                                                <button style={styles.viewBtn}
-                                                    onClick={() => navigate(`/profile/${m._id}`)}>
-                                                    View
-                                                </button>
+                                                <button style={styles.viewBtn} onClick={() => navigate(`/profile/${m._id}`)}>View</button>
                                             </div>
                                         </div>
                                     ))}
@@ -812,7 +619,7 @@ const Dashboard = () => {
                                 {[
                                     { id: 'shortlisted', label: `⭐ Shortlisted (${shortlistedProfiles.length})` },
                                     { id: 'liked', label: `👍 Profiles I Liked (${likedProfiles.length})` },
-                                    { id: 'liked-me', label: `💝 Liked Me (${likedMeProfiles.length})` },
+                                    { id: 'liked-me', label: `👍 Liked Me (${likedMeProfiles.length})` },
                                 ].map(sub => (
                                     <button key={sub.id}
                                         style={{ ...styles.subTabBtn, ...(shortlistSubTab === sub.id ? styles.subTabActive : {}) }}
@@ -827,7 +634,7 @@ const Dashboard = () => {
                                     <div style={styles.emptyProfile}>
                                         <div style={{ fontSize: '48px', marginBottom: '12px' }}>⭐</div>
                                         <h3>No Shortlisted Profiles!</h3>
-                                        <p style={{ color: '#7A6055', marginBottom: '16px' }}>Browse profiles and click ❤️ to shortlist</p>
+                                        <p style={{ color: '#7A5C00', marginBottom: '16px' }}>Browse profiles and click ❤️ to shortlist</p>
                                         <button style={styles.saveBtn} onClick={() => navigate('/browse')}>Browse Profiles →</button>
                                     </div>
                                 ) : (
@@ -842,7 +649,7 @@ const Dashboard = () => {
                                     <div style={styles.emptyProfile}>
                                         <div style={{ fontSize: '48px', marginBottom: '12px' }}>👍</div>
                                         <h3>No Liked Profiles!</h3>
-                                        <p style={{ color: '#7A6055', marginBottom: '16px' }}>Browse profiles and click 👍 Like to save them here</p>
+                                        <p style={{ color: '#7A5C00', marginBottom: '16px' }}>Browse profiles and click 👍 Like to save them here</p>
                                         <button style={styles.saveBtn} onClick={() => navigate('/browse')}>Browse Profiles →</button>
                                     </div>
                                 ) : (
@@ -855,16 +662,15 @@ const Dashboard = () => {
                             {shortlistSubTab === 'liked-me' && (
                                 likedMeProfiles.length === 0 ? (
                                     <div style={styles.emptyProfile}>
-                                        <div style={{ fontSize: '48px', marginBottom: '12px' }}>💝</div>
+                                        <div style={{ fontSize: '48px', marginBottom: '12px' }}>👍</div>
                                         <h3>No one liked your profile yet!</h3>
-                                        <p style={{ color: '#7A6055', marginBottom: '16px' }}>Complete your profile to attract more likes</p>
+                                        <p style={{ color: '#7A5C00', marginBottom: '16px' }}>Complete your profile to attract more likes</p>
                                         <button style={styles.saveBtn} onClick={() => setActiveTab('profile')}>Complete Profile →</button>
                                     </div>
                                 ) : (
                                     <div style={styles.matchesGrid}>
                                         {likedMeProfiles.map((like, i) => (
-                                            <ProfileCard key={like._id || i} p={like.profile}
-                                                showLikerName={true} likerName={like.liker?.name || 'Unknown'} />
+                                            <ProfileCard key={like._id || i} p={like.profile} showLikerName={true} likerName={like.liker?.name || 'Unknown'} />
                                         ))}
                                     </div>
                                 )
@@ -878,36 +684,22 @@ const Dashboard = () => {
                             <h2 style={styles.pageTitle}>⚙️ Settings</h2>
                             <div style={styles.formSection}>
                                 <h3 style={styles.formSectionTitle}>🔒 Number Privacy</h3>
-                                <div style={{
-                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    padding: '16px', borderRadius: '10px',
-                                    background: profile?.numberProtected ? '#FFF0F0' : '#F0FFF4',
-                                    border: `1px solid ${profile?.numberProtected ? '#FFCDD2' : '#C8E6C9'}`
-                                }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', borderRadius: '10px', background: profile?.numberProtected ? '#FFF0F0' : '#F0FFF4', border: `1px solid ${profile?.numberProtected ? '#FFCDD2' : '#C8E6C9'}` }}>
                                     <div>
-                                        <div style={{ fontWeight: '700', color: '#1A0A0A', marginBottom: '4px', fontSize: '15px' }}>
+                                        <div style={{ fontWeight: '700', color: '#5F0909', marginBottom: '4px', fontSize: '15px' }}>
                                             {profile?.numberProtected ? '🔒 Number Protected' : '📞 Number Public'}
                                         </div>
-                                        <div style={{ fontSize: '13px', color: '#7A6055' }}>
-                                            {profile?.numberProtected
-                                                ? 'Only approved users can see your number'
-                                                : 'Premium users can see your number directly'}
+                                        <div style={{ fontSize: '13px', color: '#7A5C00' }}>
+                                            {profile?.numberProtected ? 'Only approved users can see your number' : 'Premium users can see your number directly'}
                                         </div>
                                     </div>
-                                    <button style={{
-                                        padding: '10px 20px', border: 'none', borderRadius: '8px',
-                                        fontSize: '13px', fontWeight: '700',
-                                        cursor: profile ? 'pointer' : 'not-allowed',
-                                        background: profile ? (profile?.numberProtected ? '#2E7D32' : '#8B1A1A') : '#ccc',
-                                        color: '#fff', opacity: profile ? 1 : 0.5
-                                    }} onClick={handleTogglePrivacy}>
+                                    <button style={{ padding: '10px 20px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: profile ? 'pointer' : 'not-allowed', background: profile ? (profile?.numberProtected ? '#2E7D32' : '#B71C1C') : '#ccc', color: '#fff', opacity: profile ? 1 : 0.5 }}
+                                        onClick={handleTogglePrivacy}>
                                         {profile?.numberProtected ? '🔓 Make Public' : '🔒 Protect Number'}
                                     </button>
                                 </div>
                                 <div style={{ marginTop: '20px' }}>
-                                    <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#1A0A0A', marginBottom: '12px' }}>
-                                        📬 Number Requests
-                                    </h4>
+                                    <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#5F0909', marginBottom: '12px' }}>📬 Number Requests</h4>
                                     <IncomingRequests />
                                 </div>
                             </div>
@@ -932,8 +724,7 @@ const Dashboard = () => {
 
                             <div style={styles.formSection}>
                                 <h3 style={styles.formSectionTitle}>Danger Zone</h3>
-                                <button style={{ ...styles.saveBtn, background: '#C0392B' }}
-                                    onClick={() => { logout(); navigate('/'); }}>
+                                <button style={{ ...styles.saveBtn, background: '#B71C1C' }} onClick={() => { logout(); navigate('/'); }}>
                                     🚪 Logout
                                 </button>
                             </div>
@@ -944,14 +735,8 @@ const Dashboard = () => {
 
             <Footer />
 
-            {showLogin && (
-                <LoginModal onClose={() => setShowLogin(false)}
-                    onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />
-            )}
-            {showRegister && (
-                <RegisterModal onClose={() => setShowRegister(false)}
-                    onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />
-            )}
+            {showLogin && <LoginModal onClose={() => setShowLogin(false)} onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />}
+            {showRegister && <RegisterModal onClose={() => setShowRegister(false)} onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />}
         </div>
     );
 };
@@ -959,72 +744,70 @@ const Dashboard = () => {
 const styles = {
     container: { maxWidth: '1200px', margin: '0 auto', padding: '32px 24px', display: 'grid', gridTemplateColumns: '280px 1fr', gap: '28px', alignItems: 'start' },
     sidebar: {},
-    userCard: { background: '#fff', borderRadius: '16px', padding: '24px', textAlign: 'center', boxShadow: '0 4px 24px rgba(139,26,26,0.08)', marginBottom: '16px' },
+    userCard: { background: '#fff', borderRadius: '16px', padding: '24px', textAlign: 'center', boxShadow: '0 4px 24px rgba(223,155,8,0.12)', marginBottom: '16px', border: '1px solid #F5BE17' },
     avatarContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '12px' },
-    avatarImg: { width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A', marginBottom: '8px' },
+    avatarImg: { width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #DF9B08', marginBottom: '8px' },
     avatarEmoji: { fontSize: '64px', marginBottom: '8px', lineHeight: 1 },
-    uploadLabel: { fontSize: '12px', fontWeight: '600', color: '#8B1A1A', cursor: 'pointer', padding: '5px 14px', border: '1.5px solid #8B1A1A', borderRadius: '20px', background: '#FDF0F0', display: 'inline-block' },
-    userName: { fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: '700', color: '#1A0A0A', marginBottom: '4px' },
-    userMobile: { fontSize: '13px', color: '#7A6055', marginBottom: '12px' },
+    uploadLabel: { fontSize: '12px', fontWeight: '600', color: '#B71C1C', cursor: 'pointer', padding: '5px 14px', border: '1.5px solid #B71C1C', borderRadius: '20px', background: '#FFF8E1', display: 'inline-block' },
+    userName: { fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: '700', color: '#5F0909', marginBottom: '4px' },
+    userMobile: { fontSize: '13px', color: '#7A5C00', marginBottom: '12px' },
     planBadge: { display: 'inline-block', padding: '5px 14px', borderRadius: '50px', fontSize: '12px', fontWeight: '600', marginBottom: '16px' },
     completion: { textAlign: 'left' },
-    completionLabel: { display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#7A6055', marginBottom: '6px' },
-    progressBar: { height: '6px', background: '#E8D5C4', borderRadius: '50px', overflow: 'hidden' },
-    progressFill: { height: '100%', background: 'linear-gradient(90deg, #8B1A1A, #C0392B)', borderRadius: '50px', transition: 'width 0.5s' },
-    tabs: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
-    tab: { padding: '14px 20px', fontSize: '14px', fontWeight: '500', color: '#7A6055', cursor: 'pointer', borderBottom: '1px solid #F5EAE0', transition: 'all 0.2s' },
-    tabActive: { background: '#FDF0F0', color: '#8B1A1A', fontWeight: '700', borderLeft: '3px solid #8B1A1A' },
-    main: { background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)', minHeight: '600px' },
-    pageTitle: { fontFamily: "'Playfair Display', serif", fontSize: '26px', color: '#1A0A0A', marginBottom: '24px' },
+    completionLabel: { display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#7A5C00', marginBottom: '6px' },
+    progressBar: { height: '6px', background: '#F5E6A0', borderRadius: '50px', overflow: 'hidden' },
+    progressFill: { height: '100%', background: 'linear-gradient(90deg, #B71C1C, #DF9B08)', borderRadius: '50px', transition: 'width 0.5s' },
+    tabs: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(223,155,8,0.12)', border: '1px solid #F5BE17' },
+    tab: { padding: '14px 20px', fontSize: '14px', fontWeight: '500', color: '#7A5C00', cursor: 'pointer', borderBottom: '1px solid #FFF8E1', transition: 'all 0.2s' },
+    tabActive: { background: '#FFF8E1', color: '#B71C1C', fontWeight: '700', borderLeft: '3px solid #B71C1C' },
+    main: { background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 24px rgba(223,155,8,0.12)', minHeight: '600px', border: '1px solid #F5E6A0' },
+    pageTitle: { fontFamily: "'Playfair Display', serif", fontSize: '26px', color: '#5F0909', marginBottom: '24px' },
     statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' },
-    statCard: { borderRadius: '12px', padding: '20px', textAlign: 'center' },
+    statCard: { borderRadius: '12px', padding: '20px', textAlign: 'center', border: '1px solid #F5BE17' },
     statIcon: { fontSize: '28px', marginBottom: '8px' },
-    statValue: { fontFamily: "'Playfair Display', serif", fontSize: '28px', fontWeight: '700', color: '#8B1A1A', marginBottom: '4px' },
-    statLabel: { fontSize: '12px', color: '#7A6055' },
-    alert: { background: '#FFF9E6', border: '1px solid #F5E6C0', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
-    alertBtn: { padding: '8px 16px', background: '#C9A84C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' },
-    upgradeBanner: { background: 'linear-gradient(135deg, #1A0A0A, #3D1A1A)', borderRadius: '12px', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
-    upgradeBtn: { padding: '10px 20px', background: '#C9A84C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' },
-    sectionTitle: { fontFamily: "'Playfair Display', serif", fontSize: '20px', color: '#1A0A0A', marginBottom: '16px' },
+    statValue: { fontFamily: "'Playfair Display', serif", fontSize: '28px', fontWeight: '700', color: '#B71C1C', marginBottom: '4px' },
+    statLabel: { fontSize: '12px', color: '#7A5C00' },
+    alert: { background: '#FFF8E1', border: '1px solid #F5BE17', borderRadius: '12px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
+    alertBtn: { padding: '8px 16px', background: '#DF9B08', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' },
+    upgradeBanner: { background: 'linear-gradient(135deg, #5F0909, #B71C1C)', borderRadius: '12px', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
+    upgradeBtn: { padding: '10px 20px', background: '#F5BE17', color: '#5F0909', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' },
+    sectionTitle: { fontFamily: "'Playfair Display', serif", fontSize: '20px', color: '#5F0909', marginBottom: '16px' },
     matchesGrid: { display: 'flex', flexDirection: 'column', gap: '12px' },
-    matchCard: { display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px', background: '#FDF5EE', borderRadius: '12px', border: '1px solid #E8D5C4' },
+    matchCard: { display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px', background: '#FFF8E1', borderRadius: '12px', border: '1px solid #F5BE17' },
     matchPhoto: { fontSize: '36px', width: '52px', height: '52px', background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 },
     matchInfo: { flex: 1 },
-    matchName: { fontWeight: '700', color: '#1A0A0A', fontSize: '15px', marginBottom: '2px' },
-    matchMeta: { fontSize: '12px', color: '#7A6055' },
+    matchName: { fontWeight: '700', color: '#5F0909', fontSize: '15px', marginBottom: '2px' },
+    matchMeta: { fontSize: '12px', color: '#7A5C00' },
     matchActions: { display: 'flex', gap: '8px' },
-    interestBtn: { padding: '7px 14px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
-    viewBtn: { padding: '7px 14px', background: 'transparent', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+    interestBtn: { padding: '7px 14px', background: '#B71C1C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+    viewBtn: { padding: '7px 14px', background: 'transparent', color: '#B71C1C', border: '1.5px solid #B71C1C', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
     profileHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
-    editBtn: { padding: '9px 18px', background: '#FDF0F0', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
-    formSection: { background: '#FFFDF9', border: '1px solid #E8D5C4', borderRadius: '12px', padding: '20px', marginBottom: '20px' },
-    formSectionTitle: { fontSize: '16px', fontWeight: '700', color: '#8B1A1A', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid #E8D5C4' },
+    editBtn: { padding: '9px 18px', background: '#FFF8E1', color: '#B71C1C', border: '1.5px solid #B71C1C', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+    formSection: { background: '#FFFDF4', border: '1px solid #F5BE17', borderRadius: '12px', padding: '20px', marginBottom: '20px' },
+    formSectionTitle: { fontSize: '16px', fontWeight: '700', color: '#B71C1C', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid #F5BE17' },
     formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
     formGroup: { marginBottom: '0' },
-    label: { display: 'block', fontSize: '11px', fontWeight: '600', color: '#7A6055', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-    input: { width: '100%', padding: '11px 14px', border: '1.5px solid #E8D5C4', borderRadius: '8px', fontSize: '14px', color: '#2C1810', background: '#fff', outline: 'none', fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box' },
-    saveBtn: { padding: '12px 28px', background: 'linear-gradient(135deg, #8B1A1A, #C0392B)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
+    label: { display: 'block', fontSize: '11px', fontWeight: '600', color: '#7A5C00', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    input: { width: '100%', padding: '11px 14px', border: '1.5px solid #F5BE17', borderRadius: '8px', fontSize: '14px', color: '#5F0909', background: '#fff', outline: 'none', fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box' },
+    saveBtn: { padding: '12px 28px', background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
     profileView: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' },
-    profileField: { display: 'flex', flexDirection: 'column', padding: '12px 16px', borderBottom: '1px solid #F5EAE0' },
-    fieldLabel: { fontSize: '11px', fontWeight: '600', color: '#7A6055', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' },
-    fieldValue: { fontSize: '14px', color: '#2C1810', fontWeight: '500' },
+    profileField: { display: 'flex', flexDirection: 'column', padding: '12px 16px', borderBottom: '1px solid #FFF8E1' },
+    fieldLabel: { fontSize: '11px', fontWeight: '600', color: '#7A5C00', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' },
+    fieldValue: { fontSize: '14px', color: '#5F0909', fontWeight: '500' },
     aboutSection: { gridColumn: '1 / -1', padding: '12px 16px' },
-    aboutText: { fontSize: '14px', color: '#2C1810', lineHeight: 1.7, marginTop: '4px' },
+    aboutText: { fontSize: '14px', color: '#5F0909', lineHeight: 1.7, marginTop: '4px' },
     emptyProfile: { textAlign: 'center', padding: '60px 20px' },
     subTabRow: { display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' },
-    subTabBtn: { padding: '9px 16px', background: '#F5F5F5', border: '1.5px solid #E0E0E0', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#555', cursor: 'pointer' },
-    subTabActive: { background: '#FDF0F0', border: '1.5px solid #8B1A1A', color: '#8B1A1A' },
-
-    // ✅ Gallery styles
-    gallerySection: { marginTop: '28px', padding: '20px', background: '#FFFDF9', border: '1px solid #E8D5C4', borderRadius: '12px' },
+    subTabBtn: { padding: '9px 16px', background: '#FFF8E1', border: '1.5px solid #F5BE17', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#7A5C00', cursor: 'pointer' },
+    subTabActive: { background: '#FFF0E0', border: '1.5px solid #B71C1C', color: '#B71C1C' },
+    gallerySection: { marginTop: '28px', padding: '20px', background: '#FFFDF4', border: '1px solid #F5BE17', borderRadius: '12px' },
     galleryHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' },
-    galleryTitle: { fontFamily: "'Playfair Display', serif", fontSize: '18px', color: '#1A0A0A', fontWeight: '700' },
-    galleryEmpty: { textAlign: 'center', padding: '32px', background: '#F9F9F9', borderRadius: '10px', border: '2px dashed #E8D5C4' },
+    galleryTitle: { fontFamily: "'Playfair Display', serif", fontSize: '18px', color: '#5F0909', fontWeight: '700' },
+    galleryEmpty: { textAlign: 'center', padding: '32px', background: '#FFF8E1', borderRadius: '10px', border: '2px dashed #F5BE17' },
     galleryGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' },
     galleryItem: { position: 'relative', borderRadius: '10px', overflow: 'hidden', aspectRatio: '1' },
     galleryImg: { width: '100%', height: '100%', objectFit: 'cover' },
-    galleryDeleteBtn: { position: 'absolute', top: '6px', right: '6px', background: 'rgba(198,40,40,0.9)', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700' },
-    galleryAddMore: { aspectRatio: '1', border: '2px dashed #E8D5C4', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: '#FFFDF9' },
+    galleryDeleteBtn: { position: 'absolute', top: '6px', right: '6px', background: 'rgba(183,28,28,0.9)', color: '#fff', border: 'none', borderRadius: '50%', width: '24px', height: '24px', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700' },
+    galleryAddMore: { aspectRatio: '1', border: '2px dashed #F5BE17', borderRadius: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: '#FFFDF4' },
 };
 
 export default Dashboard;

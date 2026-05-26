@@ -21,8 +21,9 @@ const ProfileDetail = () => {
     const [interestSent, setInterestSent] = useState(false);
     const [numberRequest, setNumberRequest] = useState(null);
     const [requesting, setRequesting] = useState(false);
-    const [shortlisted, setShortlisted] = useState(false);       // ✅ new
-    const [shortlistLoading, setShortlistLoading] = useState(false);   // ✅ new
+    const [shortlisted, setShortlisted] = useState(false);
+    const [shortlistLoading, setShortlistLoading] = useState(false);
+    const [activePhoto, setActivePhoto] = useState(0); // ✅ gallery
 
     useEffect(() => {
         fetchProfile();
@@ -32,7 +33,7 @@ const ProfileDetail = () => {
     useEffect(() => {
         if (user && profile) {
             checkNumberRequest();
-            checkShortlist(); // ✅ new
+            checkShortlist();
         }
     }, [user, profile]);
 
@@ -58,7 +59,6 @@ const ProfileDetail = () => {
         } catch (err) { }
     };
 
-    // ✅ Check if profile is shortlisted
     const checkShortlist = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -103,7 +103,6 @@ const ProfileDetail = () => {
         }
     };
 
-    // ✅ Toggle shortlist
     const handleShortlist = async () => {
         if (!user) { setShowLogin(true); return; }
         setShortlistLoading(true);
@@ -156,6 +155,12 @@ const ProfileDetail = () => {
     const isFemale = profile.gender === 'Female';
     const numberStatus = getNumberStatus();
 
+    // ✅ All photos — main photo + gallery photos
+    const allPhotos = [
+        ...(profile.photo ? [profile.photo] : []),
+        ...(profile.photos || [])
+    ];
+
     return (
         <div style={{ background: '#FFFDF9', minHeight: '100vh' }}>
             <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
@@ -175,8 +180,9 @@ const ProfileDetail = () => {
                                 ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
                                 : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
                         }}>
-                            {profile.photo ? (
-                                <img src={`${API}${profile.photo}`} alt={profile.name}
+                            {/* ✅ Main photo display */}
+                            {allPhotos.length > 0 ? (
+                                <img src={`${API}${allPhotos[activePhoto]}`} alt={profile.name}
                                     style={styles.profilePhoto} />
                             ) : (
                                 <div style={styles.profileEmoji}>
@@ -188,6 +194,27 @@ const ProfileDetail = () => {
                                 <div style={styles.protectedBadge}>🔒 Number Protected</div>
                             )}
                         </div>
+
+                        {/* ✅ Photo Gallery Thumbnails */}
+                        {allPhotos.length > 1 && (
+                            <div style={styles.thumbsCard}>
+                                <p style={styles.thumbsTitle}>📸 Photos ({allPhotos.length})</p>
+                                <div style={styles.thumbsGrid}>
+                                    {allPhotos.map((photo, i) => (
+                                        <img key={i}
+                                            src={`${API}${photo}`}
+                                            alt={`Photo ${i + 1}`}
+                                            style={{
+                                                ...styles.thumb,
+                                                border: activePhoto === i
+                                                    ? '2px solid #8B1A1A'
+                                                    : '2px solid transparent'
+                                            }}
+                                            onClick={() => setActivePhoto(i)} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Actions Card */}
                         <div style={styles.actionsCard}>
@@ -427,6 +454,13 @@ const styles = {
     profileEmoji: { fontSize: '80px', marginBottom: '12px' },
     verifiedBadge: { display: 'inline-block', background: '#1E6B3C', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', marginBottom: '6px' },
     protectedBadge: { display: 'inline-block', background: '#8B1A1A', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', marginLeft: '6px' },
+
+    // ✅ Gallery thumbnails
+    thumbsCard: { background: '#fff', borderRadius: '12px', padding: '14px', marginBottom: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
+    thumbsTitle: { fontSize: '12px', fontWeight: '700', color: '#7A6055', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    thumbsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' },
+    thumb: { width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: '8px', cursor: 'pointer' },
+
     actionsCard: { background: '#fff', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
     interestBtn: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #8B1A1A, #C0392B)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '10px' },
     chatBtn: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #1565C0, #1976D2)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '12px' },

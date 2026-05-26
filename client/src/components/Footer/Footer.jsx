@@ -32,7 +32,6 @@ const Footer = () => {
                         ))}
                     </div>
                 </div>
-
                 <div style={styles.bottom}>
                     <p>© 2024 Gettimelam Matrimony. All rights reserved.</p>
                     <p style={styles.madeWith}>Made with ❤️ for Tamil families</p>
@@ -43,16 +42,16 @@ const Footer = () => {
 };
 
 const styles = {
-    footer: { background: '#1A0A0A', color: 'rgba(255,255,255,0.6)' },
+    footer: { background: 'linear-gradient(135deg, #5F0909, #3D0606)', color: 'rgba(255,255,255,0.7)' },
     inner: { maxWidth: '1200px', margin: '0 auto', padding: '56px 24px 32px' },
     grid: { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '48px', marginBottom: '48px' },
     logo: { height: '50px', marginBottom: '12px' },
-    desc: { fontSize: '13px', lineHeight: 1.7, marginBottom: '16px' },
-    contact: { fontSize: '13px', lineHeight: 2 },
-    colTitle: { color: '#fff', fontSize: '14px', fontWeight: '600', marginBottom: '16px' },
+    desc: { fontSize: '13px', lineHeight: 1.7, marginBottom: '16px', color: 'rgba(255,255,255,0.6)' },
+    contact: { fontSize: '13px', lineHeight: 2, color: 'rgba(255,255,255,0.6)' },
+    colTitle: { color: '#F5BE17', fontSize: '14px', fontWeight: '700', marginBottom: '16px' },
     link: { display: 'block', fontSize: '13px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none', marginBottom: '8px' },
-    bottom: { borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' },
-    madeWith: { color: '#C9A84C' }
+    bottom: { borderTop: '1px solid rgba(245,190,23,0.2)', paddingTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' },
+    madeWith: { color: '#F5BE17', fontWeight: '600' }
 };
 
 export default Footer;

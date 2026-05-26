@@ -53,10 +53,7 @@ const ProfilesSection = ({ onLoginClick }) => {
 
     const handleSendInterest = async (p) => {
         if (!user) { onLoginClick(); return; }
-        if (sentInterestIds.includes(p._id)) {
-            toast.success('Interest already sent!');
-            return;
-        }
+        if (sentInterestIds.includes(p._id)) { toast.success('Interest already sent!'); return; }
         setSentInterestIds(prev => [...prev, p._id]);
         toast.success(`Interest sent to ${getName(p)}! 💌`);
     };
@@ -67,22 +64,15 @@ const ProfilesSection = ({ onLoginClick }) => {
         try {
             const token = localStorage.getItem('token');
             if (isShortlisted) {
-                await axios.delete(`${API}/api/shortlist/remove/${p._id}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                await axios.delete(`${API}/api/shortlist/remove/${p._id}`, { headers: { Authorization: `Bearer ${token}` } });
                 setShortlistedIds(prev => prev.filter(id => id !== p._id));
                 toast.success('Removed from shortlist!');
             } else {
-                await axios.post(`${API}/api/shortlist/add`,
-                    { profileId: p._id },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                await axios.post(`${API}/api/shortlist/add`, { profileId: p._id }, { headers: { Authorization: `Bearer ${token}` } });
                 setShortlistedIds(prev => [...prev, p._id]);
                 toast.success('Shortlisted! ⭐');
             }
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed!');
-        }
+        } catch (err) { toast.error(err.response?.data?.message || 'Failed!'); }
     };
 
     const handleLike = async (p) => {
@@ -91,22 +81,36 @@ const ProfilesSection = ({ onLoginClick }) => {
         try {
             const token = localStorage.getItem('token');
             if (isLiked) {
-                await axios.delete(`${API}/api/likes/remove/${p._id}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                await axios.delete(`${API}/api/likes/remove/${p._id}`, { headers: { Authorization: `Bearer ${token}` } });
                 setLikedIds(prev => prev.filter(id => id !== p._id));
                 toast.success('Like removed!');
             } else {
-                await axios.post(`${API}/api/likes/add`,
-                    { profileId: p._id },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                await axios.post(`${API}/api/likes/add`, { profileId: p._id }, { headers: { Authorization: `Bearer ${token}` } });
                 setLikedIds(prev => [...prev, p._id]);
                 toast.success('Liked! 👍');
             }
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Failed!');
-        }
+        } catch (err) { toast.error(err.response?.data?.message || 'Failed!'); }
+    };
+
+    const handleViewNumber = (p) => {
+        if (!user) { onLoginClick(); return; }
+        if (!user?.isPremium) { toast.error('Upgrade to Premium! ⭐'); return; }
+        const mobile = p.user?.mobile;
+        if (mobile) window.open(`tel:+91${mobile}`);
+        else toast.error('Number not available');
+    };
+
+    const handleWhatsApp = (p) => {
+        if (!user) { onLoginClick(); return; }
+        if (!user?.isPremium) { toast.error('Upgrade to Premium! ⭐'); return; }
+        const mobile = p.user?.mobile;
+        if (mobile) window.open(`https://wa.me/91${mobile}`, '_blank');
+    };
+
+    const handleChat = (p) => {
+        if (!user) { onLoginClick(); return; }
+        const profileUserId = p.user?._id || p.user;
+        if (profileUserId) navigate(`/messages?with=${profileUserId}`);
     };
 
     const getName = (p) => p.name || p.user?.name || 'Unknown';
@@ -148,26 +152,28 @@ const ProfilesSection = ({ onLoginClick }) => {
                                             style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A' }}
                                             onClick={() => navigate(`/profile/${p._id}`)} />
                                     ) : (
-                                        <span style={styles.avatar}
-                                            onClick={() => navigate(`/profile/${p._id}`)}>
+                                        <span style={styles.avatar} onClick={() => navigate(`/profile/${p._id}`)}>
                                             {p.gender === 'Female' ? '👩' : '👨'}
                                         </span>
                                     )}
                                     <span style={styles.verified}>✓ Verified</span>
-
-                                    {/* ✅ Shortlist heart button */}
-                                    <button style={styles.heartBtn}
-                                        onClick={() => handleShortlist(p)}
-                                        title={isShortlisted ? 'Remove shortlist' : 'Shortlist'}>
+                                    <button style={styles.heartBtn} onClick={() => handleShortlist(p)}>
                                         {isShortlisted ? '❤️' : '🤍'}
                                     </button>
                                 </div>
 
                                 <div style={styles.info}>
-                                    <div style={styles.name}
-                                        onClick={() => navigate(`/profile/${p._id}`)}>
-                                        {getName(p)}
+                                    {/* ✅ Name + Phone + WhatsApp */}
+                                    <div style={styles.nameRow}>
+                                        <div style={styles.name} onClick={() => navigate(`/profile/${p._id}`)}>
+                                            {getName(p)}
+                                        </div>
+                                        <div style={styles.contactIcons}>
+                                            <button style={styles.phoneIcon} onClick={() => handleViewNumber(p)} title="Call">📞</button>
+                                            <button style={styles.waIcon} onClick={() => handleWhatsApp(p)} title="WhatsApp">💬</button>
+                                        </div>
                                     </div>
+
                                     <div style={styles.meta}>{p.occupation} • {p.city}</div>
                                     <div style={styles.meta}>{p.religion} • {p.caste}</div>
 
@@ -178,35 +184,23 @@ const ProfilesSection = ({ onLoginClick }) => {
                                     </div>
 
                                     <div style={styles.actions}>
-                                        {/* ✅ Send Interest */}
-                                        <button style={{
-                                            ...styles.btnPrimary,
-                                            opacity: isSent ? 0.7 : 1,
-                                            background: isSent ? '#888' : '#8B1A1A'
-                                        }}
-                                            onClick={() => handleSendInterest(p)}
-                                            disabled={isSent}>
+                                        <button style={{ ...styles.btnPrimary, opacity: isSent ? 0.7 : 1, background: isSent ? '#888' : '#8B1A1A' }}
+                                            onClick={() => handleSendInterest(p)} disabled={isSent}>
                                             {isSent ? '✅ Sent' : '💌 Send Interest'}
                                         </button>
-
-                                        {/* ✅ View Profile */}
-                                        <button style={styles.btnOutline}
-                                            onClick={() => navigate(`/profile/${p._id}`)}>
+                                        <button style={styles.btnOutline} onClick={() => navigate(`/profile/${p._id}`)}>
                                             View Profile
                                         </button>
-
-                                        {/* ✅ Like button */}
-                                        <button style={{
-                                            ...styles.btnLike,
-                                            background: isLiked ? '#2E7D32' : '#fff',
-                                            color: isLiked ? '#fff' : '#8B1A1A',
-                                            border: isLiked ? 'none' : '1.5px solid #8B1A1A'
-                                        }}
-                                            onClick={() => handleLike(p)}
-                                            title={isLiked ? 'Unlike' : 'Like'}>
+                                        <button style={{ ...styles.btnLike, background: isLiked ? '#2E7D32' : '#fff', color: isLiked ? '#fff' : '#8B1A1A', border: isLiked ? 'none' : '1.5px solid #8B1A1A' }}
+                                            onClick={() => handleLike(p)}>
                                             👍
                                         </button>
                                     </div>
+
+                                    {/* ✅ Chat button */}
+                                    <button style={styles.chatBtn} onClick={() => handleChat(p)}>
+                                        💬 Send Message
+                                    </button>
                                 </div>
                             </div>
                         );
@@ -244,14 +238,19 @@ const styles = {
     verified: { position: 'absolute', top: '12px', right: '44px', background: '#1E6B3C', color: '#fff', fontSize: '11px', fontWeight: '600', padding: '4px 10px', borderRadius: '20px' },
     heartBtn: { position: 'absolute', top: '10px', right: '10px', background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' },
     info: { padding: '18px' },
-    name: { fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: '600', color: '#1A0A0A', marginBottom: '4px', cursor: 'pointer' },
+    nameRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' },
+    name: { fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: '600', color: '#1A0A0A', cursor: 'pointer', flex: 1 },
+    contactIcons: { display: 'flex', gap: '6px' },
+    phoneIcon: { width: '30px', height: '30px', borderRadius: '50%', border: '2px solid #4CAF50', background: '#fff', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    waIcon: { width: '30px', height: '30px', borderRadius: '50%', border: '2px solid #25D366', background: '#25D366', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     meta: { fontSize: '13px', color: '#7A6055', marginBottom: '2px', lineHeight: 1.6 },
     tags: { display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '10px 0' },
     tag: { fontSize: '11px', fontWeight: '500', padding: '4px 10px', borderRadius: '20px', background: '#FDF0F0', color: '#8B1A1A' },
-    actions: { display: 'flex', gap: '6px', marginTop: '10px' },
+    actions: { display: 'flex', gap: '6px', marginTop: '10px', marginBottom: '8px' },
     btnPrimary: { flex: 1, padding: '9px', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' },
     btnOutline: { flex: 1, padding: '9px', background: 'transparent', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' },
     btnLike: { padding: '9px 12px', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
+    chatBtn: { width: '100%', padding: '9px', background: 'linear-gradient(135deg, #1565C0, #1976D2)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
     center: { textAlign: 'center', marginTop: '36px' },
     viewAll: { padding: '12px 32px', background: 'transparent', border: '1.5px solid #8B1A1A', color: '#8B1A1A', borderRadius: '8px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' },
 };
