@@ -34,9 +34,7 @@ const ProfilesSection = ({ onLoginClick }) => {
     const fetchShortlistedIds = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get(`${API}/api/shortlist/my`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.get(`${API}/api/shortlist/my`, { headers: { Authorization: `Bearer ${token}` } });
             setShortlistedIds((res.data.profiles || []).map(p => p._id));
         } catch (err) { }
     };
@@ -44,9 +42,7 @@ const ProfilesSection = ({ onLoginClick }) => {
     const fetchLikedIds = async () => {
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.get(`${API}/api/likes/my-likes`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axios.get(`${API}/api/likes/my-likes`, { headers: { Authorization: `Bearer ${token}` } });
             setLikedIds((res.data.profiles || []).map(p => p._id));
         } catch (err) { }
     };
@@ -115,6 +111,9 @@ const ProfilesSection = ({ onLoginClick }) => {
 
     const getName = (p) => p.name || p.user?.name || 'Unknown';
 
+    // ✅ Check if user is unverified member
+    const isUnverified = user && user.role === 'member' && !user.isVerified;
+
     if (loading) return (
         <section style={styles.section}>
             <div style={{ textAlign: 'center', padding: '60px' }}>
@@ -133,6 +132,25 @@ const ProfilesSection = ({ onLoginClick }) => {
                     <p style={styles.desc}>Thousands of verified profiles waiting for you</p>
                 </div>
 
+                {/* ✅ Verification Banner */}
+                {isUnverified && (
+                    <div style={styles.verifyBanner}>
+                        <div style={styles.verifyBannerLeft}>
+                            <div style={{ fontSize: '28px', marginRight: '14px' }}>🔒</div>
+                            <div>
+                                <div style={styles.verifyBannerTitle}>Account Pending Verification</div>
+                                <div style={styles.verifyBannerDesc}>
+                                    Our team will call you within 24 hours to verify your account.
+                                    Profile cards will be unlocked after verification.
+                                </div>
+                            </div>
+                        </div>
+                        <a href="tel:7339682802" style={styles.verifyBannerBtn}>
+                            📞 Contact Support: 7339682802
+                        </a>
+                    </div>
+                )}
+
                 <div style={styles.grid}>
                     {profiles.map((p, i) => {
                         const isShortlisted = shortlistedIds.includes(p._id);
@@ -140,19 +158,35 @@ const ProfilesSection = ({ onLoginClick }) => {
                         const isSent = sentInterestIds.includes(p._id);
 
                         return (
-                            <div key={p._id || i} style={styles.card}>
+                            <div key={p._id || i} style={{ ...styles.card, position: 'relative', overflow: 'hidden' }}>
+
+                                {/* ✅ Blur overlay for unverified users */}
+                                {isUnverified && (
+                                    <div style={styles.blurOverlay}>
+                                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔒</div>
+                                        <div style={styles.blurTitle}>Account Not Verified</div>
+                                        <div style={styles.blurDesc}>
+                                            Our team will verify your account via call within 24 hours
+                                        </div>
+                                        <a href="tel:7339682802" style={styles.blurBtn}>
+                                            📞 7339682802
+                                        </a>
+                                    </div>
+                                )}
+
                                 <div style={{
                                     ...styles.photo,
                                     background: p.gender === 'Female'
                                         ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
-                                        : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
+                                        : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)',
+                                    filter: isUnverified ? 'blur(4px)' : 'none'
                                 }}>
                                     {p.photo ? (
                                         <img src={`${API}${p.photo}`} alt={getName(p)}
                                             style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A' }}
-                                            onClick={() => navigate(`/profile/${p._id}`)} />
+                                            onClick={() => !isUnverified && navigate(`/profile/${p._id}`)} />
                                     ) : (
-                                        <span style={styles.avatar} onClick={() => navigate(`/profile/${p._id}`)}>
+                                        <span style={styles.avatar} onClick={() => !isUnverified && navigate(`/profile/${p._id}`)}>
                                             {p.gender === 'Female' ? '👩' : '👨'}
                                         </span>
                                     )}
@@ -162,10 +196,9 @@ const ProfilesSection = ({ onLoginClick }) => {
                                     </button>
                                 </div>
 
-                                <div style={styles.info}>
-                                    {/* ✅ Name + Phone + WhatsApp */}
+                                <div style={{ ...styles.info, filter: isUnverified ? 'blur(4px)' : 'none' }}>
                                     <div style={styles.nameRow}>
-                                        <div style={styles.name} onClick={() => navigate(`/profile/${p._id}`)}>
+                                        <div style={styles.name} onClick={() => !isUnverified && navigate(`/profile/${p._id}`)}>
                                             {getName(p)}
                                         </div>
                                         <div style={styles.contactIcons}>
@@ -188,7 +221,7 @@ const ProfilesSection = ({ onLoginClick }) => {
                                             onClick={() => handleSendInterest(p)} disabled={isSent}>
                                             {isSent ? '✅ Sent' : '💌 Send Interest'}
                                         </button>
-                                        <button style={styles.btnOutline} onClick={() => navigate(`/profile/${p._id}`)}>
+                                        <button style={styles.btnOutline} onClick={() => !isUnverified && navigate(`/profile/${p._id}`)}>
                                             View Profile
                                         </button>
                                         <button style={{ ...styles.btnLike, background: isLiked ? '#2E7D32' : '#fff', color: isLiked ? '#fff' : '#8B1A1A', border: isLiked ? 'none' : '1.5px solid #8B1A1A' }}
@@ -197,7 +230,6 @@ const ProfilesSection = ({ onLoginClick }) => {
                                         </button>
                                     </div>
 
-                                    {/* ✅ Chat button */}
                                     <button style={styles.chatBtn} onClick={() => handleChat(p)}>
                                         💬 Send Message
                                     </button>
@@ -231,6 +263,20 @@ const styles = {
     label: { fontSize: '12px', fontWeight: '700', letterSpacing: '2px', textTransform: 'uppercase', color: '#C9A84C', marginBottom: '10px' },
     title: { fontFamily: "'Playfair Display', serif", fontSize: '38px', color: '#1A0A0A', marginBottom: '12px' },
     desc: { fontSize: '16px', color: '#7A6055' },
+
+    // ✅ Verification Banner
+    verifyBanner: { background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', borderRadius: '16px', padding: '20px 24px', marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' },
+    verifyBannerLeft: { display: 'flex', alignItems: 'center', flex: 1 },
+    verifyBannerTitle: { fontSize: '16px', fontWeight: '700', color: '#fff', marginBottom: '4px' },
+    verifyBannerDesc: { fontSize: '13px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 },
+    verifyBannerBtn: { padding: '10px 20px', background: '#F5BE17', color: '#5F0909', borderRadius: '8px', fontSize: '13px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' },
+
+    // ✅ Blur overlay
+    blurOverlay: { position: 'absolute', inset: 0, backdropFilter: 'blur(2px)', background: 'rgba(255,255,255,0.75)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '16px', padding: '20px', textAlign: 'center' },
+    blurTitle: { fontSize: '14px', fontWeight: '700', color: '#B71C1C', marginBottom: '6px' },
+    blurDesc: { fontSize: '11px', color: '#5F0909', marginBottom: '12px', lineHeight: 1.5 },
+    blurBtn: { padding: '8px 16px', background: '#B71C1C', color: '#fff', borderRadius: '8px', fontSize: '12px', fontWeight: '700', textDecoration: 'none' },
+
     grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' },
     card: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
     photo: { height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', cursor: 'pointer' },

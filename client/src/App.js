@@ -14,6 +14,7 @@ import AdminPanel from './pages/Admin/AdminPanel';
 import Contact from './pages/Contact/Contact';
 import ProfileDetail from './pages/Profile/ProfileDetail';
 import Messages from './pages/Messages/Messages';
+import LanguageSelect from './pages/LanguageSelect/LanguageSelect';
 import './App.css';
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/profile/:id" element={<ProfileDetail />} />
           <Route path="/messages" element={<Messages />} />
+          <Route path="/language" element={<LanguageSelect />} />
         </Routes>
       </Router>
     </AuthProvider>

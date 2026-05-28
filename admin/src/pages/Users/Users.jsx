@@ -34,6 +34,18 @@ const Users = () => {
         }
     };
 
+    // ✅ Verify user
+    const handleVerify = async (id, isVerified) => {
+        try {
+            const endpoint = isVerified ? 'unverify' : 'verify';
+            const res = await API.put(`/admin/users/${id}/${endpoint}`);
+            toast.success(res.data.message);
+            fetchUsers();
+        } catch (err) {
+            toast.error('Failed!');
+        }
+    };
+
     const handleDelete = async (id, name) => {
         if (!window.confirm(`Delete ${name}?`)) return;
         try {
@@ -45,12 +57,8 @@ const Users = () => {
         }
     };
 
-    // ✅ Get display name for both members and service providers
-    const getDisplayName = (u) => {
-        return u.name || u.businessName || u.ownerName || '—';
-    };
+    const getDisplayName = (u) => u.name || u.businessName || u.ownerName || '—';
 
-    // ✅ Get role label with icon
     const getRoleBadge = (role) => {
         if (role === 'admin') return { label: '🛡️ Admin', bg: '#FCE4EC', color: '#880E4F' };
         if (role === 'service') return { label: '🏪 Service Provider', bg: '#E3F2FD', color: '#1565C0' };
@@ -121,7 +129,7 @@ const Users = () => {
                             <table style={styles.table}>
                                 <thead>
                                     <tr style={styles.head}>
-                                        {['#', 'Name', 'Mobile', 'Email', 'Gender/Type', 'Plan', 'Role', 'Joined', 'Actions'].map(h => (
+                                        {['#', 'Name', 'Mobile', 'Email', 'Gender/Type', 'Plan', 'Role', 'Verified', 'Joined', 'Actions'].map(h => (
                                             <th key={h} style={styles.th}>{h}</th>
                                         ))}
                                     </tr>
@@ -136,8 +144,7 @@ const Users = () => {
                                                     <div style={{ fontWeight: '700', color: '#1A0A0A' }}>
                                                         {getDisplayName(u)}
                                                     </div>
-                                                    {/* ✅ Show business name for service providers */}
-                                                    {u.role === 'service' && u.businessName && (
+                                                    {u.role === 'service' && u.category && (
                                                         <div style={{ fontSize: '11px', color: '#1565C0', fontWeight: '600' }}>
                                                             🏪 {u.category}
                                                         </div>
@@ -150,7 +157,7 @@ const Users = () => {
                                                         <span>📍 {u.city || '—'}</span>
                                                     ) : (
                                                         <span>
-                                                            {u.gender === 'Female' ? '👩' : u.gender === 'Male' ? '👨' : '❓'} {u.gender || '—'}
+                                                            {u.gender === 'Female' ? '👩' : u.gender === 'Male' ? '👨' : '?'} {u.gender || '—'}
                                                         </span>
                                                     )}
                                                 </td>
@@ -171,26 +178,58 @@ const Users = () => {
                                                         {badge.label}
                                                     </span>
                                                 </td>
+
+                                                {/* ✅ Verified Status */}
+                                                <td style={styles.td}>
+                                                    <span style={{
+                                                        padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
+                                                        background: u.isVerified ? '#E8F5E9' : '#FFEBEE',
+                                                        color: u.isVerified ? '#2E7D32' : '#C62828'
+                                                    }}>
+                                                        {u.isVerified ? '✅ Verified' : '⏳ Pending'}
+                                                    </span>
+                                                </td>
+
                                                 <td style={styles.td}>
                                                     {new Date(u.createdAt).toLocaleDateString('en-IN')}
                                                 </td>
+
                                                 <td style={styles.td}>
-                                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+
+                                                        {/* ✅ Verify Button */}
                                                         {u.role !== 'admin' && (
                                                             <button style={{
                                                                 padding: '5px 10px', border: 'none', borderRadius: '6px',
                                                                 fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-                                                                background: u.isPremium ? '#FFF8E1' : '#E8F5E9',
-                                                                color: u.isPremium ? '#F57F17' : '#2E7D32'
-                                                            }} onClick={() => handleTogglePremium(u._id)}>
+                                                                background: u.isVerified ? '#FFEBEE' : '#E8F5E9',
+                                                                color: u.isVerified ? '#C62828' : '#2E7D32'
+                                                            }}
+                                                                onClick={() => handleVerify(u._id, u.isVerified)}>
+                                                                {u.isVerified ? '❌ Unverify' : '✅ Verify'}
+                                                            </button>
+                                                        )}
+
+                                                        {/* Premium Toggle */}
+                                                        {u.role !== 'admin' && (
+                                                            <button style={{
+                                                                padding: '5px 10px', border: 'none', borderRadius: '6px',
+                                                                fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                                                                background: u.isPremium ? '#FFF8E1' : '#E3F2FD',
+                                                                color: u.isPremium ? '#F57F17' : '#1565C0'
+                                                            }}
+                                                                onClick={() => handleTogglePremium(u._id)}>
                                                                 {u.isPremium ? '⬇️ Free' : '⬆️ Premium'}
                                                             </button>
                                                         )}
+
+                                                        {/* Delete */}
                                                         <button style={{
                                                             padding: '5px 10px', border: 'none', borderRadius: '6px',
                                                             fontSize: '12px', fontWeight: '600', cursor: 'pointer',
                                                             background: '#FFEBEE', color: '#C62828'
-                                                        }} onClick={() => handleDelete(u._id, getDisplayName(u))}>
+                                                        }}
+                                                            onClick={() => handleDelete(u._id, getDisplayName(u))}>
                                                             🗑️
                                                         </button>
                                                     </div>
@@ -200,7 +239,7 @@ const Users = () => {
                                     })}
                                     {filtered.length === 0 && (
                                         <tr>
-                                            <td colSpan={9} style={{ ...styles.td, textAlign: 'center', color: '#999', padding: '40px' }}>
+                                            <td colSpan={10} style={{ ...styles.td, textAlign: 'center', color: '#999', padding: '40px' }}>
                                                 No users found
                                             </td>
                                         </tr>

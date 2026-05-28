@@ -27,7 +27,39 @@ router.get('/analytics', protect, adminOnly, getAnalytics);
 
 // ── Members ──
 router.get('/users', protect, adminOnly, getAllUsers);
+
 router.put('/users/:id/toggle-premium', protect, adminOnly, togglePremium);
+
+// ✅ Verify user
+router.put('/users/:id/verify', protect, adminOnly, async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { isVerified: true },
+            { new: true }
+        ).select('-password');
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+        res.json({ success: true, message: 'User verified! ✅', user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ✅ Unverify user
+router.put('/users/:id/unverify', protect, adminOnly, async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { isVerified: false },
+            { new: true }
+        ).select('-password');
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+        res.json({ success: true, message: 'User unverified!', user });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 router.delete('/users/:id', protect, adminOnly, deleteUser);
 
 // ── Service Providers ──
@@ -44,7 +76,9 @@ router.get('/vendors', protect, adminOnly, async (req, res) => {
 router.put('/vendors/:id/approve', protect, adminOnly, async (req, res) => {
     try {
         const provider = await User.findByIdAndUpdate(
-            req.params.id, { isApproved: true, isActive: true }, { new: true }
+            req.params.id,
+            { isApproved: true, isActive: true },
+            { new: true }
         ).select('-password');
         if (!provider) return res.status(404).json({ success: false, message: 'Service provider not found' });
         res.json({ success: true, message: 'Service provider approved!', vendor: provider });
@@ -56,7 +90,9 @@ router.put('/vendors/:id/approve', protect, adminOnly, async (req, res) => {
 router.put('/vendors/:id/reject', protect, adminOnly, async (req, res) => {
     try {
         const provider = await User.findByIdAndUpdate(
-            req.params.id, { isApproved: false, isActive: false }, { new: true }
+            req.params.id,
+            { isApproved: false, isActive: false },
+            { new: true }
         ).select('-password');
         if (!provider) return res.status(404).json({ success: false, message: 'Service provider not found' });
         res.json({ success: true, message: 'Service provider rejected!', vendor: provider });
