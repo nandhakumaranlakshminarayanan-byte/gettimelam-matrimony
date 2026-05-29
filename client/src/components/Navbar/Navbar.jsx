@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const Navbar = ({ onLoginClick, onRegisterClick }) => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [browseOpen, setBrowseOpen] = useState(false);
+    const { t, i18n } = useTranslation();
+
+    const handleLanguageChange = (e) => {
+        i18n.changeLanguage(e.target.value);
+        localStorage.setItem('gettimelam_language', e.target.value);
+    };
 
     return (
         <nav style={styles.nav}>
@@ -18,14 +25,14 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
 
                 {/* NAV LINKS */}
                 <div style={styles.links}>
-                    <span style={styles.link} onClick={() => navigate('/')}>Home</span>
+                    <span style={styles.link} onClick={() => navigate('/')}>{t('nav.home')}</span>
 
                     {/* Browse Dropdown */}
                     <div style={styles.dropdown}
                         onMouseEnter={() => setBrowseOpen(true)}
                         onMouseLeave={() => setBrowseOpen(false)}>
                         <span style={styles.link} onClick={() => navigate('/browse')}>
-                            Browse Profiles ▾
+                            {t('nav.browseProfiles')} ▾
                         </span>
                         {browseOpen && (
                             <div style={styles.dropMenu}>
@@ -50,21 +57,21 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
                         )}
                     </div>
 
-                    <span style={styles.link} onClick={() => navigate('/services')}>Wedding Services</span>
-                    <span style={styles.link} onClick={() => navigate('/horoscope')}>Horoscope</span>
-                    <span style={styles.link} onClick={() => navigate('/plans')}>Plans</span>
-                    <span style={styles.link} onClick={() => navigate('/contact')}>Contact</span>
+                    <span style={styles.link} onClick={() => navigate('/services')}>{t('nav.weddingServices')}</span>
+                    <span style={styles.link} onClick={() => navigate('/horoscope')}>{t('nav.horoscope')}</span>
+                    <span style={styles.link} onClick={() => navigate('/plans')}>{t('nav.plans')}</span>
+                    <span style={styles.link} onClick={() => navigate('/contact')}>{t('nav.contact')}</span>
 
                     {user && (
                         <span style={styles.link} onClick={() => navigate('/messages')}>
-                            💬 Messages
+                            💬 {t('nav.messages')}
                         </span>
                     )}
                 </div>
 
                 {/* ACTIONS */}
                 <div style={styles.actions}>
-                    <select style={styles.langSelect}>
+                    <select style={styles.langSelect} value={i18n.language} onChange={handleLanguageChange}>
                         <option value="en">English</option>
                         <option value="ta">தமிழ்</option>
                     </select>

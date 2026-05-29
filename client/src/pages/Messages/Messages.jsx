@@ -48,7 +48,20 @@ const Messages = () => {
         // Open chat with specific user if ?with=userId in URL
         const withUser = searchParams.get('with');
         if (withUser) {
-            openConversation({ userId: withUser, name: 'User' });
+            // ✅ Fetch the profile name instead of hardcoding 'User'
+            axios.get(`${API}/api/profiles`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            }).then(res => {
+                const profiles = res.data.profiles || [];
+                const match = profiles.find(p =>
+                    (p.user?._id || p.user) === withUser ||
+                    (p.user?._id || p.user)?.toString() === withUser
+                );
+                const name = match?.name || match?.user?.name || 'User';
+                openConversation({ userId: withUser, name });
+            }).catch(() => {
+                openConversation({ userId: withUser, name: 'User' });
+            });
         }
 
         return () => s.disconnect();
@@ -224,10 +237,6 @@ const Messages = () => {
                                             {isTyping ? '✍️ typing...' : '🟢 Active'}
                                         </div>
                                     </div>
-                                    <button style={styles.whatsappBtn}
-                                        onClick={() => window.open(`https://wa.me/91${activeConv.mobile}`, '_blank')}>
-                                        💬 WhatsApp
-                                    </button>
                                 </div>
 
                                 {/* Messages Area */}

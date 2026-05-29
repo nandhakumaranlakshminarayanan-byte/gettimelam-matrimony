@@ -153,6 +153,24 @@ const ProfileDetail = () => {
     if (!profile) return null;
 
     const isFemale = profile.gender === 'Female';
+
+    // ✅ "Profile created by Groom's Brother - Nandhu"
+    const getCreatedByLabel = () => {
+        const { profileFor, createdByName, gender } = profile;
+        if (!profileFor || profileFor === 'Myself') return null;
+        const groomOrBride = gender === 'Male' ? "Groom's" : "Bride's";
+        const map = {
+            Son: `${groomOrBride} Father/Mother`,
+            Daughter: `${groomOrBride} Father/Mother`,
+            Brother: `${groomOrBride} Brother`,
+            Sister: `${groomOrBride} Sister`,
+            Friend: `${groomOrBride} Friend`,
+            Relative: `${groomOrBride} Relative`,
+        };
+        const relation = map[profileFor] || profileFor;
+        return createdByName ? `${relation} - ${createdByName}` : relation;
+    };
+    const createdByLabel = getCreatedByLabel();
     const numberStatus = getNumberStatus();
 
     // ✅ All photos — main photo + gallery photos
@@ -322,6 +340,12 @@ const ProfileDetail = () => {
                     <div style={styles.rightCol}>
                         <div style={styles.nameCard}>
                             <h1 style={styles.profileName}>{profile.name || profile.user?.name}</h1>
+                            {/* ✅ Show "Profile created by Groom's Brother - Nandhu" */}
+                            {createdByLabel && (
+                                <div style={styles.createdByBadge}>
+                                    👤 Profile created by {createdByLabel}
+                                </div>
+                            )}
                             <p style={styles.profileSub}>
                                 {profile.occupation} • {profile.city}, {profile.district}
                             </p>
@@ -476,6 +500,7 @@ const styles = {
     rightCol: {},
     nameCard: { background: '#fff', borderRadius: '16px', padding: '24px', marginBottom: '16px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
     profileName: { fontFamily: "'Playfair Display', serif", fontSize: '28px', color: '#1A0A0A', marginBottom: '6px' },
+    createdByBadge: { display: 'inline-block', fontSize: '12px', fontWeight: '600', color: '#7A5C00', background: '#FFF8E1', border: '1px solid #F5BE17', borderRadius: '20px', padding: '4px 14px', marginBottom: '10px' },
     profileSub: { fontSize: '15px', color: '#7A6055', marginBottom: '14px' },
     tagRow: { display: 'flex', flexWrap: 'wrap', gap: '6px' },
     tag: { padding: '4px 12px', background: '#FDF0F0', color: '#8B1A1A', borderRadius: '20px', fontSize: '12px', fontWeight: '600' },

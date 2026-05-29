@@ -109,6 +109,14 @@ const Browse = () => {
         if (mobile) window.open(`https://wa.me/91${mobile}`, '_blank');
     };
 
+    // ✅ Internal chat — navigate to messages page
+    const handleChat = (profile) => {
+        if (!user) { setShowLogin(true); return; }
+        const profileUserId = profile.user?._id || profile.user;
+        if (profileUserId) navigate(`/messages?with=${profileUserId}`);
+        else toast.error('Cannot start chat');
+    };
+
     const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
 
     const applyFilters = () => {
@@ -142,6 +150,26 @@ const Browse = () => {
     };
 
     const visibleProfiles = displayProfiles.filter(p => !hiddenIds.includes(p._id));
+
+    // ✅ Block service accounts from seeing member profiles
+    if (user && user.role === 'service') return (
+        <div style={{ background: '#FFF8E1', minHeight: '100vh' }}>
+            <Navbar onLoginClick={() => setShowLogin(true)} onRegisterClick={() => setShowRegister(true)} />
+            <div style={{ maxWidth: '600px', margin: '80px auto', textAlign: 'center', padding: '40px', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+                <div style={{ fontSize: '64px', marginBottom: '16px' }}>🏪</div>
+                <h2 style={{ color: '#B71C1C', marginBottom: '12px', fontFamily: "'Playfair Display', serif" }}>Service Provider Account</h2>
+                <p style={{ color: '#7A5C00', fontSize: '15px', lineHeight: 1.7, marginBottom: '24px' }}>
+                    You are logged in as a service provider.<br />
+                    Member profiles are only visible to matrimony members.
+                </p>
+                <button style={{ padding: '12px 28px', background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+                    onClick={() => navigate('/service-provider')}>
+                    Go to My Business →
+                </button>
+            </div>
+            <Footer />
+        </div>
+    );
 
     return (
         <div style={{ background: '#FFF8E1', minHeight: '100vh' }}>
@@ -287,7 +315,7 @@ const Browse = () => {
                                                 <span style={styles.cardName}>{name}</span>
                                                 <div style={styles.contactIcons}>
                                                     <button style={styles.phoneIcon} onClick={() => handleViewNumber(profile)} title="Call">📞</button>
-                                                    <button style={styles.waIcon} onClick={() => handleWhatsApp(profile)} title="WhatsApp">💬</button>
+                                                    <button style={styles.waIcon} onClick={() => handleChat(profile)} title="Send Message">💬</button>
                                                 </div>
                                             </div>
 

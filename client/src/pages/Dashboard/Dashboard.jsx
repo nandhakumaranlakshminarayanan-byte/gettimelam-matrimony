@@ -202,7 +202,7 @@ const Dashboard = () => {
                 await axios.put(`${API}/api/profiles/${profile._id}`, form, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success('Profile updated! ✅');
             } else {
-                await axios.post(`${API}/api/profiles`, { ...form, name: user.name, gender: user.gender }, { headers: { Authorization: `Bearer ${token}` } });
+                await axios.post(`${API}/api/profiles`, { ...form }, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success('Profile created! 🎊');
             }
             setEditing(false);
@@ -272,7 +272,7 @@ const Dashboard = () => {
                             <input id="photoUpload" type="file" accept="image/jpeg,image/jpg,image/png,image/webp"
                                 onChange={handlePhotoUpload} style={{ display: 'none' }} disabled={uploadingPhoto} />
                         </div>
-                        <div style={styles.userName}>{user?.name}</div>
+                        <div style={styles.userName}>{profile?.name || user?.name}</div>
                         <div style={styles.userMobile}>{user?.mobile}</div>
                         <div style={{ ...styles.planBadge, background: user?.isPremium ? '#DF9B08' : '#FFF8E1', color: user?.isPremium ? '#fff' : '#7A5C00', border: user?.isPremium ? 'none' : '1px solid #F5BE17' }}>
                             {user?.isPremium ? '⭐ Premium Member' : '🆓 Free Member'}
@@ -308,7 +308,7 @@ const Dashboard = () => {
                     {/* OVERVIEW */}
                     {activeTab === 'overview' && (
                         <div>
-                            <h2 style={styles.pageTitle}>Welcome back, {user?.name}! 👋</h2>
+                            <h2 style={styles.pageTitle}>Welcome back, {profile?.name || user?.name}! 👋</h2>
                             <div style={styles.statsGrid}>
                                 {[
                                     { icon: '👁️', label: 'Profile Views', value: '24', color: '#FFF8E1' },

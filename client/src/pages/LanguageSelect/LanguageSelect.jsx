@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const LanguageSelect = () => {
     const [selected, setSelected] = useState('en');
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { i18n } = useTranslation();
 
     const handleSelect = () => {
-        localStorage.setItem('lang', selected);
+        // ✅ Connect to i18n — changes language across all pages
+        i18n.changeLanguage(selected);
+        localStorage.setItem('gettimelam_language', selected);
         navigate('/');
     };
 

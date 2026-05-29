@@ -15,6 +15,7 @@ import Contact from './pages/Contact/Contact';
 import ProfileDetail from './pages/Profile/ProfileDetail';
 import Messages from './pages/Messages/Messages';
 import LanguageSelect from './pages/LanguageSelect/LanguageSelect';
+import Register from './pages/Register/Register'; {/* ✅ ADD THIS */ }
 import './App.css';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <Toaster position="top-center" />
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/register" element={<Register />} />  {/* ✅ ADD THIS */}
           <Route path="/browse" element={<Browse />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/service-provider" element={<ServiceProvider />} />

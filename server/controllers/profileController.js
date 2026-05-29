@@ -1,4 +1,5 @@
 const Profile = require('../models/Profile');
+const User = require('../models/User');
 
 // @route   POST /api/profiles
 const createProfile = async (req, res) => {
@@ -49,20 +50,24 @@ const getProfiles = async (req, res) => {
     }
 };
 
-// ✅ New route — get opposite gender profiles for suggestions
+// ✅ Get opposite gender profiles for suggestions
 const getSuggestedMatches = async (req, res) => {
     try {
         const myProfile = await Profile.findOne({ user: req.user.id });
+
+        // ✅ Fallback to User model gender if profile not found yet
+        const me = await User.findById(req.user.id);
+        const myGender = myProfile?.gender || me?.gender;
 
         let filter = {
             isActive: true,
             user: { $ne: req.user.id }
         };
 
-        // ✅ Show opposite gender
-        if (myProfile?.gender === 'Female') {
+        // ✅ Always show ONLY opposite gender
+        if (myGender === 'Female') {
             filter.gender = 'Male';
-        } else if (myProfile?.gender === 'Male') {
+        } else if (myGender === 'Male') {
             filter.gender = 'Female';
         }
 

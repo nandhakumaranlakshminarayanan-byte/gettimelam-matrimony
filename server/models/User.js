@@ -26,6 +26,7 @@ const userSchema = new mongoose.Schema({
         enum: ['Myself', 'Son', 'Daughter', 'Brother', 'Sister', 'Relative', 'Friend'],
         default: 'Myself'
     },
+    profileName: { type: String }, // ✅ Name of the person the profile is for (e.g. Gopi)
     dateOfBirth: { type: Date },
     motherTongue: { type: String, default: 'Tamil' },
     isPremium: { type: Boolean, default: false },

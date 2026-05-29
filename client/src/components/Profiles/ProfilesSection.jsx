@@ -114,6 +114,25 @@ const ProfilesSection = ({ onLoginClick }) => {
     // ✅ Check if user is unverified member
     const isUnverified = user && user.role === 'member' && !user.isVerified;
 
+    // ✅ Block service accounts from seeing member profiles
+    if (user && user.role === 'service') return (
+        <section style={styles.section}>
+            <div style={styles.inner}>
+                <div style={styles.header}>
+                    <p style={styles.label}>✨ Browse Profiles</p>
+                    <h2 style={styles.title}>Find Your Perfect Match</h2>
+                </div>
+                <div style={{ textAlign: 'center', padding: '40px', background: '#FFF8E1', borderRadius: '16px', border: '1px solid #F5BE17' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '12px' }}>🏪</div>
+                    <h3 style={{ color: '#B71C1C', marginBottom: '8px' }}>Service Provider Account</h3>
+                    <p style={{ color: '#7A6055', fontSize: '14px' }}>
+                        You are logged in as a service provider. Member profiles are only visible to matrimony members.
+                    </p>
+                </div>
+            </div>
+        </section>
+    );
+
     if (loading) return (
         <section style={styles.section}>
             <div style={{ textAlign: 'center', padding: '60px' }}>
@@ -203,7 +222,7 @@ const ProfilesSection = ({ onLoginClick }) => {
                                         </div>
                                         <div style={styles.contactIcons}>
                                             <button style={styles.phoneIcon} onClick={() => handleViewNumber(p)} title="Call">📞</button>
-                                            <button style={styles.waIcon} onClick={() => handleWhatsApp(p)} title="WhatsApp">💬</button>
+                                            <button style={styles.waIcon} onClick={() => handleChat(p)} title="Send Message">💬</button>
                                         </div>
                                     </div>
 

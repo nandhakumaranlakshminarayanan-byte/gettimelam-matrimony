@@ -19,6 +19,19 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
+    // ✅ ADDED — re-fetch user when tab becomes visible (picks up admin verification instantly)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && localStorage.getItem('token')) {
+                getMe()
+                    .then(res => setUser(res.data.user))
+                    .catch(() => { });
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, []);
+
     const login = async (data) => {
         const res = await loginUser(data);
         localStorage.setItem('token', res.data.token);
