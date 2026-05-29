@@ -1,6 +1,8 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const Hero = ({ onRegisterClick, onLoginClick }) => {
+    const { t } = useTranslation();
     return (
         <section style={styles.hero}>
             <div style={styles.pattern} />
@@ -8,24 +10,21 @@ const Hero = ({ onRegisterClick, onLoginClick }) => {
 
                 {/* LEFT — Text */}
                 <div style={styles.left}>
-                    <div style={styles.badge}>🎊 Tamil Nadu's Trusted Matrimony</div>
+                    <div style={styles.badge}>🎊 {t('home.hero_subtitle')}</div>
                     <h1 style={styles.h1}>
-                        Find Your <em style={styles.em}>Perfect</em><br />
-                        Life Partner
+                        {t('home.hero_title')}
                     </h1>
                     <p style={styles.desc}>
-                        Join thousands of Tamil families who found their perfect match
-                        on Gettimelam Matrimony. Free registration. Verified profiles.
-                        Trusted by generations.
+                        {t('home.hero_desc')}
                     </p>
 
                     {/* Stats */}
                     <div style={styles.stats}>
                         {[
-                            { num: '50,000+', label: 'Profiles' },
-                            { num: '10,000+', label: 'Matches Made' },
-                            { num: '5,000+', label: 'Happy Couples' },
-                            { num: '100%', label: 'Free Register' }
+                            { num: '50,000+', label: t('home.stats_profiles') },
+                            { num: '10,000+', label: t('home.stats_matches') },
+                            { num: '5,000+', label: t('home.stats_couples') },
+                            { num: '100%', label: t('home.register_btn') }
                         ].map(s => (
                             <div key={s.label} style={styles.stat}>
                                 <strong style={styles.statNum}>{s.num}</strong>
@@ -78,7 +77,7 @@ const Hero = ({ onRegisterClick, onLoginClick }) => {
                         </div>
 
                         <button style={styles.registerBtn} onClick={onRegisterClick}>
-                            🎊 Register Free Now
+                            🎊 {t('home.register_btn')}
                         </button>
 
                         <p style={styles.loginText}>

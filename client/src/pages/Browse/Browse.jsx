@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
 import LoginModal from '../../components/Modals/LoginModal';
@@ -13,6 +14,7 @@ const API = 'http://localhost:5000';
 const Browse = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -179,7 +181,7 @@ const Browse = () => {
             <div style={styles.header}>
                 <div style={styles.headerInner}>
                     <h1 style={styles.headerTitle}>Browse Profiles</h1>
-                    <p style={styles.headerDesc}>{allProfiles.length}+ verified profiles</p>
+                    <p style={styles.headerDesc}>{allProfiles.length}+ {t('browse.verified_profiles')}</p>
                 </div>
             </div>
 
@@ -188,7 +190,7 @@ const Browse = () => {
                 {/* LEFT SIDEBAR */}
                 <div style={styles.filterSidebar}>
                     <div style={styles.filterCard}>
-                        <h3 style={styles.filterTitle}>🔍 Filter Profiles</h3>
+                        <h3 style={styles.filterTitle}>🔍 {t('browse.filter_title')}</h3>
 
                         {[
                             { label: 'Looking For', name: 'gender', type: 'select', options: [['', 'All'], ['Female', 'Bride (Female)'], ['Male', 'Groom (Male)']] },
@@ -227,12 +229,12 @@ const Browse = () => {
                             </div>
                         </div>
 
-                        <button style={styles.applyBtn} onClick={applyFilters}>Apply Filters</button>
+                        <button style={styles.applyBtn} onClick={applyFilters}>{t('browse.apply_filters')}</button>
                         <button style={styles.resetBtn} onClick={resetFilters}>Reset</button>
                     </div>
 
                     <div style={styles.quickFilters}>
-                        <h4 style={styles.quickTitle}>Quick Filters</h4>
+                        <h4 style={styles.quickTitle}>{t('browse.quick_filters')}</h4>
                         {[
                             { label: 'Brides', filter: { gender: 'Female' } },
                             { label: 'Grooms', filter: { gender: 'Male' } },
@@ -253,11 +255,11 @@ const Browse = () => {
                 <div style={styles.profilesArea}>
                     <div style={styles.resultsHeader}>
                         <span style={styles.resultsCount}>
-                            Showing <strong>{visibleProfiles.length}</strong> profiles
+                            {t('browse.showing')} <strong>{visibleProfiles.length}</strong> {t('browse.profiles')}
                         </span>
                         {!user && (
                             <button style={styles.loginBtn} onClick={() => setShowLogin(true)}>
-                                🔒 Login to Connect
+                                {t('browse.login_to_connect')}
                             </button>
                         )}
                     </div>
@@ -270,8 +272,8 @@ const Browse = () => {
                     ) : visibleProfiles.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: '12px' }}>
                             <div style={{ fontSize: '48px' }}>💍</div>
-                            <h3>No profiles found!</h3>
-                            <button style={styles.applyBtn} onClick={resetFilters}>Reset Filters</button>
+                            <h3>{t('browse.no_profiles')}</h3>
+                            <button style={styles.applyBtn} onClick={resetFilters}>{t('browse.reset_filters')}</button>
                         </div>
                     ) : (
                         <div style={styles.profilesGrid}>
@@ -330,10 +332,10 @@ const Browse = () => {
 
                                             <div style={styles.secondaryRow}>
                                                 <button style={styles.dontShowBtn} onClick={() => handleDontShow(profile._id)}>
-                                                    ✕ Don't show
+                                                    {t('browse.dont_show')}
                                                 </button>
                                                 <button style={styles.viewLaterBtn} onClick={() => handleShortlist(profile)}>
-                                                    🕐 {isShortlisted ? 'Shortlisted' : 'View later'}
+                                                    {isShortlisted ? t('browse.shortlisted') : t('browse.view_later')}
                                                 </button>
                                             </div>
 

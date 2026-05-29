@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
 import LoginModal from '../../components/Modals/LoginModal';
@@ -60,6 +61,7 @@ const IncomingRequests = () => {
 const Dashboard = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('overview');
     const [shortlistSubTab, setShortlistSubTab] = useState('shortlisted');
     const [showLogin, setShowLogin] = useState(false);
@@ -224,12 +226,12 @@ const Dashboard = () => {
     };
 
     const tabs = [
-        { id: 'overview', label: '🏠 Overview' },
-        { id: 'profile', label: '👤 My Profile' },
-        { id: 'interests', label: '💌 Interests' },
-        { id: 'matches', label: '💍 Matches' },
-        { id: 'shortlist', label: '⭐ Shortlist' },
-        { id: 'settings', label: '⚙️ Settings' },
+        { id: 'overview', label: t('dashboard.overview') },
+        { id: 'profile', label: t('dashboard.my_profile') },
+        { id: 'interests', label: t('dashboard.interests') },
+        { id: 'matches', label: t('dashboard.matches') },
+        { id: 'shortlist', label: t('dashboard.shortlist') },
+        { id: 'settings', label: t('dashboard.settings') },
     ];
 
     const completionPct = photoUrl && profile ? '80%' : profile ? '60%' : '20%';
@@ -275,7 +277,7 @@ const Dashboard = () => {
                         <div style={styles.userName}>{profile?.name || user?.name}</div>
                         <div style={styles.userMobile}>{user?.mobile}</div>
                         <div style={{ ...styles.planBadge, background: user?.isPremium ? '#DF9B08' : '#FFF8E1', color: user?.isPremium ? '#fff' : '#7A5C00', border: user?.isPremium ? 'none' : '1px solid #F5BE17' }}>
-                            {user?.isPremium ? '⭐ Premium Member' : '🆓 Free Member'}
+                            {user?.isPremium ? t('dashboard.premium_member') : t('dashboard.free_member')}
                         </div>
                         <div style={styles.completion}>
                             <div style={styles.completionLabel}>
@@ -308,13 +310,13 @@ const Dashboard = () => {
                     {/* OVERVIEW */}
                     {activeTab === 'overview' && (
                         <div>
-                            <h2 style={styles.pageTitle}>Welcome back, {profile?.name || user?.name}! 👋</h2>
+                            <h2 style={styles.pageTitle}>{t('dashboard.welcome')}, {profile?.name || user?.name}! 👋</h2>
                             <div style={styles.statsGrid}>
                                 {[
-                                    { icon: '👁️', label: 'Profile Views', value: '24', color: '#FFF8E1' },
-                                    { icon: '💌', label: 'Interests Received', value: '8', color: '#FFF3E0' },
-                                    { icon: '💍', label: 'Matches Found', value: suggestedMatches.length.toString(), color: '#F1F8E9' },
-                                    { icon: '⭐', label: 'Shortlisted', value: shortlistedProfiles.length.toString(), color: '#FFF9E6' },
+                                    { icon: '👁️', label: t('dashboard.profile_views'), value: '24', color: '#FFF8E1' },
+                                    { icon: '💌', label: t('dashboard.interests_received'), value: '8', color: '#FFF3E0' },
+                                    { icon: '💍', label: t('dashboard.matches_found'), value: suggestedMatches.length.toString(), color: '#F1F8E9' },
+                                    { icon: '⭐', label: t('dashboard.shortlisted'), value: shortlistedProfiles.length.toString(), color: '#FFF9E6' },
                                 ].map(s => (
                                     <div key={s.label} style={{ ...styles.statCard, background: s.color }}>
                                         <div style={styles.statIcon}>{s.icon}</div>

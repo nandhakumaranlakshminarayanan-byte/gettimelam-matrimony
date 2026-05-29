@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 
 const LoginModal = ({ onClose, onSwitchToRegister }) => {
     const { login } = useAuth();
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('member');
     const [form, setForm] = useState({ mobile: '', password: '' });
@@ -68,26 +70,26 @@ const LoginModal = ({ onClose, onSwitchToRegister }) => {
                 <div style={styles.rightPanel}>
                     <button style={styles.closeBtn} onClick={onClose}>✕</button>
 
-                    <h3 style={styles.rightTitle}>Sign In</h3>
-                    <p style={styles.rightSubtitle}>Welcome back to Gettimelam</p>
+                    <h3 style={styles.rightTitle}>{t('login.title')}</h3>
+                    <p style={styles.rightSubtitle}>{t('login.subtitle')}</p>
 
                     {/* Tabs */}
                     <div style={styles.tabs}>
                         <button
                             style={{ ...styles.tab, ...(activeTab === 'member' ? styles.tabActive : {}) }}
                             onClick={() => { setActiveTab('member'); setForm({ mobile: '', password: '' }); }}>
-                            👤 Member Login
+                            👤 {t('login.member_login')}
                         </button>
                         <button
                             style={{ ...styles.tab, ...(activeTab === 'service' ? styles.tabActive : {}) }}
                             onClick={() => { setActiveTab('service'); setForm({ mobile: '', password: '' }); }}>
-                            🏪 Service Provider
+                            🏪 {t('login.service_provider')}
                         </button>
                     </div>
 
                     <form onSubmit={handleSubmit}>
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>📱 Mobile Number</label>
+                            <label style={styles.label}>📱 {t('login.mobile_number')}</label>
                             <div style={styles.inputWrapper}>
                                 <span style={styles.inputPrefix}>+91</span>
                                 <input
@@ -103,7 +105,7 @@ const LoginModal = ({ onClose, onSwitchToRegister }) => {
                         </div>
 
                         <div style={styles.formGroup}>
-                            <label style={styles.label}>🔒 Password</label>
+                            <label style={styles.label}>🔒 {t('login.password')}</label>
                             <div style={styles.inputWrapper}>
                                 <input
                                     name="password"
@@ -122,13 +124,13 @@ const LoginModal = ({ onClose, onSwitchToRegister }) => {
                         </div>
 
                         <div style={styles.forgotRow}>
-                            <span style={styles.forgot}>Forgot Password?</span>
+                            <span style={styles.forgot}>{t('login.forgot_password')}</span>
                         </div>
 
                         <button type="submit"
                             style={{ ...styles.submitBtn, opacity: loading ? 0.7 : 1 }}
                             disabled={loading}>
-                            {loading ? '⏳ Signing in...' : 'SIGN IN'}
+                            {loading ? '⏳ Signing in...' : t('login.sign_in')}
                         </button>
 
                         <div style={styles.dividerRow}>
@@ -138,14 +140,14 @@ const LoginModal = ({ onClose, onSwitchToRegister }) => {
                         </div>
 
                         <button type="button" style={styles.otpBtn}>
-                            📱 Login with OTP
+                            📱 {t('login.login_with_otp')}
                         </button>
                     </form>
 
                     <p style={styles.switchText}>
-                        New to Gettimelam?{' '}
+                        {t('login.new_to')}{' '}
                         <span style={styles.switchLink} onClick={onSwitchToRegister}>
-                            FREE REGISTER
+                            {t('login.free_register')}
                         </span>
                     </p>
 

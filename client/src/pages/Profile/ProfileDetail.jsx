@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
 import LoginModal from '../../components/Modals/LoginModal';
@@ -14,6 +15,7 @@ const ProfileDetail = () => {
     const { id } = useParams();
     const { user, refreshUser } = useAuth();
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showLogin, setShowLogin] = useState(false);
@@ -185,7 +187,7 @@ const ProfileDetail = () => {
 
             <div style={styles.container}>
                 <button style={styles.backBtn} onClick={() => navigate('/browse')}>
-                    ← Back to Browse
+                    {t('profile.back_to_browse')}
                 </button>
 
                 <div style={styles.grid}>
@@ -207,7 +209,7 @@ const ProfileDetail = () => {
                                     {isFemale ? '👩' : '👨'}
                                 </div>
                             )}
-                            <div style={styles.verifiedBadge}>✓ Verified Profile</div>
+                            <div style={styles.verifiedBadge}>{t('profile.verified_profile')}</div>
                             {profile.numberProtected && (
                                 <div style={styles.protectedBadge}>🔒 Number Protected</div>
                             )}
@@ -240,11 +242,11 @@ const ProfileDetail = () => {
                                 style={{ ...styles.interestBtn, opacity: interestSent ? 0.7 : 1 }}
                                 onClick={handleSendInterest}
                                 disabled={interestSent}>
-                                {interestSent ? '✅ Interest Sent' : '💌 Send Interest'}
+                                {interestSent ? t('profile.interest_sent') : t('profile.send_interest')}
                             </button>
 
                             <button style={styles.chatBtn} onClick={handleStartChat}>
-                                💬 Send Message
+                                {t('profile.send_message')}
                             </button>
 
                             {/* Number Privacy Section */}
@@ -331,7 +333,7 @@ const ProfileDetail = () => {
                             }}
                                 onClick={handleShortlist}
                                 disabled={shortlistLoading}>
-                                {shortlistLoading ? '⏳' : shortlisted ? '⭐ Shortlisted' : '⭐ Shortlist Profile'}
+                                {shortlistLoading ? '⏳' : shortlisted ? t('profile.shortlisted') : t('profile.shortlist')}
                             </button>
                         </div>
                     </div>
@@ -359,13 +361,13 @@ const ProfileDetail = () => {
 
                         {profile.about && (
                             <div style={styles.section}>
-                                <h3 style={styles.sectionTitle}>About Me</h3>
+                                <h3 style={styles.sectionTitle}>{t('profile.about_me')}</h3>
                                 <p style={styles.aboutText}>{profile.about}</p>
                             </div>
                         )}
 
                         <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>Personal Details</h3>
+                            <h3 style={styles.sectionTitle}>{t('profile.personal_details')}</h3>
                             <div style={styles.detailGrid}>
                                 {[
                                     { label: 'Date of Birth', value: profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-IN') : '—' },
@@ -384,7 +386,7 @@ const ProfileDetail = () => {
                         </div>
 
                         <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>Religious Details</h3>
+                            <h3 style={styles.sectionTitle}>{t('profile.religious_details')}</h3>
                             <div style={styles.detailGrid}>
                                 {[
                                     { label: 'Religion', value: profile.religion },
@@ -403,7 +405,7 @@ const ProfileDetail = () => {
                         </div>
 
                         <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>Education & Career</h3>
+                            <h3 style={styles.sectionTitle}>{t('profile.education_career')}</h3>
                             <div style={styles.detailGrid}>
                                 {[
                                     { label: 'Education', value: profile.education },
@@ -419,7 +421,7 @@ const ProfileDetail = () => {
                         </div>
 
                         <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>Location</h3>
+                            <h3 style={styles.sectionTitle}>{t('profile.location')}</h3>
                             <div style={styles.detailGrid}>
                                 {[
                                     { label: 'City', value: profile.city },
@@ -435,7 +437,7 @@ const ProfileDetail = () => {
                         </div>
 
                         <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>Family Details</h3>
+                            <h3 style={styles.sectionTitle}>{t('profile.family_details')}</h3>
                             <div style={styles.detailGrid}>
                                 {[
                                     { label: "Father's Occupation", value: profile.fatherOccupation },
