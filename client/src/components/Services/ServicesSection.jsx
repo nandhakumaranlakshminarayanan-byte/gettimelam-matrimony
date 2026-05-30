@@ -1,28 +1,34 @@
 import React from 'react';
-
-const services = [
-    { icon: '🏛️', title: 'Wedding Hall', desc: 'Book premium marriage halls with live availability', color: '#FFF8E1' },
-    { icon: '📸', title: 'Photography', desc: 'Top-rated wedding photographers & videographers', color: '#FFF3E0' },
-    { icon: '🍽️', title: 'Catering', desc: 'Traditional & modern catering for all group sizes', color: '#F1F8E9' },
-    { icon: '🚌', title: 'Transport', desc: 'Bridal cars, buses & fleet services', color: '#FFF9E6' },
-    { icon: '🎪', title: 'Event Organizer', desc: 'Complete event management & planning', color: '#FFF8E1' },
-    { icon: '💐', title: 'Decorations', desc: 'Floral, thematic & traditional decorations', color: '#FFF3E0' },
-    { icon: '🎵', title: 'DJ & Band', desc: 'Live music, DJ & nadaswaram services', color: '#F1F8E9' },
-    { icon: '✨', title: 'More Services', desc: 'Mehendi, makeup, honeymoon packages & more', color: '#FFF9E6' },
-];
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 const ServicesSection = () => {
+    const { t } = useTranslation();
+    const navigate = useNavigate();
+
+    const services = [
+        { icon: '🏛️', title: t('services.wedding_hall'), desc: t('services.wedding_hall_desc'), color: '#FFF8E1' },
+        { icon: '📸', title: t('services.photography'), desc: t('services.photography_desc'), color: '#FFF3E0' },
+        { icon: '🍽️', title: t('services.catering'), desc: t('services.catering_desc'), color: '#F1F8E9' },
+        { icon: '🚌', title: t('services.transport'), desc: t('services.transport_desc'), color: '#FFF9E6' },
+        { icon: '🎪', title: t('services.event_organizer'), desc: t('services.event_organizer_desc'), color: '#FFF8E1' },
+        { icon: '💐', title: t('services.decorations'), desc: t('services.decorations_desc'), color: '#FFF3E0' },
+        { icon: '🎵', title: t('services.dj_band'), desc: t('services.dj_band_desc'), color: '#F1F8E9' },
+        { icon: '✨', title: t('services.more_services'), desc: t('services.more_services_desc'), color: '#FFF9E6' },
+    ];
+
     return (
         <section style={styles.section}>
             <div style={styles.inner}>
                 <div style={styles.header}>
-                    <p style={styles.label}>💍 Wedding Services</p>
-                    <h2 style={styles.title}>Everything You Need After Finding Your Match</h2>
-                    <p style={styles.desc}>Book trusted local vendors with live availability calendars</p>
+                    <p style={styles.label}>💍 {t('services.label')}</p>
+                    <h2 style={styles.title}>{t('services.title')}</h2>
+                    <p style={styles.desc}>{t('services.desc')}</p>
                 </div>
                 <div style={styles.grid}>
                     {services.map((s, i) => (
                         <div key={i} style={styles.card}
+                            onClick={() => navigate('/services')}
                             onMouseEnter={e => e.currentTarget.style.border = '2px solid #F5BE17'}
                             onMouseLeave={e => e.currentTarget.style.border = '2px solid transparent'}>
                             <div style={{ ...styles.icon, background: s.color }}>{s.icon}</div>

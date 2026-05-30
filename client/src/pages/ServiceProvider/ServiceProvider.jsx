@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
 import axios from 'axios';
@@ -8,9 +9,142 @@ import toast from 'react-hot-toast';
 
 const API = 'http://localhost:5000';
 
+// ── Settings Form Component ────────────────────────────────────────────────
+const SettingsForm = ({ user, API, onSuccess }) => {
+    const [form, setForm] = useState({
+        businessName: user?.businessName || '',
+        ownerName: user?.ownerName || '',
+        city: user?.city || '',
+        district: user?.district || '',
+        description: user?.description || '',
+    });
+    const [photos, setPhotos] = useState([]);
+    const [previews, setPreviews] = useState([]);
+    const [saving, setSaving] = useState(false);
+
+    const handlePhotoChange = (e) => {
+        const files = Array.from(e.target.files);
+        setPhotos(files);
+        setPreviews(files.map(f => URL.createObjectURL(f)));
+    };
+
+    const handleSave = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+            const token = localStorage.getItem('token');
+            const formData = new FormData();
+            Object.keys(form).forEach(k => formData.append(k, form[k]));
+            photos.forEach(p => formData.append('photos', p));
+            await axios.put(`${API}/api/services/my/update`, formData, {
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+            });
+            onSuccess();
+            setPhotos([]);
+            setPreviews([]);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to update');
+        } finally { setSaving(false); }
+    };
+
+    const inp = {
+        width: '100%', padding: '10px 14px', border: '1.5px solid #F5BE17',
+        borderRadius: '8px', fontSize: '14px', color: '#5F0909',
+        background: '#FFFDF4', outline: 'none', boxSizing: 'border-box',
+    };
+    const lbl = {
+        display: 'block', fontSize: '11px', fontWeight: '700',
+        color: '#7A5C00', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px'
+    };
+
+    return (
+        <form onSubmit={handleSave}>
+            <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #F5BE17', marginBottom: '16px' }}>
+                <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', color: '#5F0909', marginBottom: '20px' }}>
+                    ✏️ Edit Business Details
+                </h3>
+
+                {/* Current info readonly */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px', background: '#FFF8E1', padding: '16px', borderRadius: '10px' }}>
+                    {[
+                        { label: 'Mobile', value: user?.mobile },
+                        { label: 'Email', value: user?.email },
+                        { label: 'Category', value: user?.category },
+                        { label: 'Status', value: user?.isApproved ? '✅ Approved' : '⏳ Pending' },
+                    ].map(item => (
+                        <div key={item.label}>
+                            <div style={{ fontSize: '10px', fontWeight: '700', color: '#7A5C00', textTransform: 'uppercase' }}>{item.label}</div>
+                            <div style={{ fontSize: '14px', color: '#5F0909', fontWeight: '600' }}>{item.value || '—'}</div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Editable fields */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+                    <div>
+                        <label style={lbl}>Business Name</label>
+                        <input style={inp} value={form.businessName} onChange={e => setForm({ ...form, businessName: e.target.value })} placeholder="Business name" />
+                    </div>
+                    <div>
+                        <label style={lbl}>Owner Name</label>
+                        <input style={inp} value={form.ownerName} onChange={e => setForm({ ...form, ownerName: e.target.value })} placeholder="Owner name" />
+                    </div>
+                    <div>
+                        <label style={lbl}>City</label>
+                        <input style={inp} value={form.city} onChange={e => setForm({ ...form, city: e.target.value })} placeholder="City" />
+                    </div>
+                    <div>
+                        <label style={lbl}>District</label>
+                        <input style={inp} value={form.district} onChange={e => setForm({ ...form, district: e.target.value })} placeholder="District" />
+                    </div>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                    <label style={lbl}>Description</label>
+                    <textarea style={{ ...inp, height: '80px', resize: 'vertical' }}
+                        value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
+                        placeholder="Describe your business..." />
+                </div>
+
+                {/* Photo Upload */}
+                <div style={{ marginBottom: '16px' }}>
+                    <label style={lbl}>📸 Upload Service Photos</label>
+                    <label style={{
+                        display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px',
+                        border: '2px dashed #F5BE17', borderRadius: '10px', cursor: 'pointer',
+                        background: '#FFF8E1', color: '#7A5C00', fontSize: '13px'
+                    }}>
+                        <span style={{ fontSize: '24px' }}>📷</span>
+                        <span>{photos.length > 0 ? `${photos.length} photo(s) selected` : 'Click to upload photos (max 5)'}</span>
+                        <input type="file" multiple accept="image/*" onChange={handlePhotoChange}
+                            style={{ display: 'none' }} />
+                    </label>
+                    {previews.length > 0 && (
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                            {previews.map((p, i) => (
+                                <img key={i} src={p} alt="" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: '2px solid #F5BE17' }} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <button type="submit" disabled={saving} style={{
+                    padding: '12px 28px', background: 'linear-gradient(135deg, #B71C1C, #D32F2F)',
+                    color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px',
+                    fontWeight: '700', cursor: 'pointer', opacity: saving ? 0.7 : 1
+                }}>
+                    {saving ? '⏳ Saving...' : '💾 Save Changes'}
+                </button>
+            </div>
+        </form>
+    );
+};
+
+// ── Main ServiceProvider Component ────────────────────────────────────────────
 const ServiceProvider = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('overview');
     const [services, setServices] = useState([]);
     const [bookings, setBookings] = useState([]);
@@ -33,6 +167,7 @@ const ServiceProvider = () => {
         city: user?.city || '', district: user?.district || '',
         address: '', price: '', priceMin: '', priceMax: '', capacity: '',
     });
+    const [servicePhotos, setServicePhotos] = useState([]);
 
     useEffect(() => {
         if (!user) { navigate('/'); return; }
@@ -69,9 +204,15 @@ const ServiceProvider = () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            await axios.post(`${API}/api/services`, serviceForm, { headers: { Authorization: `Bearer ${token}` } });
-            toast.success('Service listed successfully!');
+            const formData = new FormData();
+            Object.keys(serviceForm).forEach(key => formData.append(key, serviceForm[key]));
+            servicePhotos.forEach(photo => formData.append('photos', photo));
+            await axios.post(`${API}/api/services`, formData, {
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+            });
+            toast.success('Service listed successfully! 🎉');
             setShowAddService(false);
+            setServicePhotos([]);
             fetchMyServices();
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed to add service');
@@ -212,12 +353,12 @@ const ServiceProvider = () => {
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
     const tabs = [
-        { id: 'overview', label: '🏠 Overview' },
-        { id: 'services', label: '🏪 My Services' },
+        { id: 'overview', label: t('service_provider.overview') },
+        { id: 'services', label: t('service_provider.my_services') },
         { id: 'packages', label: '📦 Packages' },
-        { id: 'bookings', label: '📅 Bookings' },
+        { id: 'bookings', label: t('service_provider.bookings') },
         { id: 'calendar', label: '🗓️ Availability' },
-        { id: 'settings', label: '⚙️ Settings' },
+        { id: 'settings', label: t('service_provider.settings') },
     ];
 
     const categories = [
@@ -276,8 +417,8 @@ const ServiceProvider = () => {
                             )}
                             <div style={styles.statsGrid}>
                                 {[
-                                    { icon: '🏪', label: 'My Services', value: services.length, color: '#FFF8E1' },
-                                    { icon: '📅', label: 'Total Bookings', value: bookings.length, color: '#FFF3E0' },
+                                    { icon: '🏪', label: t('service_provider.my_services_stat'), value: services.length, color: '#FFF8E1' },
+                                    { icon: '📅', label: t('service_provider.total_bookings'), value: bookings.length, color: '#FFF3E0' },
                                     { icon: '⏳', label: 'Pending', value: bookings.filter(b => b.status === 'Pending').length, color: '#FFF9E6' },
                                     { icon: '✅', label: 'Confirmed', value: bookings.filter(b => b.status === 'Confirmed').length, color: '#F1F8E9' },
                                 ].map(s => (
@@ -671,26 +812,7 @@ const ServiceProvider = () => {
                     {activeTab === 'settings' && (
                         <div>
                             <h2 style={styles.pageTitle}>⚙️ Account Settings</h2>
-                            <div style={styles.formBox}>
-                                <h3 style={styles.formTitle}>Business Details</h3>
-                                <div style={styles.profileView}>
-                                    {[
-                                        { label: 'Business Name', value: user?.businessName },
-                                        { label: 'Owner Name', value: user?.ownerName },
-                                        { label: 'Mobile', value: user?.mobile },
-                                        { label: 'Email', value: user?.email },
-                                        { label: 'Category', value: user?.category },
-                                        { label: 'City', value: user?.city },
-                                        { label: 'District', value: user?.district },
-                                        { label: 'Status', value: user?.isApproved ? '✅ Approved' : '⏳ Pending Approval' },
-                                    ].map(item => (
-                                        <div key={item.label} style={styles.profileField}>
-                                            <span style={styles.fieldLabel}>{item.label}</span>
-                                            <span style={styles.fieldValue}>{item.value || '—'}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                            <SettingsForm user={user} API={API} onSuccess={() => toast.success('Profile updated! ✅')} />
                             <button style={{ ...styles.addBtn, background: '#B71C1C', marginTop: '16px' }}
                                 onClick={() => { logout(); navigate('/'); }}>
                                 🚪 Logout

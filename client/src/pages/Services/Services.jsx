@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
 import LoginModal from '../../components/Modals/LoginModal';
@@ -10,33 +11,29 @@ import toast from 'react-hot-toast';
 
 const API = 'http://localhost:5000';
 
-const ALL_CATEGORIES = [
-    { id: 'all', label: 'All Services', icon: '✨' },
-    { id: 'Wedding Hall/Venue', label: 'Wedding Hall/Venue', icon: '🏛️' },
-    { id: 'Photography', label: 'Photography', icon: '📸' },
-    { id: 'Videography', label: 'Videography', icon: '🎥' },
-    { id: 'Catering', label: 'Catering', icon: '🍽️' },
-    { id: 'Event Decoration', label: 'Event Decoration', icon: '🌸' },
-    { id: 'Wedding Rentals', label: 'Wedding Rentals', icon: '🪑' },
-    { id: 'DJ & Entertainment', label: 'DJ & Entertainment', icon: '🎵' },
-    { id: 'Choreography', label: 'Choreography', icon: '💃' },
-    { id: 'Bridal Makeup & Hair', label: 'Bridal Makeup', icon: '💄' },
-    { id: 'Mehndi Artist', label: 'Mehndi Artist', icon: '🌿' },
-    { id: 'Bridal Styling', label: 'Bridal Styling', icon: '👗' },
-    { id: 'Wedding Planner', label: 'Wedding Planner', icon: '📋' },
-    { id: 'Travel & Accommodation', label: 'Travel & Stay', icon: '🚌' },
-    { id: 'Officiant/Priest', label: 'Priest/Officiant', icon: '🙏' },
-    { id: 'Security & Valet', label: 'Security & Valet', icon: '🔒' },
-    { id: 'Wedding Cake', label: 'Wedding Cake', icon: '🎂' },
-    { id: 'Favors & Gifts', label: 'Favors & Gifts', icon: '🎁' },
-    { id: 'Stationery & Cards', label: 'Stationery & Cards', icon: '💌' },
-    { id: 'Other', label: 'Other', icon: '🌟' },
-];
-
-const getCategoryIcon = (category) => {
-    const found = ALL_CATEGORIES.find(c => c.id === category);
-    return found ? found.icon : '✨';
+const CATEGORY_ICONS = {
+    'Wedding Hall/Venue': '🏛️',
+    'Photography': '📸',
+    'Videography': '🎥',
+    'Catering': '🍽️',
+    'Event Decoration': '🌸',
+    'Wedding Rentals': '🪑',
+    'DJ & Entertainment': '🎵',
+    'Choreography': '💃',
+    'Bridal Makeup & Hair': '💄',
+    'Mehndi Artist': '🌿',
+    'Bridal Styling': '👗',
+    'Wedding Planner': '📋',
+    'Travel & Accommodation': '🚌',
+    'Officiant/Priest': '🙏',
+    'Security & Valet': '🔒',
+    'Wedding Cake': '🎂',
+    'Favors & Gifts': '🎁',
+    'Stationery & Cards': '💌',
+    'Other': '🌟',
 };
+
+const getCategoryIcon = (category) => CATEGORY_ICONS[category] || '✨';
 
 const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
@@ -162,6 +159,30 @@ const calStyles = {
 const Services = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { t } = useTranslation();
+
+    const ALL_CATEGORIES = [
+        { id: 'all', label: t('services.categories.all'), icon: '✨' },
+        { id: 'Wedding Hall/Venue', label: t('services.categories.wedding_hall'), icon: '🏛️' },
+        { id: 'Photography', label: t('services.categories.photography'), icon: '📸' },
+        { id: 'Videography', label: t('services.categories.videography'), icon: '🎥' },
+        { id: 'Catering', label: t('services.categories.catering'), icon: '🍽️' },
+        { id: 'Event Decoration', label: t('services.categories.event_decoration'), icon: '🌸' },
+        { id: 'Wedding Rentals', label: t('services.categories.wedding_rentals'), icon: '🪑' },
+        { id: 'DJ & Entertainment', label: t('services.categories.dj_entertainment'), icon: '🎵' },
+        { id: 'Choreography', label: t('services.categories.choreography'), icon: '💃' },
+        { id: 'Bridal Makeup & Hair', label: t('services.categories.bridal_makeup'), icon: '💄' },
+        { id: 'Mehndi Artist', label: t('services.categories.mehndi'), icon: '🌿' },
+        { id: 'Bridal Styling', label: t('services.categories.bridal_styling'), icon: '👗' },
+        { id: 'Wedding Planner', label: t('services.categories.wedding_planner'), icon: '📋' },
+        { id: 'Travel & Accommodation', label: t('services.categories.travel'), icon: '🚌' },
+        { id: 'Officiant/Priest', label: t('services.categories.priest'), icon: '🙏' },
+        { id: 'Security & Valet', label: t('services.categories.security'), icon: '🔒' },
+        { id: 'Wedding Cake', label: t('services.categories.wedding_cake'), icon: '🎂' },
+        { id: 'Favors & Gifts', label: t('services.categories.favors'), icon: '🎁' },
+        { id: 'Stationery & Cards', label: t('services.categories.stationery'), icon: '💌' },
+        { id: 'Other', label: t('services.categories.other'), icon: '🌟' },
+    ];
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
     const [activeCategory, setActiveCategory] = useState('all');
@@ -269,9 +290,9 @@ const Services = () => {
 
             <div style={styles.header}>
                 <div style={styles.headerInner}>
-                    <div style={styles.headerBadge}>Wedding Services</div>
-                    <h1 style={styles.headerTitle}>Everything for Your Perfect Wedding</h1>
-                    <p style={styles.headerDesc}>Book trusted local vendors across all wedding categories</p>
+                    <div style={styles.headerBadge}>{t('services.label')}</div>
+                    <h1 style={styles.headerTitle}>{t('services.title')}</h1>
+                    <p style={styles.headerDesc}>{t('services.desc')}</p>
                     <div style={styles.searchBar}>
                         <div style={styles.searchField}>
                             <span style={styles.searchIcon}>📍</span>
@@ -284,7 +305,7 @@ const Services = () => {
                             <input type="date" style={styles.searchInput} value={searchDate}
                                 onChange={e => setSearchDate(e.target.value)} />
                         </div>
-                        <button style={styles.searchBtn} onClick={fetchServices}>Search</button>
+                        <button style={styles.searchBtn} onClick={fetchServices}>{t('services.search')}</button>
                     </div>
                 </div>
             </div>
@@ -302,11 +323,11 @@ const Services = () => {
 
                 <div style={styles.resultsRow}>
                     <span style={styles.resultsCount}>
-                        {loading ? 'Loading...' : <><strong>{services.length}</strong> services found</>}
+                        {loading ? t('services.loading') : <><strong>{services.length}</strong> {t('services.services_found')}</>}
                     </span>
                     {(searchCity || searchDate) && (
                         <button style={styles.clearBtn} onClick={() => { setSearchCity(''); setSearchDate(''); }}>
-                            Clear Filters
+                            {t('services.clear_filters')}
                         </button>
                     )}
                 </div>
@@ -349,7 +370,7 @@ const Services = () => {
                                         <p style={styles.serviceDesc}>{service.description.substring(0, 80)}...</p>
                                     )}
                                     <div style={styles.serviceActions}>
-                                        <button style={styles.bookBtn} onClick={() => handleBook(service)}>Book Now</button>
+                                        <button style={styles.bookBtn} onClick={() => handleBook(service)}>{t('services.book_now')}</button>
                                         <button style={styles.viewBtn} onClick={() => window.open(`/services/${service._id}`, '_blank')}>View</button>
                                     </div>
                                 </div>
@@ -360,12 +381,12 @@ const Services = () => {
 
                 <div style={styles.listCta}>
                     <div>
-                        <h3 style={styles.listCtaTitle}>Are You a Service Provider?</h3>
-                        <p style={styles.listCtaDesc}>List your wedding service and reach thousands of families!</p>
+                        <h3 style={styles.listCtaTitle}>{t('services.are_you_provider')}</h3>
+                        <p style={styles.listCtaDesc}>{t('services.provider_desc')}</p>
                     </div>
                     <button style={styles.listCtaBtn}
                         onClick={() => user?.role === 'service' ? navigate('/service-provider') : setShowRegister(true)}>
-                        List Your Service Free
+                        {t('services.list_your_service')}
                     </button>
                 </div>
             </div>

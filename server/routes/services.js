@@ -81,10 +81,28 @@ router.get('/:id', async (req, res) => {
 });
 
 // ── CREATE service ──
-router.post('/', protect, async (req, res) => {
+router.post('/', protect, upload.array('photos', 5), async (req, res) => {
     try {
-        const service = await Service.create({ ...req.body, vendor: req.user.id });
+        const photoUrls = req.files ? req.files.map(f => `/uploads/${f.filename}`) : [];
+        const service = await Service.create({ ...req.body, vendor: req.user.id, photos: photoUrls });
         res.status(201).json({ success: true, message: 'Service listed successfully!', service });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ── UPDATE my service (settings page) ──
+router.put('/my/update', protect, upload.array('photos', 5), async (req, res) => {
+    try {
+        const service = await Service.findOne({ vendor: req.user.id });
+        if (!service) return res.status(404).json({ success: false, message: 'Service not found' });
+        const updates = { ...req.body };
+        if (req.files && req.files.length > 0) {
+            const newPhotos = req.files.map(f => `/uploads/${f.filename}`);
+            updates.photos = [...(service.photos || []), ...newPhotos];
+        }
+        const updated = await Service.findByIdAndUpdate(service._id, updates, { new: true });
+        res.json({ success: true, message: 'Service updated!', service: updated });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

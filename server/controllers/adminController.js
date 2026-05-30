@@ -10,7 +10,7 @@ const Notification = require('../models/Notification');
 // Get dashboard stats
 const getStats = async (req, res) => {
     try {
-        const totalUsers = await User.countDocuments({ role: { $ne: 'admin' } });
+        const totalUsers = await User.countDocuments({ role: { $nin: ['admin', 'service'] } });
         const totalProfiles = await Profile.countDocuments();
         const totalServices = await Service.countDocuments();
         const totalBookings = await Booking.countDocuments();
@@ -41,7 +41,7 @@ const getStats = async (req, res) => {
 // ✅ Get all users — exclude admins
 const getAllUsers = async (req, res) => {
     try {
-        const users = await User.find({ role: { $ne: 'admin' } })
+        const users = await User.find({ role: { $nin: ['admin', 'service'] } })
             .select('-password')
             .sort({ createdAt: -1 });
         res.json({ success: true, count: users.length, users });

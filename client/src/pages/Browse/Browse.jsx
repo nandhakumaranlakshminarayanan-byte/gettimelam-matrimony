@@ -193,9 +193,9 @@ const Browse = () => {
                         <h3 style={styles.filterTitle}>🔍 {t('browse.filter_title')}</h3>
 
                         {[
-                            { label: 'Looking For', name: 'gender', type: 'select', options: [['', 'All'], ['Female', 'Bride (Female)'], ['Male', 'Groom (Male)']] },
-                            { label: 'Religion', name: 'religion', type: 'select', options: [['', 'All Religions'], ['Hindu', 'Hindu'], ['Muslim', 'Muslim'], ['Christian', 'Christian']] },
-                            { label: 'Marital Status', name: 'maritalStatus', type: 'select', options: [['', 'Any'], ['Never Married', 'Never Married'], ['Divorced', 'Divorced'], ['Widowed', 'Widowed']] },
+                            { label: t('browse.looking_for'), name: 'gender', type: 'select', options: [['', t('browse.all')], ['Female', t('browse.bride')], ['Male', t('browse.groom')]] },
+                            { label: t('browse.religion'), name: 'religion', type: 'select', options: [['', t('browse.all_religions')], ['Hindu', 'Hindu'], ['Muslim', 'Muslim'], ['Christian', 'Christian']] },
+                            { label: t('browse.marital_status'), name: 'maritalStatus', type: 'select', options: [['', t('browse.any')], ['Never Married', t('browse.never_married')], ['Divorced', t('browse.divorced')], ['Widowed', t('browse.widowed')]] },
                         ].map(f => (
                             <div key={f.name} style={styles.filterGroup}>
                                 <label style={styles.filterLabel}>{f.label}</label>
@@ -206,15 +206,15 @@ const Browse = () => {
                         ))}
 
                         <div style={styles.filterGroup}>
-                            <label style={styles.filterLabel}>Caste</label>
-                            <input name="caste" type="text" placeholder="Enter caste"
+                            <label style={styles.filterLabel}>{t('browse.caste')}</label>
+                            <input name="caste" type="text" placeholder={t('browse.caste')}
                                 value={filters.caste} onChange={handleFilterChange} style={styles.filterInput} />
                         </div>
 
                         <div style={styles.filterGroup}>
-                            <label style={styles.filterLabel}>District</label>
+                            <label style={styles.filterLabel}>{t('browse.district')}</label>
                             <select name="district" value={filters.district} onChange={handleFilterChange} style={styles.filterInput}>
-                                <option value="">All Districts</option>
+                                <option value="">{t('browse.all')}</option>
                                 {['Chennai', 'Coimbatore', 'Madurai', 'Trichy', 'Salem', 'Erode', 'Tirunelveli', 'Vellore', 'Puducherry', 'Thoothukudi'].map(d => (
                                     <option key={d}>{d}</option>
                                 ))}
@@ -222,7 +222,7 @@ const Browse = () => {
                         </div>
 
                         <div style={styles.filterGroup}>
-                            <label style={styles.filterLabel}>Age Range</label>
+                            <label style={styles.filterLabel}>{t('browse.age_range')}</label>
                             <div style={styles.ageRow}>
                                 <input name="minAge" type="number" placeholder="Min" value={filters.minAge} onChange={handleFilterChange} style={{ ...styles.filterInput, width: '48%' }} />
                                 <input name="maxAge" type="number" placeholder="Max" value={filters.maxAge} onChange={handleFilterChange} style={{ ...styles.filterInput, width: '48%' }} />
@@ -230,7 +230,7 @@ const Browse = () => {
                         </div>
 
                         <button style={styles.applyBtn} onClick={applyFilters}>{t('browse.apply_filters')}</button>
-                        <button style={styles.resetBtn} onClick={resetFilters}>Reset</button>
+                        <button style={styles.resetBtn} onClick={resetFilters}>{t('browse.reset')}</button>
                     </div>
 
                     <div style={styles.quickFilters}>

@@ -179,4 +179,31 @@ router.delete('/admins/:id', protect, adminOnly, async (req, res) => {
     }
 });
 
+// ✅ Delete a service
+router.delete('/services/:id', protect, adminOnly, async (req, res) => {
+    try {
+        const Service = require('../models/Service');
+        await Service.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Service deleted!' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ✅ Verify/Unverify a service
+router.put('/services/:id/verify', protect, adminOnly, async (req, res) => {
+    try {
+        const Service = require('../models/Service');
+        const { isVerified } = req.body;
+        const service = await Service.findByIdAndUpdate(
+            req.params.id,
+            { isVerified },
+            { new: true }
+        );
+        res.json({ success: true, service });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 module.exports = router;

@@ -56,7 +56,7 @@ const Profiles = () => {
                                     }}>
                                         <span style={{ fontSize: '40px' }}>
                                             {p.photo
-                                                ? <img src={p.photo} alt="" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                ? <img src={`http://localhost:5000${p.photo}`} alt="" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />
                                                 : p.gender === 'Female' ? '👩' : '👨'
                                             }
                                         </span>

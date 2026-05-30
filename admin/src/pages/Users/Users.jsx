@@ -1,97 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
 import Navbar from '../../components/Navbar';
 import API from '../../utils/api';
 import toast from 'react-hot-toast';
 
-// ── 3-dot Action Menu ──────────────────────────────────────────────────────────
-const ActionMenu = ({ user, onVerify, onTogglePremium, onDelete, isLast }) => {
-    const [open, setOpen] = useState(false);
-    const ref = useRef(null);
-
-    useEffect(() => {
-        const handleClick = (e) => {
-            if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-        };
-        document.addEventListener('mousedown', handleClick);
-        return () => document.removeEventListener('mousedown', handleClick);
-    }, []);
-
-    const actions = [];
-
-    if (user.role !== 'admin') {
-        actions.push({
-            label: user.isVerified ? '❌ Unverify' : '✅ Verify',
-            color: user.isVerified ? '#C62828' : '#2E7D32',
-            onClick: () => { onVerify(user._id, user.isVerified); setOpen(false); }
-        });
-        actions.push({
-            label: user.isPremium ? '⬇️ Set Free' : '⬆️ Set Premium',
-            color: user.isPremium ? '#F57F17' : '#1565C0',
-            onClick: () => { onTogglePremium(user._id); setOpen(false); }
-        });
-    }
-
-    actions.push({
-        label: '🗑️ Delete User',
-        color: '#C62828',
-        onClick: () => { onDelete(user._id, user.name || user.businessName); setOpen(false); }
-    });
-
-    // ✅ Open upward if last row to avoid clipping
-    const dropdownStyle = {
-        position: 'absolute', right: 0, zIndex: 999,
-        background: '#fff', borderRadius: '10px', minWidth: '160px',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.12)', border: '1px solid #E0E0E0',
-        overflow: 'hidden',
-        ...(isLast ? { bottom: '38px' } : { top: '38px' }),
-    };
-
-    return (
-        <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
-            <button
-                onClick={() => setOpen(!open)}
-                style={{
-                    width: '32px', height: '32px', borderRadius: '8px',
-                    border: '1.5px solid #E0E0E0', background: open ? '#F5F5F5' : '#fff',
-                    cursor: 'pointer', fontSize: '18px', fontWeight: '700',
-                    color: '#555', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', lineHeight: 1,
-                }}
-            >
-                ⋮
-            </button>
-
-            {open && (
-                <div style={dropdownStyle}>
-                    {actions.map((a, i) => (
-                        <div key={i} onClick={a.onClick} style={{
-                            padding: '10px 16px', fontSize: '13px', fontWeight: '600',
-                            color: a.color, cursor: 'pointer',
-                            borderBottom: i < actions.length - 1 ? '1px solid #F5F5F5' : 'none',
-                            background: '#fff',
-                            transition: 'background 0.15s',
-                        }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#F9F9F9'}
-                            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
-                        >
-                            {a.label}
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
-// ── Main Component ─────────────────────────────────────────────────────────────
 const Users = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('all');
 
-    useEffect(() => { fetchUsers(); }, []);
+    const [providers, setProviders] = useState([]);
+
+    useEffect(() => { fetchUsers(); fetchProviders(); }, []);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -105,6 +26,13 @@ const Users = () => {
         }
     };
 
+    const fetchProviders = async () => {
+        try {
+            const res = await API.get('/admin/vendors');
+            setProviders(res.data.vendors || []);
+        } catch (err) { }
+    };
+
     const handleTogglePremium = async (id) => {
         try {
             const res = await API.put(`/admin/users/${id}/toggle-premium`);
@@ -115,6 +43,7 @@ const Users = () => {
         }
     };
 
+    // ✅ Verify user
     const handleVerify = async (id, isVerified) => {
         try {
             const endpoint = isVerified ? 'unverify' : 'verify';
@@ -141,21 +70,26 @@ const Users = () => {
 
     const getRoleBadge = (role) => {
         if (role === 'admin') return { label: '🛡️ Admin', bg: '#FCE4EC', color: '#880E4F' };
-        if (role === 'service') return { label: '🏪 Provider', bg: '#E3F2FD', color: '#1565C0' };
+        if (role === 'service') return { label: '🏪 Service Provider', bg: '#E3F2FD', color: '#1565C0' };
         return { label: '👤 Member', bg: '#E8F5E9', color: '#2E7D32' };
     };
 
-    const filtered = users.filter(u => {
-        const name = getDisplayName(u).toLowerCase();
-        const matchSearch = name.includes(search.toLowerCase()) ||
-            u.mobile?.includes(search) ||
-            u.email?.toLowerCase().includes(search.toLowerCase());
-        const matchFilter = filter === 'all' || u.role === filter;
-        return matchSearch && matchFilter;
-    });
+    const filtered = filter === 'service'
+        ? providers.filter(u => {
+            const q = search.toLowerCase();
+            return !q || (u.businessName || '').toLowerCase().includes(q) || (u.mobile || '').includes(q) || (u.email || '').toLowerCase().includes(q);
+        })
+        : users.filter(u => {
+            const name = getDisplayName(u).toLowerCase();
+            const matchSearch = name.includes(search.toLowerCase()) ||
+                u.mobile?.includes(search) ||
+                u.email?.toLowerCase().includes(search.toLowerCase());
+            const matchFilter = filter === 'all' || u.role === filter;
+            return matchSearch && matchFilter;
+        });
 
     const members = users.filter(u => u.role === 'member');
-    const services = users.filter(u => u.role === 'service');
+    const services = providers;
     const admins = users.filter(u => u.role === 'admin');
 
     return (
@@ -209,8 +143,8 @@ const Users = () => {
                             <table style={styles.table}>
                                 <thead>
                                     <tr style={styles.head}>
-                                        {['#', 'Name', 'Profile For', 'Mobile', 'Email', 'Gender/Type', 'Plan', 'Role', 'Verified', 'Joined', ''].map((h, i) => (
-                                            <th key={i} style={styles.th}>{h}</th>
+                                        {['#', 'Name', 'Mobile', 'Email', 'Gender/Type', 'Plan', 'Role', 'Verified', 'Joined', 'Actions'].map(h => (
+                                            <th key={h} style={styles.th}>{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -228,30 +162,6 @@ const Users = () => {
                                                         <div style={{ fontSize: '11px', color: '#1565C0', fontWeight: '600' }}>
                                                             🏪 {u.category}
                                                         </div>
-                                                    )}
-                                                </td>
-
-                                                {/* ✅ Profile For column */}
-                                                <td style={styles.td}>
-                                                    {u.role === 'member' && u.profileFor && u.profileFor !== 'Myself' && u.profileName ? (
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                                <span style={{ fontSize: '11px', fontWeight: '600', color: '#fff', background: '#7B1FA2', padding: '2px 8px', borderRadius: '20px' }}>
-                                                                    {u.profileFor}
-                                                                </span>
-                                                                <span style={{ fontSize: '11px', color: '#999' }}>›</span>
-                                                                <span style={{ fontSize: '11px', fontWeight: '600', color: '#fff', background: u.gender === 'Male' ? '#1565C0' : '#C2185B', padding: '2px 8px', borderRadius: '20px' }}>
-                                                                    {u.gender === 'Male' ? 'Groom' : 'Bride'}
-                                                                </span>
-                                                            </div>
-                                                            <div style={{ fontSize: '13px', fontWeight: '700', color: '#2E7D32' }}>
-                                                                {u.profileName}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <span style={{ fontSize: '12px', color: '#999' }}>
-                                                            {u.role === 'member' ? '— Self' : '—'}
-                                                        </span>
                                                     )}
                                                 </td>
                                                 <td style={styles.td}>{u.mobile}</td>
@@ -282,6 +192,8 @@ const Users = () => {
                                                         {badge.label}
                                                     </span>
                                                 </td>
+
+                                                {/* ✅ Verified Status */}
                                                 <td style={styles.td}>
                                                     <span style={{
                                                         padding: '3px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
@@ -291,26 +203,57 @@ const Users = () => {
                                                         {u.isVerified ? '✅ Verified' : '⏳ Pending'}
                                                     </span>
                                                 </td>
+
                                                 <td style={styles.td}>
                                                     {new Date(u.createdAt).toLocaleDateString('en-IN')}
                                                 </td>
 
-                                                {/* ✅ 3-dot menu */}
-                                                <td style={{ ...styles.td, textAlign: 'center' }}>
-                                                    <ActionMenu
-                                                        user={u}
-                                                        onVerify={handleVerify}
-                                                        onTogglePremium={handleTogglePremium}
-                                                        onDelete={handleDelete}
-                                                        isLast={i >= filtered.length - 2}
-                                                    />
+                                                <td style={styles.td}>
+                                                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+
+                                                        {/* ✅ Verify Button */}
+                                                        {u.role !== 'admin' && (
+                                                            <button style={{
+                                                                padding: '5px 10px', border: 'none', borderRadius: '6px',
+                                                                fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                                                                background: u.isVerified ? '#FFEBEE' : '#E8F5E9',
+                                                                color: u.isVerified ? '#C62828' : '#2E7D32'
+                                                            }}
+                                                                onClick={() => handleVerify(u._id, u.isVerified)}>
+                                                                {u.isVerified ? '❌ Unverify' : '✅ Verify'}
+                                                            </button>
+                                                        )}
+
+                                                        {/* Premium Toggle */}
+                                                        {u.role !== 'admin' && (
+                                                            <button style={{
+                                                                padding: '5px 10px', border: 'none', borderRadius: '6px',
+                                                                fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                                                                background: u.isPremium ? '#FFF8E1' : '#E3F2FD',
+                                                                color: u.isPremium ? '#F57F17' : '#1565C0'
+                                                            }}
+                                                                onClick={() => handleTogglePremium(u._id)}>
+                                                                {u.isPremium ? '⬇️ Free' : '⬆️ Premium'}
+                                                            </button>
+                                                        )}
+
+                                                        {/* Delete */}
+                                                        <button style={{
+                                                            padding: '5px 10px', border: 'none', borderRadius: '6px',
+                                                            fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                                                            background: '#FFEBEE', color: '#C62828'
+                                                        }}
+                                                            onClick={() => handleDelete(u._id, getDisplayName(u))}>
+                                                            🗑️
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
                                     })}
                                     {filtered.length === 0 && (
                                         <tr>
-                                            <td colSpan={11} style={{ ...styles.td, textAlign: 'center', color: '#999', padding: '40px' }}>
+                                            <td colSpan={10} style={{ ...styles.td, textAlign: 'center', color: '#999', padding: '40px' }}>
                                                 No users found
                                             </td>
                                         </tr>
@@ -340,7 +283,7 @@ const styles = {
     filterBtnActive: { background: '#1A0A0A', color: '#fff', border: '1.5px solid #1A0A0A' },
     count: { background: '#FDF0F0', color: '#8B1A1A', padding: '6px 16px', borderRadius: '20px', fontSize: '14px', fontWeight: '600' },
     loading: { textAlign: 'center', padding: '40px', color: '#757575' },
-    tableWrapper: { background: '#fff', borderRadius: '12px', overflow: 'visible', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #E0E0E0' },
+    tableWrapper: { background: '#fff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #E0E0E0' },
     table: { width: '100%', borderCollapse: 'collapse' },
     head: { background: '#F5F5F5' },
     th: { padding: '12px 16px', fontSize: '11px', fontWeight: '700', color: '#555', textAlign: 'left', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid #E0E0E0' },

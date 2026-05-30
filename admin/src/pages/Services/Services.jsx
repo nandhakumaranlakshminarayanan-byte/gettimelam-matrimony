@@ -66,6 +66,27 @@ const Services = () => {
         }
     };
 
+    const deleteService = async (id, name) => {
+        if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+        try {
+            await API.delete(`/admin/services/${id}`);
+            toast.success('🗑️ Service deleted!');
+            fetchServices();
+        } catch (err) {
+            toast.error('Failed to delete service');
+        }
+    };
+
+    const verifyService = async (id, isVerified) => {
+        try {
+            await API.put(`/admin/services/${id}/verify`, { isVerified: !isVerified });
+            toast.success(isVerified ? '⏳ Service unverified!' : '✅ Service verified!');
+            fetchServices();
+        } catch (err) {
+            toast.error('Failed to update service');
+        }
+    };
+
     const pending = vendors.filter(v => !v.isApproved);
     const approved = vendors.filter(v => v.isApproved);
 
@@ -196,7 +217,7 @@ const Services = () => {
                             <table style={styles.table}>
                                 <thead>
                                     <tr>
-                                        {['#', 'Business', 'Category', 'Location', 'Price', 'Status'].map(h => (
+                                        {['#', 'Business', 'Category', 'Location', 'Price', 'Status', 'Actions'].map(h => (
                                             <th key={h} style={styles.th}>{h}</th>
                                         ))}
                                     </tr>
@@ -225,11 +246,25 @@ const Services = () => {
                                                     {s.isVerified ? '✅ Verified' : '⏳ Pending'}
                                                 </span>
                                             </td>
+                                            <td style={styles.td}>
+                                                <div style={{ display: 'flex', gap: '6px' }}>
+                                                    <button
+                                                        style={{ ...styles.actionBtn, background: s.isVerified ? '#FFF8E1' : '#E8F5E9', color: s.isVerified ? '#F57F17' : '#2E7D32', fontSize: '11px', padding: '5px 10px' }}
+                                                        onClick={() => verifyService(s._id, s.isVerified)}>
+                                                        {s.isVerified ? '⏳ Unverify' : '✅ Verify'}
+                                                    </button>
+                                                    <button
+                                                        style={{ ...styles.actionBtn, background: '#FFEBEE', color: '#C62828', fontSize: '11px', padding: '5px 10px' }}
+                                                        onClick={() => deleteService(s._id, s.businessName)}>
+                                                        🗑️ Delete
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))}
                                     {services.length === 0 && (
                                         <tr>
-                                            <td colSpan={6} style={{ ...styles.td, textAlign: 'center', color: '#999', padding: '40px' }}>
+                                            <td colSpan={7} style={{ ...styles.td, textAlign: 'center', color: '#999', padding: '40px' }}>
                                                 No services listed yet
                                             </td>
                                         </tr>
