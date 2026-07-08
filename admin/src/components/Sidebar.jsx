@@ -17,6 +17,7 @@ const Sidebar = () => {
         { path: '/analytics', icon: '📈', label: 'Analytics' },
         { path: '/notifications', icon: '🔔', label: 'Notifications' },
         { path: '/banners', icon: '🎨', label: 'Banners' },
+        { path: '/service-cards', icon: '🃏', label: 'Service Cards' },
         { path: '/messages', icon: '💬', label: 'Messages' },
         { path: '/services', icon: '🏛️', label: 'Services' },
         { path: '/admin-access', icon: '🛡️', label: 'Admin Access' }, // ✅ new

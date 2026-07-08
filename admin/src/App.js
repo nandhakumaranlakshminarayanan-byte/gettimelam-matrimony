@@ -13,6 +13,7 @@ import Testimonials from './pages/Testimonials/Testimonials';
 import Analytics from './pages/Analytics/Analytics';
 import Notifications from './pages/Notifications/Notifications';
 import Banners from './pages/Banners/Banners';
+import ServiceCards from './pages/ServiceCards/ServiceCards';
 import Messages from './pages/Messages/Messages';
 import AdminAccess from './pages/AdminAccess/AdminAccess';
 import './App.css';
@@ -44,6 +45,7 @@ function App() {
           <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/banners" element={<ProtectedRoute><Banners /></ProtectedRoute>} />
+          <Route path="/service-cards" element={<ProtectedRoute><ServiceCards /></ProtectedRoute>} />
           <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
           <Route path="/admin-access" element={<ProtectedRoute><AdminAccess /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" />} />

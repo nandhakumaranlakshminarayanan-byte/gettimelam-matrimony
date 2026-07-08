@@ -185,7 +185,9 @@ const Services = () => {
     ];
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
-    const [activeCategory, setActiveCategory] = useState('all');
+    const [activeCategory, setActiveCategory] = useState(
+        () => new URLSearchParams(window.location.search).get('category') || 'all'
+    );
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedService, setSelectedService] = useState(null);
