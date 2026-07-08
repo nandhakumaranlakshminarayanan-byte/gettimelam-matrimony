@@ -343,6 +343,11 @@ const Services = () => {
                     <div style={styles.emptyBox}>
                         <div style={{ fontSize: '52px', marginBottom: '16px' }}>🔍</div>
                         <h3 style={{ color: '#5F0909', marginBottom: '8px' }}>No Services Found</h3>
+                        <p style={{ color: '#7A5C00', marginBottom: '20px' }}>
+                            {activeCategory !== 'all'
+                                ? `No "${activeCategory}" services are listed yet. Please check back soon!`
+                                : 'No services match your filters. Try adjusting your search.'}
+                        </p>
                         <button style={styles.clearBtn2} onClick={() => { setActiveCategory('all'); setSearchCity(''); setSearchDate(''); }}>
                             Show All Services
                         </button>
