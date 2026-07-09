@@ -7,16 +7,6 @@ const Dia = () => <span style={{
     transform: 'rotate(45deg)', display: 'inline-block', flexShrink: 0,
 }} />;
 
-// Kuthuvilakku (oil lamp) icon — replaces 🎊 on the glass card
-const LampIcon = () => (
-    <svg width="38" height="44" viewBox="0 0 40 46" style={{ display: 'block', margin: '0 auto 8px' }}>
-        <ellipse cx="20" cy="34" rx="14" ry="5" fill="#E8B84B" />
-        <path d="M12 34 L15 24 H25 L28 34 Z" fill="#E8B84B" />
-        <rect x="18.6" y="18" width="2.8" height="7" fill="#E8B84B" />
-        <path d="M20 6 C23 10 23 14 20 17 C17 14 17 10 20 6 Z" fill="#F5D98B" />
-    </svg>
-);
-
 const Hero = ({ onRegisterClick, onLoginClick }) => {
     const { t } = useTranslation();
     return (
@@ -69,7 +59,7 @@ const Hero = ({ onRegisterClick, onLoginClick }) => {
                         {/* glass sheen */}
                         <div style={styles.sheen} />
 
-                        <LampIcon />
+                        <img src="/images/match.png" alt="Find your match" style={styles.formIcon} />
                         <h3 style={styles.formTitle}>Find Your Match — Free</h3>
                         <p style={styles.formSub}>Join thousands of Tamil families</p>
 
@@ -98,7 +88,7 @@ const Hero = ({ onRegisterClick, onLoginClick }) => {
                                 'All Communities Welcome',
                                 'Horoscope Matching',
                                 'Privacy Protected',
-                                'No Charges After Marriage',
+                                'No Extra Charges',
                             ].map(f => (
                                 <div key={f} style={styles.feature}><Dia /> {f}</div>
                             ))}
@@ -221,6 +211,7 @@ const styles = {
         background: 'linear-gradient(215deg, rgba(255,255,255,0.16), transparent 55%)',
         transform: 'rotate(8deg)', pointerEvents: 'none',
     },
+    formIcon: { display: 'block', margin: '0 auto 12px', height: '100px', width: 'auto', maxWidth: '100%', objectFit: 'contain' },
     formTitle: {
         fontFamily: "'Playfair Display', serif",
         fontSize: '26px', color: '#FFFFFF', fontWeight: '600', marginBottom: '4px',

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import NotificationBell from './NotificationBell';
 
 const Navbar = ({ onLoginClick, onRegisterClick }) => {
     const { user, logout } = useAuth();
@@ -64,13 +65,15 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
 
                     {user && (
                         <span style={styles.link} onClick={() => navigate('/messages')}>
-                            💬 {t('nav.messages')}
+                            {t('nav.messages')}
                         </span>
                     )}
                 </div>
 
                 {/* ACTIONS */}
                 <div style={styles.actions}>
+                    {user && <NotificationBell />}
+
                     <select style={styles.langSelect} value={i18n.language} onChange={handleLanguageChange}>
                         <option value="en">English</option>
                         <option value="ta">தமிழ்</option>
@@ -79,12 +82,12 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
                     {user ? (
                         <div style={styles.userMenu}>
                             <span style={styles.userName}>
-                                {user.role === 'service' ? '🏪' : '👤'} {user.name || user.businessName}
+                                {user.name || user.businessName}
                             </span>
 
                             {user?.role === 'admin' && (
                                 <button style={styles.btnAdmin} onClick={() => navigate('/admin')}>
-                                    ⚙️ Admin Panel
+                                    Admin Panel
                                 </button>
                             )}
                             {user?.role === 'member' && (
@@ -94,7 +97,7 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
                             )}
                             {user?.role === 'service' && (
                                 <button style={styles.btnOutline} onClick={() => navigate('/service-provider')}>
-                                    🏪 My Business
+                                    My Business
                                 </button>
                             )}
 
@@ -115,23 +118,23 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
 };
 
 const styles = {
-    nav: { background: '#fff', borderBottom: '2px solid #F5BE17', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(223,155,8,0.12)' },
-    inner: { maxWidth: '1200px', margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '80px' },
+    nav: { background: 'linear-gradient(180deg, #241021 0%, #1C0812 100%)', borderBottom: '1px solid rgba(240,180,41,0.45)', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 4px 24px rgba(0,0,0,0.45)' },
+    inner: { maxWidth: '1200px', margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '92px' },
     logo: { cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 },
-    logoImg: { height: '80px', objectFit: 'contain' },
+    logoImg: { height: '130px', maxWidth: '240px', objectFit: 'contain', display: 'block' },
     links: { display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'nowrap' },
-    link: { fontSize: '13px', fontWeight: '500', color: '#5F0909', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', lineHeight: 1 },
+    link: { fontSize: '13px', fontWeight: '500', color: '#EDE6F2', padding: '8px 10px', borderRadius: '8px', cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', lineHeight: 1 },
     dropdown: { position: 'relative' },
-    dropMenu: { position: 'absolute', top: '100%', left: 0, background: '#fff', borderRadius: '12px', boxShadow: '0 8px 32px rgba(223,155,8,0.2)', border: '1px solid #F5BE17', padding: '8px', minWidth: '200px', zIndex: 200 },
-    dropItem: { display: 'block', padding: '9px 14px', fontSize: '13px', color: '#5F0909', borderRadius: '8px', cursor: 'pointer' },
-    dropDivider: { height: '1px', background: '#F5BE17', margin: '6px 0' },
+    dropMenu: { position: 'absolute', top: '100%', left: 0, background: 'rgba(28,8,18,0.96)', backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)', borderRadius: '12px', boxShadow: '0 14px 40px rgba(0,0,0,0.55)', border: '1px solid rgba(240,180,41,0.4)', padding: '8px', minWidth: '200px', zIndex: 200 },
+    dropItem: { display: 'block', padding: '9px 14px', fontSize: '13px', color: '#EDE6F2', borderRadius: '8px', cursor: 'pointer' },
+    dropDivider: { height: '1px', background: 'rgba(240,180,41,0.35)', margin: '6px 0' },
     actions: { display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 },
-    langSelect: { padding: '6px 10px', border: '1.5px solid #F5BE17', borderRadius: '8px', fontSize: '13px', color: '#5F0909', background: '#FFFDF4', cursor: 'pointer' },
-    btnOutline: { padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', background: 'transparent', border: '1.5px solid #B71C1C', color: '#B71C1C', cursor: 'pointer', whiteSpace: 'nowrap' },
-    btnPrimary: { padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', background: '#B71C1C', border: 'none', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' },
-    btnAdmin: { padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', background: '#1A237E', border: 'none', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' },
+    langSelect: { padding: '6px 10px', border: '1px solid rgba(240,180,41,0.5)', borderRadius: '8px', fontSize: '13px', color: '#F5D98B', background: 'rgba(255,255,255,0.06)', cursor: 'pointer' },
+    btnOutline: { padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(245,217,139,0.55)', color: '#F5D98B', cursor: 'pointer', whiteSpace: 'nowrap' },
+    btnPrimary: { padding: '9px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', background: 'linear-gradient(180deg, #F7DE8F 0%, #E3AC2A 45%, #C98F12 55%, #E8BC4A 100%)', border: '1px solid rgba(255,255,255,0.5)', color: '#3D2202', cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 6px 18px rgba(223,155,8,0.35), inset 0 1px 0 rgba(255,255,255,0.7)' },
+    btnAdmin: { padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(245,217,139,0.55)', color: '#F5D98B', cursor: 'pointer', whiteSpace: 'nowrap' },
     userMenu: { display: 'flex', alignItems: 'center', gap: '8px' },
-    userName: { fontSize: '13px', fontWeight: '600', color: '#B71C1C', whiteSpace: 'nowrap', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis' },
+    userName: { fontSize: '13px', fontWeight: '600', color: '#F5D98B', whiteSpace: 'nowrap', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis' },
 };
 
 export default Navbar;

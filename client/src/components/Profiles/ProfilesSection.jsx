@@ -16,7 +16,7 @@ const ProfilesSection = ({ onLoginClick }) => {
     const [sentInterestIds, setSentInterestIds] = useState([]);
 
     useEffect(() => { fetchProfiles(); }, [user]);
-    useEffect(() => { if (user) { fetchShortlistedIds(); fetchLikedIds(); } }, [user]);
+    useEffect(() => { if (user) { fetchShortlistedIds(); fetchLikedIds(); fetchSentInterestIds(); } }, [user]);
 
     const fetchProfiles = async () => {
         try {
@@ -47,11 +47,33 @@ const ProfilesSection = ({ onLoginClick }) => {
         } catch (err) { }
     };
 
+    const fetchSentInterestIds = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/interests/sent`, { headers: { Authorization: `Bearer ${token}` } });
+            setSentInterestIds((res.data.interests || []).map(i => i.profile?._id).filter(Boolean));
+        } catch (err) { }
+    };
+
     const handleSendInterest = async (p) => {
         if (!user) { onLoginClick(); return; }
-        if (sentInterestIds.includes(p._id)) { toast.success('Interest already sent!'); return; }
-        setSentInterestIds(prev => [...prev, p._id]);
-        toast.success(`Interest sent to ${getName(p)}! 💌`);
+        if (sentInterestIds.includes(p._id)) { toast('Interest already sent!', { icon: '💌' }); return; }
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`${API}/api/interests/send`,
+                { profileId: p._id },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setSentInterestIds(prev => [...prev, p._id]);
+            toast.success(`Interest sent to ${getName(p)}! 💌`);
+        } catch (err) {
+            if (err.response?.data?.alreadySent) {
+                setSentInterestIds(prev => [...prev, p._id]);
+                toast('Interest already sent!', { icon: '💌' });
+            } else {
+                toast.error(err.response?.data?.message || 'Failed to send interest');
+            }
+        }
     };
 
     const handleShortlist = async (p) => {

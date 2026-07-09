@@ -43,6 +43,26 @@ const profileSchema = new mongoose.Schema({
     isVerified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
     numberProtected: { type: Boolean, default: false },
+
+    // ── Partner Preferences — what this person is looking for ──
+    prefAgeMin: { type: String },
+    prefAgeMax: { type: String },
+    prefHeightMin: { type: String },
+    prefHeightMax: { type: String },
+    prefMaritalStatus: { type: String },
+    prefMotherTongue: { type: String },
+    prefEatingHabits: { type: String },
+    prefDrinkingHabits: { type: String },
+    prefSmokingHabits: { type: String },
+    prefEducation: { type: String },
+    prefOccupation: { type: String },
+    prefAnnualIncome: { type: String },
+    prefReligion: { type: String },
+    prefCaste: { type: String },
+    prefCountry: { type: String },
+    prefState: { type: String },
+    prefCity: { type: String },
+
     createdAt: { type: Date, default: Date.now }
 });
 

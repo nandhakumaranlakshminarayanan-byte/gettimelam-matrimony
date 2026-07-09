@@ -11,6 +11,44 @@ import toast from 'react-hot-toast';
 
 const API = 'http://localhost:5000';
 
+// ── Small line icons for section headings (replaces emoji) ──
+const iconProps = (size) => ({
+    width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
+    stroke: '#8B1A1A', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round',
+});
+const PersonIcon = ({ size = 16 }) => (<svg {...iconProps(size)}><circle cx="12" cy="8" r="3.5" /><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" /></svg>);
+const BookIcon = ({ size = 16 }) => (<svg {...iconProps(size)}><path d="M4 5.5C4 4.7 4.7 4 5.5 4H12v16H5.5C4.7 20 4 19.3 4 18.5z" /><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H12v16h6.5c.8 0 1.5-.7 1.5-1.5z" /></svg>);
+const PhoneIcon = ({ size = 16 }) => (<svg {...iconProps(size)}><path d="M6 3h3l1.5 4.5-2 1.5a12 12 0 006 6l1.5-2L20 15v3a1.5 1.5 0 01-1.6 1.5A16 16 0 014.5 4.6 1.5 1.5 0 016 3z" /></svg>);
+const MapIcon = ({ size = 16 }) => (<svg {...iconProps(size)}><path d="M12 21s-7-6.2-7-11a7 7 0 1114 0c0 4.8-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>);
+const BriefcaseIcon = ({ size = 16 }) => (<svg {...iconProps(size)}><rect x="3" y="8" width="18" height="12" rx="2" /><path d="M8 8V6a2 2 0 012-2h4a2 2 0 012 2v2" /></svg>);
+const StarIcon = ({ size = 16 }) => (<svg {...iconProps(size)}><path d="M12 3l2.6 5.7 6.2.6-4.7 4.1 1.4 6.1L12 16.7 6.5 19.5l1.4-6.1L3.2 9.3l6.2-.6z" /></svg>);
+
+const SubHeading = ({ icon, children }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        {icon}
+        <h4 style={{ fontFamily: "'Playfair Display', serif", fontSize: '15.5px', color: '#8B1A1A', margin: 0 }}>
+            {children}
+        </h4>
+    </div>
+);
+
+const DetailPairs = ({ items }) => {
+    const filled = items.filter(it => it.value);
+    if (filled.length === 0) {
+        return <p style={{ fontSize: '12.5px', color: '#B0987A', margin: 0 }}>Not specified</p>;
+    }
+    return (
+        <div>
+            {filled.map(it => (
+                <div key={it.label} style={{ display: 'flex', gap: '8px', fontSize: '13px', padding: '5px 0', borderBottom: '1px solid #F5EAE0' }}>
+                    <span style={{ fontWeight: '700', color: '#5A4632', minWidth: '150px', flexShrink: 0 }}>{it.label}:</span>
+                    <span style={{ color: '#2C1810' }}>{it.value}</span>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const ProfileDetail = () => {
     const { id } = useParams();
     const { user, refreshUser } = useAuth();
@@ -41,10 +79,12 @@ const ProfileDetail = () => {
 
     const fetchProfile = async () => {
         try {
-            const res = await axios.get(`${API}/api/profiles/${id}`);
+            const token = localStorage.getItem('token');
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            const res = await axios.get(`${API}/api/profiles/${id}`, { headers });
             setProfile(res.data.profile);
         } catch (err) {
-            toast.error('Profile not found');
+            toast.error(err.response?.data?.message || 'Profile not found');
             navigate('/browse');
         } finally {
             setLoading(false);
@@ -155,6 +195,15 @@ const ProfileDetail = () => {
     if (!profile) return null;
 
     const isFemale = profile.gender === 'Female';
+    const age = profile.dateOfBirth
+        ? Math.floor((new Date() - new Date(profile.dateOfBirth)) / (365.25 * 24 * 60 * 60 * 1000))
+        : null;
+    const hasPrefs = [
+        profile.prefAgeMin, profile.prefAgeMax, profile.prefHeightMin, profile.prefMaritalStatus,
+        profile.prefMotherTongue, profile.prefEatingHabits, profile.prefEducation,
+        profile.prefOccupation, profile.prefReligion, profile.prefCaste,
+        profile.prefCountry, profile.prefState, profile.prefCity,
+    ].some(Boolean);
 
     // ✅ "Profile created by Groom's Brother - Nandhu"
     const getCreatedByLabel = () => {
@@ -200,18 +249,49 @@ const ProfileDetail = () => {
                                 ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
                                 : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)'
                         }}>
-                            {/* ✅ Main photo display */}
+                            {/* Main photo fills the card; badges overlay the photo */}
                             {allPhotos.length > 0 ? (
-                                <img src={`${API}${allPhotos[activePhoto]}`} alt={profile.name}
-                                    style={styles.profilePhoto} />
-                            ) : (
-                                <div style={styles.profileEmoji}>
-                                    {isFemale ? '👩' : '👨'}
+                                <div style={{ position: 'relative' }}>
+                                    <img src={`${API}${allPhotos[activePhoto]}`} alt={profile.name}
+                                        style={styles.profilePhoto} />
+                                    {allPhotos.length > 1 && (
+                                        <>
+                                            <button style={{ ...styles.photoArrow, left: '10px' }}
+                                                aria-label="Previous photo"
+                                                onClick={() => setActivePhoto((activePhoto - 1 + allPhotos.length) % allPhotos.length)}>
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M15 5l-7 7 7 7" />
+                                                </svg>
+                                            </button>
+                                            <button style={{ ...styles.photoArrow, right: '10px' }}
+                                                aria-label="Next photo"
+                                                onClick={() => setActivePhoto((activePhoto + 1) % allPhotos.length)}>
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </button>
+                                            <div style={styles.photoCounter}>
+                                                {activePhoto + 1} / {allPhotos.length}
+                                            </div>
+                                        </>
+                                    )}
+                                    <div style={styles.badgeOverlay}>
+                                        <div style={styles.verifiedBadge}>{t('profile.verified_profile')}</div>
+                                        {profile.numberProtected && (
+                                            <div style={styles.protectedBadge}>Number Protected</div>
+                                        )}
+                                    </div>
                                 </div>
-                            )}
-                            <div style={styles.verifiedBadge}>{t('profile.verified_profile')}</div>
-                            {profile.numberProtected && (
-                                <div style={styles.protectedBadge}>🔒 Number Protected</div>
+                            ) : (
+                                <div style={{ padding: '32px 20px' }}>
+                                    <div style={styles.profileEmoji}>
+                                        {isFemale ? '👩' : '👨'}
+                                    </div>
+                                    <div style={styles.verifiedBadge}>{t('profile.verified_profile')}</div>
+                                    {profile.numberProtected && (
+                                        <div style={styles.protectedBadge}>Number Protected</div>
+                                    )}
+                                </div>
                             )}
                         </div>
 
@@ -232,6 +312,26 @@ const ProfileDetail = () => {
                                             }}
                                             onClick={() => setActivePhoto(i)} />
                                     ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Premium-locked gallery */}
+                        {profile.photosLocked && profile.photosCount > 0 && (
+                            <div style={styles.thumbsCard}>
+                                <p style={styles.thumbsTitle}>Photos ({profile.photosCount + (profile.photo ? 1 : 0)})</p>
+                                <div style={styles.photoLockBox}>
+                                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#B8860B" strokeWidth="1.7" strokeLinecap="round" style={{ margin: '0 auto 8px', display: 'block' }}>
+                                        <rect x="5" y="10" width="14" height="10" rx="2.5" />
+                                        <path d="M8 10V7.5C8 5 9.8 3 12 3s4 2 4 4.5V10" />
+                                        <circle cx="12" cy="14.6" r="1.6" fill="#B8860B" stroke="none" />
+                                    </svg>
+                                    <p style={{ fontSize: '12.5px', color: '#8B6914', margin: '0 0 12px', lineHeight: 1.5 }}>
+                                        {profile.photosCount} more photo{profile.photosCount > 1 ? 's' : ''} — visible to Premium members only
+                                    </p>
+                                    <button style={styles.photoUpgradeBtn} onClick={() => navigate('/plans')}>
+                                        Upgrade Now
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -359,98 +459,154 @@ const ProfileDetail = () => {
                             </div>
                         </div>
 
-                        {profile.about && (
-                            <div style={styles.section}>
-                                <h3 style={styles.sectionTitle}>{t('profile.about_me')}</h3>
-                                <p style={styles.aboutText}>{profile.about}</p>
-                            </div>
-                        )}
+                        {/* ══ Personal Information ══ */}
+                        <div style={styles.groupCard}>
+                            <h2 style={styles.groupTitle}>Personal Information</h2>
+                            <div style={styles.groupRule} />
 
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>{t('profile.personal_details')}</h3>
-                            <div style={styles.detailGrid}>
-                                {[
-                                    { label: 'Date of Birth', value: profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-IN') : '—' },
-                                    { label: 'Height', value: profile.height },
-                                    { label: 'Complexion', value: profile.complexion },
-                                    { label: 'Marital Status', value: profile.maritalStatus },
-                                    { label: 'Mother Tongue', value: profile.motherTongue },
-                                    { label: 'Family Type', value: profile.familyType },
-                                ].map(item => (
-                                    <div key={item.label} style={styles.detailItem}>
-                                        <span style={styles.detailLabel}>{item.label}</span>
-                                        <span style={styles.detailValue}>{item.value || '—'}</span>
-                                    </div>
-                                ))}
+                            {profile.about && (
+                                <div style={styles.subSection}>
+                                    <SubHeading icon={<PersonIcon />}>
+                                        About {isFemale ? 'Her' : 'Him'}
+                                    </SubHeading>
+                                    <p style={styles.aboutText}>{profile.about}</p>
+                                </div>
+                            )}
+
+                            <div style={styles.pairRow}>
+                                <div style={styles.subSection}>
+                                    <SubHeading icon={<PersonIcon />}>Basic Details</SubHeading>
+                                    <DetailPairs items={[
+                                        { label: 'Name', value: profile.name },
+                                        { label: 'Age', value: age ? `${age} Yrs` : null },
+                                        { label: 'Height', value: profile.height },
+                                        { label: 'Weight', value: profile.weight },
+                                        { label: 'Mother Tongue', value: profile.motherTongue },
+                                        { label: 'Marital Status', value: profile.maritalStatus },
+                                        { label: 'Complexion', value: profile.complexion },
+                                        { label: 'Family Type', value: profile.familyType },
+                                    ]} />
+                                </div>
+                                <div style={styles.subSection}>
+                                    <SubHeading icon={<BookIcon />}>Religion Information</SubHeading>
+                                    <DetailPairs items={[
+                                        { label: 'Religion', value: profile.religion },
+                                        { label: 'Caste / Sub Caste', value: [profile.caste, profile.subCaste].filter(Boolean).join(' / ') },
+                                        { label: 'Gothra', value: profile.gothra },
+                                        { label: 'Rasi', value: profile.rasi },
+                                        { label: 'Nakshatra', value: profile.nakshatra },
+                                        { label: 'Dosham', value: profile.dosham },
+                                    ]} />
+                                </div>
+                            </div>
+
+                            <div style={styles.pairRow}>
+                                <div style={styles.subSection}>
+                                    <SubHeading icon={<PhoneIcon />}>Contact Details</SubHeading>
+                                    <DetailPairs items={[
+                                        { label: 'Contact Number', value: numberStatus === 'show' ? `+91 ${profile.user?.mobile || ''}` : 'Protected' },
+                                        { label: 'Chat Status', value: 'Available on Gettimelam' },
+                                    ]} />
+                                </div>
+                                <div style={styles.subSection}>
+                                    <SubHeading icon={<MapIcon />}>
+                                        {isFemale ? "Bride's" : "Groom's"} Location
+                                    </SubHeading>
+                                    <DetailPairs items={[
+                                        { label: 'Country', value: profile.country || 'India' },
+                                        { label: 'State', value: profile.state || 'Tamil Nadu' },
+                                        { label: 'District', value: profile.district },
+                                        { label: 'City', value: profile.city },
+                                    ]} />
+                                </div>
+                            </div>
+
+                            <div style={styles.pairRow}>
+                                <div style={styles.subSection}>
+                                    <SubHeading icon={<BriefcaseIcon />}>Professional Information</SubHeading>
+                                    <DetailPairs items={[
+                                        { label: 'Education', value: profile.education },
+                                        { label: 'Employed In', value: profile.employed },
+                                        { label: 'Occupation', value: profile.occupation },
+                                        { label: 'Occupation Detail', value: profile.occupationRemark },
+                                        { label: 'Annual Income', value: profile.annualIncome },
+                                    ]} />
+                                </div>
+                                <div style={styles.subSection}>
+                                    <SubHeading icon={<StarIcon />}>Family Details</SubHeading>
+                                    <DetailPairs items={[
+                                        { label: "Father's Occupation", value: profile.fatherOccupation },
+                                        { label: "Mother's Occupation", value: profile.motherOccupation },
+                                        { label: 'Siblings', value: profile.siblings },
+                                        { label: 'Working Location', value: [profile.workingCity, profile.workingState].filter(Boolean).join(', ') },
+                                    ]} />
+                                </div>
                             </div>
                         </div>
 
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>{t('profile.religious_details')}</h3>
-                            <div style={styles.detailGrid}>
-                                {[
-                                    { label: 'Religion', value: profile.religion },
-                                    { label: 'Caste', value: profile.caste },
-                                    { label: 'Sub Caste', value: profile.subCaste },
-                                    { label: 'Rasi', value: profile.rasi },
-                                    { label: 'Nakshatra', value: profile.nakshatra },
-                                    { label: 'Dosham', value: profile.dosham },
-                                ].map(item => (
-                                    <div key={item.label} style={styles.detailItem}>
-                                        <span style={styles.detailLabel}>{item.label}</span>
-                                        <span style={styles.detailValue}>{item.value || '—'}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        {/* ══ Partner Preferences ══ */}
+                        <div style={styles.groupCard}>
+                            <h2 style={styles.groupTitle}>
+                                {isFemale ? 'Her' : 'His'} Partner Preferences
+                            </h2>
+                            <div style={styles.groupRule} />
 
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>{t('profile.education_career')}</h3>
-                            <div style={styles.detailGrid}>
-                                {[
-                                    { label: 'Education', value: profile.education },
-                                    { label: 'Occupation', value: profile.occupation },
-                                    { label: 'Annual Income', value: profile.annualIncome },
-                                ].map(item => (
-                                    <div key={item.label} style={styles.detailItem}>
-                                        <span style={styles.detailLabel}>{item.label}</span>
-                                        <span style={styles.detailValue}>{item.value || '—'}</span>
+                            {hasPrefs ? (
+                                <>
+                                    {profile.prefAbout && (
+                                        <div style={styles.subSection}>
+                                            <SubHeading icon={<PersonIcon />}>About Partner</SubHeading>
+                                            <p style={styles.aboutText}>{profile.prefAbout}</p>
+                                        </div>
+                                    )}
+                                    <div style={styles.pairRow}>
+                                        <div style={styles.subSection}>
+                                            <SubHeading icon={<PersonIcon />}>Basic Preferences</SubHeading>
+                                            <DetailPairs items={[
+                                                { label: 'Age Range', value: (profile.prefAgeMin || profile.prefAgeMax) ? `${profile.prefAgeMin || 'Any'} - ${profile.prefAgeMax || 'Any'} Yrs` : null },
+                                                { label: 'Height Range', value: (profile.prefHeightMin || profile.prefHeightMax) ? `${profile.prefHeightMin || 'Any'} - ${profile.prefHeightMax || 'Any'}` : null },
+                                                { label: 'Marital Status', value: profile.prefMaritalStatus },
+                                                { label: 'Mother Tongue', value: profile.prefMotherTongue },
+                                                { label: 'Eating Habits', value: profile.prefEatingHabits },
+                                                { label: 'Drinking Habits', value: profile.prefDrinkingHabits },
+                                                { label: 'Smoking Habits', value: profile.prefSmokingHabits },
+                                            ]} />
+                                        </div>
+                                        <div style={styles.subSection}>
+                                            <SubHeading icon={<BookIcon />}>Religious Preferences</SubHeading>
+                                            <DetailPairs items={[
+                                                { label: 'Religion', value: profile.prefReligion },
+                                                { label: 'Caste / Sub Caste', value: profile.prefCaste },
+                                            ]} />
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>{t('profile.location')}</h3>
-                            <div style={styles.detailGrid}>
-                                {[
-                                    { label: 'City', value: profile.city },
-                                    { label: 'District', value: profile.district },
-                                    { label: 'State', value: profile.state || 'Tamil Nadu' },
-                                ].map(item => (
-                                    <div key={item.label} style={styles.detailItem}>
-                                        <span style={styles.detailLabel}>{item.label}</span>
-                                        <span style={styles.detailValue}>{item.value || '—'}</span>
+                                    <div style={styles.pairRow}>
+                                        <div style={styles.subSection}>
+                                            <SubHeading icon={<BriefcaseIcon />}>Professional</SubHeading>
+                                            <DetailPairs items={[
+                                                { label: 'Education', value: profile.prefEducation },
+                                                { label: 'Occupation', value: profile.prefOccupation },
+                                                { label: 'Annual Income', value: profile.prefAnnualIncome },
+                                            ]} />
+                                        </div>
+                                        <div style={styles.subSection}>
+                                            <SubHeading icon={<MapIcon />}>Location Preferences</SubHeading>
+                                            <DetailPairs items={[
+                                                { label: 'Country', value: profile.prefCountry },
+                                                { label: 'State', value: profile.prefState },
+                                                { label: 'City', value: profile.prefCity },
+                                            ]} />
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>{t('profile.family_details')}</h3>
-                            <div style={styles.detailGrid}>
-                                {[
-                                    { label: "Father's Occupation", value: profile.fatherOccupation },
-                                    { label: "Mother's Occupation", value: profile.motherOccupation },
-                                    { label: 'Siblings', value: profile.siblings },
-                                    { label: 'Family Type', value: profile.familyType },
-                                ].map(item => (
-                                    <div key={item.label} style={styles.detailItem}>
-                                        <span style={styles.detailLabel}>{item.label}</span>
-                                        <span style={styles.detailValue}>{item.value || '—'}</span>
-                                    </div>
-                                ))}
-                            </div>
+                                </>
+                            ) : (
+                                <div style={styles.prefPlaceholder}>
+                                    <StarIcon size={26} />
+                                    <p style={{ margin: '10px 0 0', fontSize: '13px', color: '#9C8060' }}>
+                                        Partner preferences haven't been added to this profile yet.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -471,12 +627,42 @@ const ProfileDetail = () => {
 };
 
 const styles = {
+    groupCard: { background: '#fff', borderRadius: '16px', padding: '28px 30px', marginBottom: '20px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
+    groupTitle: { fontFamily: "'Playfair Display', serif", fontStyle: 'italic', fontSize: '24px', color: '#2C1810', margin: 0 },
+    groupRule: { width: '70px', height: '2px', background: '#DF9B08', margin: '10px 0 22px' },
+    subSection: { marginBottom: '22px' },
+    pairRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px', marginBottom: '4px' },
+    prefPlaceholder: { textAlign: 'center', padding: '30px 20px' },
+
     container: { maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' },
     backBtn: { padding: '8px 16px', background: 'transparent', border: '1.5px solid #8B1A1A', color: '#8B1A1A', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '24px' },
     grid: { display: 'grid', gridTemplateColumns: '300px 1fr', gap: '28px', alignItems: 'start' },
     leftCol: {},
-    photoCard: { borderRadius: '16px', padding: '32px 20px', textAlign: 'center', marginBottom: '16px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
-    profilePhoto: { width: '140px', height: '140px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #8B1A1A', marginBottom: '12px' },
+    photoCard: { borderRadius: '16px', padding: 0, overflow: 'hidden', textAlign: 'center', marginBottom: '16px', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
+    profilePhoto: { width: '100%', height: '340px', objectFit: 'cover', display: 'block' },
+    badgeOverlay: {
+        position: 'absolute', left: 0, right: 0, bottom: 0,
+        padding: '28px 12px 12px',
+        background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)',
+        display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap',
+    },
+    photoArrow: {
+        position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+        width: '36px', height: '36px', borderRadius: '50%',
+        background: 'rgba(0,0,0,0.45)',
+        border: '1px solid rgba(255,255,255,0.35)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', padding: 0,
+    },
+    photoCounter: {
+        position: 'absolute', top: '10px', right: '10px',
+        background: 'rgba(0,0,0,0.55)', color: '#fff',
+        fontSize: '11.5px', fontWeight: '600',
+        padding: '4px 10px', borderRadius: '999px',
+        letterSpacing: '0.5px',
+    },
+    photoLockBox: { background: '#FFF9E6', border: '1px solid #F5E6C0', borderRadius: '10px', padding: '16px', textAlign: 'center' },
+    photoUpgradeBtn: { padding: '9px 22px', background: 'linear-gradient(135deg, #E3AC2A, #C98F12)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' },
     profileEmoji: { fontSize: '80px', marginBottom: '12px' },
     verifiedBadge: { display: 'inline-block', background: '#1E6B3C', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', marginBottom: '6px' },
     protectedBadge: { display: 'inline-block', background: '#8B1A1A', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', marginLeft: '6px' },

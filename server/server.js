@@ -80,6 +80,8 @@ app.use('/api/shortlist', require('./routes/shortlist'));
 app.use('/api/likes', require('./routes/likes'));
 app.use('/api/service-menu', require('./routes/serviceMenu'));  // ✅ new
 app.use('/api/service-cards', require('./routes/serviceCards'));  // ✅ homepage service cards (admin-managed)
+app.use('/api/interests', require('./routes/interests'));         // ✅ send/receive interest between members
+app.use('/api/user-alerts', require('./routes/userAlerts'));      // ✅ personal notification feed (bell icon)
 app.use('/api/admin', require('./routes/admin'));
 
 app.get('/', (req, res) => {

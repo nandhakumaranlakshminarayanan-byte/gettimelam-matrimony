@@ -185,6 +185,28 @@ const Services = () => {
     ];
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
+    // Categories that actually have a Service Card created in admin.
+    // Only these are shown as filter pills; null = not yet loaded.
+    const [cardCategories, setCardCategories] = useState(null);
+
+    useEffect(() => {
+        axios.get(`${API}/api/service-cards`)
+            .then(res => {
+                const cats = (res.data.cards || [])
+                    .map(c => c.category)
+                    .filter(Boolean);
+                setCardCategories([...new Set(cats)]);
+            })
+            .catch(() => setCardCategories([]));
+    }, []);
+
+    // 'All Services' always shows; other pills only appear if a service
+    // card with that category actually exists — no fallback to the full
+    // list, so this strictly reflects what's been created in admin.
+    const visibleCategories = [
+        ALL_CATEGORIES[0],
+        ...ALL_CATEGORIES.slice(1).filter(c => (cardCategories || []).includes(c.id)),
+    ];
     const [activeCategory, setActiveCategory] = useState(
         () => new URLSearchParams(window.location.search).get('category') || 'all'
     );
@@ -314,7 +336,7 @@ const Services = () => {
 
             <div style={styles.container}>
                 <div style={styles.categoryRow}>
-                    {ALL_CATEGORIES.map(cat => (
+                    {visibleCategories.map(cat => (
                         <button key={cat.id}
                             style={{ ...styles.catBtn, ...(activeCategory === cat.id ? styles.catBtnActive : {}) }}
                             onClick={() => setActiveCategory(cat.id)}>

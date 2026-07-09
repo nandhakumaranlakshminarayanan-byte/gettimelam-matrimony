@@ -29,7 +29,7 @@ const upload = multer({
 });
 
 // ── Profile routes ──
-router.get('/', optionalProtect, getProfiles);
+router.get('/', protect, getProfiles);
 router.post('/', protect, createProfile);
 router.get('/my', protect, getMyProfile);
 router.get('/suggested', protect, getSuggestedMatches);
@@ -41,11 +41,14 @@ router.post('/upload-photo', protect, upload.single('photo'), async (req, res) =
             return res.status(400).json({ success: false, message: 'No file uploaded' });
         }
         const photoUrl = `/uploads/${req.file.filename}`;
-        await Profile.findOneAndUpdate(
+        const updated = await Profile.findOneAndUpdate(
             { user: req.user.id },
             { photo: photoUrl },
             { new: true }
         );
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Profile not found — create your profile first' });
+        }
         res.json({
             success: true,
             photoUrl,
@@ -107,7 +110,7 @@ router.delete('/photos/:filename', protect, async (req, res) => {
 });
 
 // ✅ /:id routes LAST
-router.get('/:id', getProfileById);
+router.get('/:id', protect, getProfileById);
 router.put('/:id', protect, updateProfile);
 
 module.exports = router;

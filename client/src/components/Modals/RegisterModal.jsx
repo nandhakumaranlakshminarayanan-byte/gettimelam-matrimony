@@ -7,6 +7,7 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
     const { register } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [showServiceForm, setShowServiceForm] = useState(false);
 
     const [form, setForm] = useState({
         businessName: '', ownerName: '', mobile: '', email: '',
@@ -76,7 +77,7 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
                             '✅ Verified Profiles Only',
                             '✅ All Communities Welcome',
                             '✅ Privacy Protected',
-                            '✅ No Charges After Marriage',
+                            '✅ No Extra Charges',
                         ].map(f => (
                             <div key={f} style={styles.feature}>{f}</div>
                         ))}
@@ -99,7 +100,7 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
 
                     {/* ── Member CTA ── */}
                     <div style={styles.memberCta} onClick={handleMemberClick}>
-                        <div style={{ fontSize: '28px', marginBottom: '8px' }}>💍</div>
+                        <img src="/images/match.png" alt="Find a match" style={styles.serviceCtaIcon} />
                         <div style={styles.memberCtaTitle}>Looking for a Match?</div>
                         <div style={styles.memberCtaDesc}>Create your matrimony profile in 4 easy steps</div>
                         <div style={styles.memberCtaBtn}>Free Register →</div>
@@ -111,86 +112,105 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
                         <div style={styles.dividerLine} />
                     </div>
 
-                    {/* ── Service Provider Form ── */}
-                    <div style={styles.serviceTitle}>🏪 Register as Service Provider</div>
-                    <p style={styles.serviceDesc}>
-                        List your wedding business and get discovered by thousands of families across Tamil Nadu
-                    </p>
-
-                    <form onSubmit={handleSubmit}>
-                        <div style={styles.formGroup}>
-                            <label style={styles.label}>Business Name *</label>
-                            <input name="businessName" type="text" placeholder="e.g. Sri Murugan Photography"
-                                value={form.businessName} onChange={handleChange}
-                                style={styles.input} required />
-                        </div>
-
-                        <div style={styles.formGroup}>
-                            <label style={styles.label}>Owner / Contact Person Name *</label>
-                            <input name="ownerName" type="text" placeholder="Enter your full name"
-                                value={form.ownerName} onChange={handleChange}
-                                style={styles.input} required />
-                        </div>
-
-                        <div style={styles.formGroup}>
-                            <label style={styles.label}>Service Category *</label>
-                            <select name="category" value={form.category}
-                                onChange={handleChange} style={styles.input}>
-                                {serviceCategories.map(cat => <option key={cat}>{cat}</option>)}
-                            </select>
-                        </div>
-
-                        <div style={styles.grid2}>
-                            <div style={styles.formGroup}>
-                                <label style={styles.label}>City *</label>
-                                <input name="city" type="text" placeholder="e.g. Puducherry"
-                                    value={form.city} onChange={handleChange}
-                                    style={styles.input} required />
+                    {/* ── Service Provider CTA (collapsed) ── */}
+                    {!showServiceForm && (
+                        <div style={styles.memberCta} onClick={() => setShowServiceForm(true)}>
+                            <img src="/images/service.png" alt="Register your business" style={styles.serviceCtaIcon} />
+                            <div style={styles.memberCtaTitle}>Register as Service Provider</div>
+                            <div style={styles.memberCtaDesc}>
+                                List your wedding business and get discovered by thousands of families across India
                             </div>
-                            <div style={styles.formGroup}>
-                                <label style={styles.label}>District *</label>
-                                <input name="district" type="text" placeholder="e.g. Puducherry"
-                                    value={form.district} onChange={handleChange}
-                                    style={styles.input} required />
-                            </div>
+                            <div style={styles.memberCtaBtn}>Register as Service Provider →</div>
                         </div>
+                    )}
 
-                        <div style={styles.formGroup}>
-                            <label style={styles.label}>📱 Mobile Number *</label>
-                            <div style={styles.inputWrapper}>
-                                <span style={styles.inputPrefix}>+91</span>
-                                <input name="mobile" type="tel" placeholder="Enter mobile number"
-                                    value={form.mobile} onChange={handleChange}
-                                    style={styles.inputWithPrefix} required />
-                            </div>
-                        </div>
+                    {/* ── Service Provider Form (revealed) ── */}
+                    {showServiceForm && (
+                        <>
+                            <div style={styles.serviceTitle}>🏪 Register as Service Provider</div>
+                            <p style={styles.serviceDesc}>
+                                List your wedding business and get discovered by thousands of families across India
+                            </p>
+                            <span style={styles.backToOptions} onClick={() => setShowServiceForm(false)}>
+                                ← Back
+                            </span>
 
-                        <div style={styles.formGroup}>
-                            <label style={styles.label}>📧 Email Address *</label>
-                            <input name="email" type="email" placeholder="business@email.com"
-                                value={form.email} onChange={handleChange}
-                                style={styles.input} required />
-                        </div>
+                            <form onSubmit={handleSubmit} autoComplete="off">
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>Business Name *</label>
+                                    <input name="businessName" type="text" placeholder="e.g. Sri Murugan Photography" autoComplete="off"
+                                        value={form.businessName} onChange={handleChange}
+                                        style={styles.input} required />
+                                </div>
 
-                        <div style={styles.formGroup}>
-                            <label style={styles.label}>🔒 Password *</label>
-                            <input name="password" type="password" placeholder="Min 6 characters"
-                                value={form.password} onChange={handleChange}
-                                style={styles.input} required />
-                        </div>
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>Owner / Contact Person Name *</label>
+                                    <input name="ownerName" type="text" placeholder="Enter your full name" autoComplete="off"
+                                        value={form.ownerName} onChange={handleChange}
+                                        style={styles.input} required />
+                                </div>
 
-                        <p style={styles.terms}>
-                            By registering, you agree to our{' '}
-                            <a href="/terms" style={styles.termsLink}>Terms & Conditions</a> and{' '}
-                            <a href="/privacy" style={styles.termsLink}>Privacy Policy</a>
-                        </p>
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>Service Category *</label>
+                                    <select name="category" value={form.category}
+                                        onChange={handleChange} style={styles.input}>
+                                        {serviceCategories.map(cat => <option key={cat}>{cat}</option>)}
+                                    </select>
+                                </div>
 
-                        <button type="submit"
-                            style={{ ...styles.submitBtn, opacity: loading ? 0.7 : 1 }}
-                            disabled={loading}>
-                            {loading ? '⏳ Registering...' : 'REGISTER MY BUSINESS'}
-                        </button>
-                    </form>
+                                <div style={styles.grid2}>
+                                    <div style={styles.formGroup}>
+                                        <label style={styles.label}>City *</label>
+                                        <input name="city" type="text" placeholder="e.g. Puducherry" autoComplete="off"
+                                            value={form.city} onChange={handleChange}
+                                            style={styles.input} required />
+                                    </div>
+                                    <div style={styles.formGroup}>
+                                        <label style={styles.label}>District *</label>
+                                        <input name="district" type="text" placeholder="e.g. Puducherry" autoComplete="off"
+                                            value={form.district} onChange={handleChange}
+                                            style={styles.input} required />
+                                    </div>
+                                </div>
+
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>📱 Mobile Number *</label>
+                                    <div style={styles.inputWrapper}>
+                                        <span style={styles.inputPrefix}>+91</span>
+                                        <input name="mobile" type="tel" placeholder="Enter mobile number" autoComplete="off"
+                                            value={form.mobile} onChange={handleChange}
+                                            style={styles.inputWithPrefix} required />
+                                    </div>
+                                </div>
+
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>📧 Email Address *</label>
+                                    <input name="email" type="email" placeholder="business@email.com" autoComplete="off"
+                                        value={form.email} onChange={handleChange}
+                                        style={styles.input} required />
+                                </div>
+
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>🔒 Password *</label>
+                                    <input name="password" type="password" placeholder="Min 6 characters" autoComplete="new-password"
+                                        value={form.password} onChange={handleChange}
+                                        style={styles.input} required />
+                                </div>
+
+                                <p style={styles.terms}>
+                                    By registering, you agree to our{' '}
+                                    <a href="/terms" style={styles.termsLink}>Terms & Conditions</a> and{' '}
+                                    <a href="/privacy" style={styles.termsLink}>Privacy Policy</a>
+                                </p>
+
+                                <button type="submit"
+                                    style={{ ...styles.submitBtn, opacity: loading ? 0.7 : 1 }}
+                                    disabled={loading}>
+                                    {loading ? '⏳ Registering...' : 'REGISTER MY BUSINESS'}
+                                </button>
+                            </form>
+                        </>
+                    )}
 
                     <p style={styles.switchText}>
                         Already a member?{' '}
@@ -227,6 +247,7 @@ const styles = {
 
     // Member CTA box
     memberCta: { background: `linear-gradient(135deg, ${BG}, #FFF3CD)`, border: `2px solid ${GOLD}`, borderRadius: '14px', padding: '20px', textAlign: 'center', cursor: 'pointer', marginBottom: '20px', transition: 'all 0.2s' },
+    serviceCtaIcon: { display: 'block', margin: '0 auto 10px', height: '100px', width: 'auto', maxWidth: '100%', objectFit: 'contain' },
     memberCtaTitle: { fontSize: '17px', fontWeight: '700', color: ACCENT, marginBottom: '6px' },
     memberCtaDesc: { fontSize: '13px', color: '#7A5C00', marginBottom: '12px' },
     memberCtaBtn: { display: 'inline-block', background: ACCENT, color: '#fff', padding: '10px 28px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', letterSpacing: '0.5px' },
@@ -237,6 +258,7 @@ const styles = {
 
     serviceTitle: { fontSize: '15px', fontWeight: '700', color: ACCENT, marginBottom: '6px' },
     serviceDesc: { fontSize: '12px', color: '#7A5C00', marginBottom: '16px', lineHeight: 1.6, background: BG, padding: '10px 14px', borderRadius: '8px', border: `1px solid ${GOLD}` },
+    backToOptions: { display: 'inline-block', fontSize: '12px', color: '#8B1A1A', fontWeight: '600', cursor: 'pointer', marginBottom: '16px', textDecoration: 'underline' },
 
     formGroup: { marginBottom: '12px' },
     grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' },

@@ -34,7 +34,7 @@ const Footer = () => {
                 </div>
                 <div style={styles.bottom}>
                     <p>© 2024 Gettimelam Matrimony. All rights reserved.</p>
-                    <p style={styles.madeWith}>Made with ❤️ for Tamil families</p>
+                    <p style={styles.madeWith}>Made with ❤️ for Indian families</p>
                 </div>
             </div>
         </footer>
@@ -45,7 +45,7 @@ const styles = {
     footer: { background: 'linear-gradient(135deg, #5F0909, #3D0606)', color: 'rgba(255,255,255,0.7)' },
     inner: { maxWidth: '1200px', margin: '0 auto', padding: '56px 24px 32px' },
     grid: { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '48px', marginBottom: '48px' },
-    logo: { height: '50px', marginBottom: '12px' },
+    logo: { height: '95px', marginBottom: '2px', display: 'block' },
     desc: { fontSize: '13px', lineHeight: 1.7, marginBottom: '16px', color: 'rgba(255,255,255,0.6)' },
     contact: { fontSize: '13px', lineHeight: 2, color: 'rgba(255,255,255,0.6)' },
     colTitle: { color: '#F5BE17', fontSize: '14px', fontWeight: '700', marginBottom: '16px' },

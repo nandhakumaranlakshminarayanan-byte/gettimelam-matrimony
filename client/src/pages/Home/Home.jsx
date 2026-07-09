@@ -93,7 +93,7 @@ const Home = () => {
                 </section>
             )}
 
-            <ServicesSection />
+            <ServicesSection onLoginClick={() => setShowLogin(true)} />
             <Footer />
 
             {showLogin && (

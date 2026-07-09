@@ -83,9 +83,26 @@ const togglePremium = async (req, res) => {
 // Delete user
 const deleteUser = async (req, res) => {
     try {
-        await User.findByIdAndDelete(req.params.id);
-        await Profile.findOneAndDelete({ user: req.params.id });
-        res.json({ success: true, message: 'User deleted successfully' });
+        const userId = req.params.id;
+
+        // If this user is a service provider, remove their listings and
+        // everything hanging off them, so no orphaned services remain.
+        const Service = require('../models/Service');
+        const ServiceMenu = require('../models/ServiceMenu');
+        const ownedServices = await Service.find({ user: userId }).select('_id');
+        if (ownedServices.length > 0) {
+            const serviceIds = ownedServices.map(s => s._id);
+            await ServiceMenu.deleteMany({ service: { $in: serviceIds } });
+            await Booking.deleteMany({ service: { $in: serviceIds } });
+            await Service.deleteMany({ _id: { $in: serviceIds } });
+        }
+
+        // Bookings the user made as a customer
+        await Booking.deleteMany({ user: userId });
+
+        await User.findByIdAndDelete(userId);
+        await Profile.findOneAndDelete({ user: userId });
+        res.json({ success: true, message: 'User and all their data deleted successfully' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

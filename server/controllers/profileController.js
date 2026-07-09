@@ -95,7 +95,28 @@ const getProfileById = async (req, res) => {
         if (!profile) {
             return res.status(404).json({ success: false, message: 'Profile not found' });
         }
-        res.json({ success: true, profile });
+
+        // Count a view only when someone other than the owner looks at the
+        // profile, so people don't inflate their own view count.
+        const isOwner = profile.user && profile.user._id?.toString() === req.user.id;
+        if (!isOwner) {
+            profile.views = (profile.views || 0) + 1;
+            await profile.save();
+        }
+
+        // Gallery photos are Premium-only (like contact numbers).
+        // The main photo stays visible; extra photos are stripped for
+        // non-premium viewers (owner and admin always see everything).
+        const data = profile.toObject();
+        const viewer = await User.findById(req.user.id).select('isPremium role');
+        const canSeeGallery = isOwner || (viewer && (viewer.isPremium || viewer.role === 'admin'));
+        if (!canSeeGallery) {
+            data.photosCount = (data.photos || []).length;
+            data.photos = [];
+            data.photosLocked = true;
+        }
+
+        res.json({ success: true, profile: data });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
+import API from '../../utils/api';
 import toast from 'react-hot-toast';
 
 const ACCENT = '#B71C1C';
@@ -78,7 +79,7 @@ const StepBar = ({ current }) => (
     </div>
 );
 
-const PhotoBox = ({ label, preview, onChange, small }) => (
+const PhotoBox = ({ label, preview, onChange, small, multiple }) => (
     <label style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         border: '2px dashed ' + GOLD, borderRadius: '12px', cursor: 'pointer',
@@ -86,7 +87,7 @@ const PhotoBox = ({ label, preview, onChange, small }) => (
         width: small ? '100px' : '120px', height: small ? '100px' : '120px',
         overflow: 'hidden', position: 'relative', flexShrink: 0,
     }}>
-        <input type="file" accept="image/*" onChange={onChange} style={{ display: 'none' }} />
+        <input type="file" accept="image/*" multiple={multiple} onChange={onChange} style={{ display: 'none' }} />
         {preview ? (
             <img src={preview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
@@ -155,6 +156,46 @@ const Row = ({ children }) => (
     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>{children}</div>
 );
 
+// Password field with show/hide eye toggle
+const PasswordInput = ({ value, onChange, placeholder }) => {
+    const [show, setShow] = React.useState(false);
+    return (
+        <div style={{ position: 'relative' }}>
+            <input
+                type={show ? 'text' : 'password'}
+                style={{ ...inp, paddingRight: '46px' }}
+                placeholder={placeholder}
+                value={value}
+                onChange={onChange}
+            />
+            <button
+                type="button"
+                onClick={() => setShow(v => !v)}
+                title={show ? 'Hide password' : 'Show password'}
+                style={{
+                    position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    padding: '10px', display: 'flex', alignItems: 'center',
+                }}>
+                {show ? (
+                    /* eye-off */
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B6914" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 3l18 18" />
+                        <path d="M10.6 5.1A9.8 9.8 0 0112 5c5 0 8.7 3.6 10 7-0.5 1.3-1.3 2.5-2.3 3.5M6.2 6.2C4.3 7.5 2.8 9.2 2 12c1.3 3.4 5 7 10 7 1.5 0 2.9-.3 4.2-.9" />
+                        <path d="M9.9 9.9a3 3 0 004.2 4.2" />
+                    </svg>
+                ) : (
+                    /* eye */
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B6914" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 12c1.3-3.4 5-7 10-7s8.7 3.6 10 7c-1.3 3.4-5 7-10 7S3.3 15.4 2 12z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                )}
+            </button>
+        </div>
+    );
+};
+
 const Register = () => {
     const { register } = useAuth();
     const navigate = useNavigate();
@@ -171,7 +212,7 @@ const Register = () => {
         name: '', altMobile: '', profileFor: 'Myself', profileName: '',
         gender: 'Male', motherTongue: 'Tamil', knownLanguages: ['Tamil'],
         religion: 'Hindu', caste: '', subCaste: '', gothra: '',
-        maritalStatus: 'Unmarried', dateOfBirth: '', email: '', password: '',
+        maritalStatus: 'Unmarried', dateOfBirth: '', email: '', password: '', confirmPassword: '',
     });
 
     const [s3, setS3] = useState({
@@ -184,6 +225,7 @@ const Register = () => {
     });
 
     const [profilePhotos, setProfilePhotos] = useState([null, null, null]);
+    const [mainPhotoIndex, setMainPhotoIndex] = useState(0);
     const [idProofs, setIdProofs] = useState([null, null]);
     const [photoPreviews, setPhotoPreviews] = useState([null, null, null]);
     const [horoscopeImages, setHoroscopeImages] = useState([null, null]);
@@ -224,28 +266,49 @@ const Register = () => {
         toast.success('Mobile verified! ✅');
     };
 
+    // Distribute selected files into slots: clicked slot first, then remaining
+    // empty slots in order. Returns how many files didn't fit.
+    const fillSlots = (files, current, previews, startIndex) => {
+        const updated = [...current];
+        const newPreviews = [...previews];
+        const order = [startIndex, ...updated.map((_, idx) => idx).filter(idx => idx !== startIndex)];
+        let fi = 0;
+        for (const idx of order) {
+            if (fi >= files.length) break;
+            if (idx === startIndex || !updated[idx]) {
+                updated[idx] = files[fi];
+                newPreviews[idx] = URL.createObjectURL(files[fi]);
+                fi++;
+            }
+        }
+        return { updated, newPreviews, leftover: files.length - fi };
+    };
+
     const handlePhotoChange = (index, e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const updated = [...profilePhotos]; updated[index] = file;
-        const previews = [...photoPreviews]; previews[index] = URL.createObjectURL(file);
-        setProfilePhotos(updated); setPhotoPreviews(previews);
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        const { updated, newPreviews, leftover } = fillSlots(files, profilePhotos, photoPreviews, index);
+        setProfilePhotos(updated); setPhotoPreviews(newPreviews);
+        if (leftover > 0) toast.error(`Only ${profilePhotos.length} photos allowed — ${leftover} skipped`);
+        e.target.value = '';
     };
 
     const handleHoroscopeChange = (index, e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const updated = [...horoscopeImages]; updated[index] = file;
-        const previews = [...horoscopePreviews]; previews[index] = URL.createObjectURL(file);
-        setHoroscopeImages(updated); setHoroscopePreviews(previews);
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        const { updated, newPreviews, leftover } = fillSlots(files, horoscopeImages, horoscopePreviews, index);
+        setHoroscopeImages(updated); setHoroscopePreviews(newPreviews);
+        if (leftover > 0) toast.error(`Only ${horoscopeImages.length} images allowed — ${leftover} skipped`);
+        e.target.value = '';
     };
 
     const handleIdChange = (index, e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const updated = [...idProofs]; updated[index] = file;
-        const previews = [...idPreviews]; previews[index] = URL.createObjectURL(file);
-        setIdProofs(updated); setIdPreviews(previews);
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        const { updated, newPreviews, leftover } = fillSlots(files, idProofs, idPreviews, index);
+        setIdProofs(updated); setIdPreviews(newPreviews);
+        if (leftover > 0) toast.error(`Only ${idProofs.length} documents allowed — ${leftover} skipped`);
+        e.target.value = '';
     };
 
     const validateStep2 = () => {
@@ -254,6 +317,7 @@ const Register = () => {
         if (!s2.dateOfBirth) { toast.error('Select date of birth'); return false; }
         if (!s2.email) { toast.error('Enter email address'); return false; }
         if (!s2.password || s2.password.length < 6) { toast.error('Password must be at least 6 characters'); return false; }
+        if (s2.password !== s2.confirmPassword) { toast.error('Passwords do not match'); return false; }
         if (!s2.religion) { toast.error('Select religion'); return false; }
         if (!s2.maritalStatus) { toast.error('Select marital status'); return false; }
         return true;
@@ -290,6 +354,32 @@ const Register = () => {
                 annualIncome: s3.annualIncome, aboutMe: s3.aboutMe,
             };
             await register(payload);
+
+            // Upload the profile photos selected in step 3.
+            // register() stores the auth token, so these calls are authorized.
+            const selectedPhotos = profilePhotos.filter(Boolean);
+            if (selectedPhotos.length > 0) {
+                try {
+                    // The photo the user marked as "Profile Pic" becomes the avatar
+                    // (falls back to the first selected photo)
+                    const mainPhoto = profilePhotos[mainPhotoIndex] || selectedPhotos[0];
+                    const avatarData = new FormData();
+                    avatarData.append('photo', mainPhoto);
+                    await API.post('/profiles/upload-photo', avatarData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    // All photos go into the profile gallery
+                    const galleryData = new FormData();
+                    selectedPhotos.forEach(f => galleryData.append('photos', f));
+                    await API.post('/profiles/upload-photos', galleryData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                } catch (photoErr) {
+                    const msg = photoErr.response?.data?.message || photoErr.message;
+                    toast.error(`Account created, but photo upload failed: ${msg}. Add photos from your Dashboard.`, { duration: 6000 });
+                }
+            }
+
             toast.success('Welcome to Gettimelam! 🎊');
             navigate('/dashboard');
         } catch (error) {
@@ -437,7 +527,21 @@ const Register = () => {
                         </FG>
                         <FG>
                             <Label required>Password</Label>
-                            <input type="password" style={inp} placeholder="Min 6 characters" value={s2.password} onChange={e => update2('password', e.target.value)} />
+                            <PasswordInput placeholder="Min 6 characters" value={s2.password} onChange={e => update2('password', e.target.value)} />
+                        </FG>
+                        <FG>
+                            <Label required>Re-enter Password</Label>
+                            <PasswordInput placeholder="Type the same password again" value={s2.confirmPassword} onChange={e => update2('confirmPassword', e.target.value)} />
+                            {s2.confirmPassword && s2.password !== s2.confirmPassword && (
+                                <div style={{ fontSize: '12px', color: '#C62828', marginTop: '6px' }}>
+                                    Passwords do not match
+                                </div>
+                            )}
+                            {s2.confirmPassword && s2.password === s2.confirmPassword && (
+                                <div style={{ fontSize: '12px', color: '#2E7D32', marginTop: '6px' }}>
+                                    Passwords match
+                                </div>
+                            )}
                         </FG>
                         <SectionTitle>🕉️ Community Details</SectionTitle>
                         <Row>
@@ -526,7 +630,7 @@ const Register = () => {
                             <Label>Add Horoscope Image</Label>
                             <p style={{ fontSize: '12px', color: '#999', margin: '0 0 10px' }}>Upload horoscope chart images (optional)</p>
                             <div style={{ display: 'flex', gap: '12px' }}>
-                                {[0, 1].map(i => <PhotoBox key={i} label="Add Horoscope" preview={horoscopePreviews[i]} onChange={e => handleHoroscopeChange(i, e)} />)}
+                                {[0, 1].map(i => <PhotoBox key={i} multiple label="Add Horoscope" preview={horoscopePreviews[i]} onChange={e => handleHoroscopeChange(i, e)} />)}
                             </div>
                         </FG>
                         <SectionTitle>📍 Location Information</SectionTitle>
@@ -625,14 +729,37 @@ const Register = () => {
                             <Label required>Profile Photos</Label>
                             <p style={{ fontSize: '12px', color: '#999', margin: '0 0 10px' }}>Add at least 1 photo — profiles with photos get more matches</p>
                             <div style={{ display: 'flex', gap: '12px' }}>
-                                {[0, 1, 2].map(i => <PhotoBox key={i} label="Add Photos" preview={photoPreviews[i]} onChange={e => handlePhotoChange(i, e)} />)}
+                                {[0, 1, 2].map(i => (
+                                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                                        <PhotoBox multiple label="Add Photos" preview={photoPreviews[i]} onChange={e => handlePhotoChange(i, e)} />
+                                        {photoPreviews[i] && (
+                                            <button type="button"
+                                                onClick={() => setMainPhotoIndex(i)}
+                                                style={{
+                                                    fontSize: '11px', fontWeight: '700', cursor: 'pointer',
+                                                    padding: '5px 10px', borderRadius: '999px',
+                                                    border: mainPhotoIndex === i ? 'none' : '1px solid ' + GOLD,
+                                                    background: mainPhotoIndex === i ? 'linear-gradient(135deg, #E3AC2A, #C98F12)' : 'transparent',
+                                                    color: mainPhotoIndex === i ? '#fff' : '#8B6914',
+                                                    whiteSpace: 'nowrap',
+                                                }}>
+                                                {mainPhotoIndex === i ? '✓ Profile Pic' : 'Set as Profile Pic'}
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
+                            {photoPreviews.some(Boolean) && (
+                                <p style={{ fontSize: '12px', color: '#8B6914', margin: '8px 0 0' }}>
+                                    The photo marked "Profile Pic" is shown as your main photo. Others appear in your profile gallery.
+                                </p>
+                            )}
                         </FG>
                         <FG>
                             <Label>ID Proof</Label>
                             <p style={{ fontSize: '12px', color: '#999', margin: '0 0 10px' }}>Aadhaar Card, License, or Voter ID</p>
                             <div style={{ display: 'flex', gap: '12px' }}>
-                                {[0, 1].map(i => <PhotoBox key={i} label="Click to Add" preview={idPreviews[i]} onChange={e => handleIdChange(i, e)} small />)}
+                                {[0, 1].map(i => <PhotoBox key={i} multiple label="Click to Add" preview={idPreviews[i]} onChange={e => handleIdChange(i, e)} small />)}
                             </div>
                         </FG>
                         <SectionTitle>📝 About Yourself</SectionTitle>

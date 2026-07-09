@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import API from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 import {
     WeddingHallIcon,
     PhotographyIcon,
@@ -31,9 +32,10 @@ const fallback_data = [
 
 const HEX_POINTS = '36,2 68,20 68,60 36,78 4,60 4,20';
 
-const ServicesSection = () => {
+const ServicesSection = ({ onLoginClick }) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [apiCards, setApiCards] = useState([]);
 
     useEffect(() => {
@@ -59,6 +61,10 @@ const ServicesSection = () => {
 
     // Redirect to the Services page, pre-filtered to this card's category
     const goToCategory = (category) => {
+        if (!user) {
+            if (onLoginClick) onLoginClick();
+            return;
+        }
         navigate(category ? `/services?category=${encodeURIComponent(category)}` : '/services');
     };
 

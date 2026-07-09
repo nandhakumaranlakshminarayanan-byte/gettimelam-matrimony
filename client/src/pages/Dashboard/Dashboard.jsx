@@ -86,7 +86,12 @@ const Dashboard = () => {
         education: '', occupation: '', annualIncome: '',
         city: '', district: '', state: 'Tamil Nadu',
         about: '', fatherOccupation: '', motherOccupation: '',
-        siblings: '', familyType: 'Nuclear'
+        siblings: '', familyType: 'Nuclear',
+        prefAgeMin: '', prefAgeMax: '', prefHeightMin: '', prefHeightMax: '',
+        prefMaritalStatus: '', prefMotherTongue: '', prefEatingHabits: '',
+        prefDrinkingHabits: '', prefSmokingHabits: '', prefEducation: '',
+        prefOccupation: '', prefAnnualIncome: '', prefReligion: '', prefCaste: '',
+        prefCountry: 'India', prefState: '', prefCity: '',
     });
 
     useEffect(() => {
@@ -443,6 +448,39 @@ const Dashboard = () => {
                                                 { name: 'siblings', label: 'Siblings', type: 'text', placeholder: 'e.g. 1 Brother, 1 Sister' },
                                             ]
                                         },
+                                        {
+                                            title: '💕 Partner Preferences — Basic', fields: [
+                                                { name: 'prefAgeMin', label: 'Min Age', type: 'text', placeholder: 'e.g. 25' },
+                                                { name: 'prefAgeMax', label: 'Max Age', type: 'text', placeholder: 'e.g. 32' },
+                                                { name: 'prefHeightMin', label: 'Min Height', type: 'select', options: ["4'6\"", "4'8\"", "4'10\"", "5'0\"", "5'2\"", "5'4\"", "5'6\"", "5'8\"", "5'10\"", "6'0\"", "6'2\""] },
+                                                { name: 'prefHeightMax', label: 'Max Height', type: 'select', options: ["4'6\"", "4'8\"", "4'10\"", "5'0\"", "5'2\"", "5'4\"", "5'6\"", "5'8\"", "5'10\"", "6'0\"", "6'2\""] },
+                                                { name: 'prefMaritalStatus', label: 'Marital Status', type: 'select', options: ['Never Married', 'Divorced', 'Widowed', "Doesn't Matter"] },
+                                                { name: 'prefMotherTongue', label: 'Mother Tongue', type: 'text', placeholder: 'e.g. Tamil' },
+                                                { name: 'prefEatingHabits', label: 'Eating Habits', type: 'select', options: ['Vegetarian', 'Non-Vegetarian', 'Eggetarian', "Doesn't Matter"] },
+                                                { name: 'prefDrinkingHabits', label: 'Drinking Habits', type: 'select', options: ['Never Drinks', 'Occasionally', "Doesn't Matter"] },
+                                                { name: 'prefSmokingHabits', label: 'Smoking Habits', type: 'select', options: ['Never Smokes', 'Occasionally', "Doesn't Matter"] },
+                                            ]
+                                        },
+                                        {
+                                            title: '💼 Partner Preferences — Professional', fields: [
+                                                { name: 'prefEducation', label: 'Education', type: 'text', placeholder: 'e.g. Any Engineering' },
+                                                { name: 'prefOccupation', label: 'Occupation', type: 'text', placeholder: 'Any occupation' },
+                                                { name: 'prefAnnualIncome', label: 'Annual Income', type: 'select', options: ['Any', 'Below 1 Lakh', '1-2 Lakhs', '2-5 Lakhs', '5-10 Lakhs', '10-20 Lakhs', '20+ Lakhs'] },
+                                            ]
+                                        },
+                                        {
+                                            title: '🕉️ Partner Preferences — Religious', fields: [
+                                                { name: 'prefReligion', label: 'Religion', type: 'select', options: ['Hindu', 'Muslim', 'Christian', "Doesn't Matter"] },
+                                                { name: 'prefCaste', label: 'Caste / Sub Caste', type: 'text', placeholder: 'e.g. Any, or specific caste' },
+                                            ]
+                                        },
+                                        {
+                                            title: '📍 Partner Preferences — Location', fields: [
+                                                { name: 'prefCountry', label: 'Country', type: 'text', placeholder: 'India' },
+                                                { name: 'prefState', label: 'State', type: 'text', placeholder: 'e.g. Tamil Nadu' },
+                                                { name: 'prefCity', label: 'City', type: 'text', placeholder: 'Any, or specific city' },
+                                            ]
+                                        },
                                     ].map(section => (
                                         <div key={section.title} style={styles.formSection}>
                                             <h3 style={styles.formSectionTitle}>{section.title}</h3>
@@ -509,6 +547,38 @@ const Dashboard = () => {
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* Partner Preferences — read-only summary */}
+                                            {[
+                                                profile.prefAgeMin, profile.prefHeightMin, profile.prefMaritalStatus,
+                                                profile.prefEducation, profile.prefReligion, profile.prefCity,
+                                            ].some(Boolean) && (
+                                                <div style={styles.profileView}>
+                                                    <h3 style={{ ...styles.fieldLabel, fontSize: '15px', marginBottom: '10px', gridColumn: '1/-1' }}>
+                                                        💕 Partner Preferences
+                                                    </h3>
+                                                    {[
+                                                        { label: 'Age Range', value: (profile.prefAgeMin || profile.prefAgeMax) ? `${profile.prefAgeMin || 'Any'} - ${profile.prefAgeMax || 'Any'} Yrs` : null },
+                                                        { label: 'Height Range', value: (profile.prefHeightMin || profile.prefHeightMax) ? `${profile.prefHeightMin || 'Any'} - ${profile.prefHeightMax || 'Any'}` : null },
+                                                        { label: 'Marital Status', value: profile.prefMaritalStatus },
+                                                        { label: 'Mother Tongue', value: profile.prefMotherTongue },
+                                                        { label: 'Eating Habits', value: profile.prefEatingHabits },
+                                                        { label: 'Drinking Habits', value: profile.prefDrinkingHabits },
+                                                        { label: 'Smoking Habits', value: profile.prefSmokingHabits },
+                                                        { label: 'Education', value: profile.prefEducation },
+                                                        { label: 'Occupation', value: profile.prefOccupation },
+                                                        { label: 'Annual Income', value: profile.prefAnnualIncome },
+                                                        { label: 'Religion', value: profile.prefReligion },
+                                                        { label: 'Caste', value: profile.prefCaste },
+                                                        { label: 'Location', value: [profile.prefCity, profile.prefState, profile.prefCountry].filter(Boolean).join(', ') },
+                                                    ].filter(i => i.value).map(item => (
+                                                        <div key={item.label} style={styles.profileField}>
+                                                            <span style={styles.fieldLabel}>{item.label}</span>
+                                                            <span style={styles.fieldValue}>{item.value}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
 
                                             {/* Gallery Section */}
                                             <div style={styles.gallerySection}>

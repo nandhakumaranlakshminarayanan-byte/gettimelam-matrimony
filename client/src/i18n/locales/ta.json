@@ -88,6 +88,7 @@
     },
     "dashboard": {
         "welcome": "மீண்டும் வரவேற்கிறோம்",
+        "welcome_first": "வரவேற்கிறோம்",
         "profile_views": "சுயவிவர பார்வைகள்",
         "interests_received": "பெறப்பட்ட ஆர்வங்கள்",
         "matches_found": "பொருத்தங்கள் கண்டறியப்பட்டன",
