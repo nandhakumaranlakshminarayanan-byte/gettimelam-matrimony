@@ -4,6 +4,10 @@ import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
 import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
+import axios from 'axios';
+import toast from 'react-hot-toast';
+
+const API = 'http://localhost:5000';
 
 const rasiList = [
     { name: 'Mesham', symbol: '♈', element: 'Fire', lord: 'Mars' },
@@ -57,9 +61,49 @@ const Horoscope = () => {
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
     const [activeTab, setActiveTab] = useState('match');
-    const [boy, setBoy] = useState({ name: '', rasi: '', nakshatra: '', dosham: 'No' });
-    const [girl, setGirl] = useState({ name: '', rasi: '', nakshatra: '', dosham: 'No' });
+    const [boy, setBoy] = useState({ name: '', dateOfBirth: '', timeOfBirth: '', rasi: '', nakshatra: '', pada: null, dosham: 'No' });
+    const [girl, setGirl] = useState({ name: '', dateOfBirth: '', timeOfBirth: '', rasi: '', nakshatra: '', pada: null, dosham: 'No' });
+    const [calculating, setCalculating] = useState({ boy: false, girl: false });
     const [result, setResult] = useState(null);
+
+    // Derives real Rasi + Nakshatra from date & time of birth via the
+    // backend's astronomical calculation (Moon's sidereal position).
+    // Native <input type="date"> can let the year segment overflow past 4
+    // digits while typing (e.g. "19894") in some browsers. Reject anything
+    // outside a sane birth-year range instead of accepting garbage dates.
+    const MIN_BIRTH_YEAR = 1930;
+    const MAX_BIRTH_YEAR = new Date().getFullYear();
+    const handleDobChange = (value, setPerson) => {
+        if (!value) { setPerson(prev => ({ ...prev, dateOfBirth: '' })); return; }
+        const year = Number(value.slice(0, 4));
+        if (String(year).length > 4 || year < MIN_BIRTH_YEAR || year > MAX_BIRTH_YEAR) {
+            toast.error(`Enter a valid year between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR}`);
+            return;
+        }
+        setPerson(prev => ({ ...prev, dateOfBirth: value }));
+    };
+
+    const calculateFromBirthDetails = async (person) => {
+        const data = person === 'boy' ? boy : girl;
+        const setData = person === 'boy' ? setBoy : setGirl;
+        if (!data.dateOfBirth || !data.timeOfBirth) {
+            toast.error('Enter both date and time of birth');
+            return;
+        }
+        setCalculating(prev => ({ ...prev, [person]: true }));
+        try {
+            const res = await axios.post(`${API}/api/horoscope/calculate`, {
+                dateOfBirth: data.dateOfBirth,
+                timeOfBirth: data.timeOfBirth,
+            });
+            setData(prev => ({ ...prev, rasi: res.data.rasi, nakshatra: res.data.nakshatra, pada: res.data.pada }));
+            toast.success(`Rasi & Nakshatra calculated! (Pada ${res.data.pada})`);
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Could not calculate — please select manually');
+        } finally {
+            setCalculating(prev => ({ ...prev, [person]: false }));
+        }
+    };
 
     const handleMatch = () => {
         if (!boy.rasi || !girl.rasi) {
@@ -172,6 +216,36 @@ const Horoscope = () => {
                                     />
                                 </div>
                                 <div style={styles.formGroup}>
+                                    <label style={styles.label}>Date of Birth</label>
+                                    <input
+                                        type="date"
+                                        value={boy.dateOfBirth}
+                                        min={`${MIN_BIRTH_YEAR}-01-01`}
+                                        max={`${MAX_BIRTH_YEAR}-12-31`}
+                                        onChange={e => handleDobChange(e.target.value, setBoy)}
+                                        style={styles.input}
+                                    />
+                                </div>
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>Time of Birth</label>
+                                    <input
+                                        type="time"
+                                        value={boy.timeOfBirth}
+                                        onChange={e => setBoy({ ...boy, timeOfBirth: e.target.value })}
+                                        style={styles.input}
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    style={{ ...styles.calcBtn, opacity: calculating.boy ? 0.7 : 1 }}
+                                    onClick={() => calculateFromBirthDetails('boy')}
+                                    disabled={calculating.boy}>
+                                    {calculating.boy ? '✨ Calculating...' : '✨ Predict Rasi & Nakshatra'}
+                                </button>
+                                {boy.pada && (
+                                    <p style={styles.padaNote}>Calculated: {boy.rasi} • {boy.nakshatra} (Pada {boy.pada})</p>
+                                )}
+                                <div style={styles.formGroup}>
                                     <label style={styles.label}>Rasi (Zodiac Sign)</label>
                                     <select
                                         value={boy.rasi}
@@ -233,6 +307,36 @@ const Horoscope = () => {
                                         style={styles.input}
                                     />
                                 </div>
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>Date of Birth</label>
+                                    <input
+                                        type="date"
+                                        value={girl.dateOfBirth}
+                                        min={`${MIN_BIRTH_YEAR}-01-01`}
+                                        max={`${MAX_BIRTH_YEAR}-12-31`}
+                                        onChange={e => handleDobChange(e.target.value, setGirl)}
+                                        style={styles.input}
+                                    />
+                                </div>
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>Time of Birth</label>
+                                    <input
+                                        type="time"
+                                        value={girl.timeOfBirth}
+                                        onChange={e => setGirl({ ...girl, timeOfBirth: e.target.value })}
+                                        style={styles.input}
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    style={{ ...styles.calcBtn, opacity: calculating.girl ? 0.7 : 1 }}
+                                    onClick={() => calculateFromBirthDetails('girl')}
+                                    disabled={calculating.girl}>
+                                    {calculating.girl ? '✨ Calculating...' : '✨ Predict Rasi & Nakshatra'}
+                                </button>
+                                {girl.pada && (
+                                    <p style={styles.padaNote}>Calculated: {girl.rasi} • {girl.nakshatra} (Pada {girl.pada})</p>
+                                )}
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>Rasi (Zodiac Sign)</label>
                                     <select
@@ -546,6 +650,28 @@ const styles = {
         outline: 'none',
         fontFamily: "'DM Sans', sans-serif",
         boxSizing: 'border-box'
+    },
+    calcBtn: {
+        width: '100%',
+        padding: '10px 14px',
+        border: 'none',
+        borderRadius: '8px',
+        background: 'linear-gradient(135deg, #C9A84C, #A8842E)',
+        color: '#fff',
+        fontSize: '12.5px',
+        fontWeight: '700',
+        cursor: 'pointer',
+        marginBottom: '10px',
+    },
+    padaNote: {
+        fontSize: '12px',
+        color: '#1E6B3C',
+        background: '#F0FFF4',
+        border: '1px solid #C3E6CB',
+        borderRadius: '6px',
+        padding: '8px 10px',
+        marginBottom: '14px',
+        textAlign: 'center',
     },
     checkBtnRow: {
         textAlign: 'center',

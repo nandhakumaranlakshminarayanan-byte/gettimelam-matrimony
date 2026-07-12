@@ -82,6 +82,12 @@ app.use('/api/service-menu', require('./routes/serviceMenu'));  // ✅ new
 app.use('/api/service-cards', require('./routes/serviceCards'));  // ✅ homepage service cards (admin-managed)
 app.use('/api/interests', require('./routes/interests'));         // ✅ send/receive interest between members
 app.use('/api/user-alerts', require('./routes/userAlerts'));      // ✅ personal notification feed (bell icon)
+app.use('/api/number-views', require('./routes/numberViews'));    // ✅ tracks who viewed whose contact number
+app.use('/api/plans', require('./routes/plans'));                 // ✅ member/service plans, admin-managed
+app.use('/api/subscriptions', require('./routes/subscriptions')); // ✅ plan assignment with price-snapshot
+app.use('/api/support', require('./routes/support'));             // ✅ user-to-admin support chat
+app.use('/api/horoscope', require('./routes/horoscope'));         // ✅ real Rasi/Nakshatra calculation from DOB+TOB
+app.use('/api/payments', require('./routes/payments'));           // ✅ Razorpay order creation + verification
 app.use('/api/admin', require('./routes/admin'));
 
 app.get('/', (req, res) => {

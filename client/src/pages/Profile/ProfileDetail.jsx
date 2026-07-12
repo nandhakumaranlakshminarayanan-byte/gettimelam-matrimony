@@ -60,6 +60,7 @@ const ProfileDetail = () => {
     const [showRegister, setShowRegister] = useState(false);
     const [interestSent, setInterestSent] = useState(false);
     const [numberRequest, setNumberRequest] = useState(null);
+    const [numberRevealed, setNumberRevealed] = useState(false);
     const [requesting, setRequesting] = useState(false);
     const [shortlisted, setShortlisted] = useState(false);
     const [shortlistLoading, setShortlistLoading] = useState(false);
@@ -74,8 +75,19 @@ const ProfileDetail = () => {
         if (user && profile) {
             checkNumberRequest();
             checkShortlist();
+            checkInterest();
         }
     }, [user, profile]);
+
+    const checkInterest = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/interests/check/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.data.sent) setInterestSent(true);
+        } catch (err) { }
+    };
 
     const fetchProfile = async () => {
         try {
@@ -113,8 +125,36 @@ const ProfileDetail = () => {
 
     const handleSendInterest = async () => {
         if (!user) { setShowLogin(true); return; }
-        setInterestSent(true);
-        toast.success('Interest sent! 💌');
+        if (interestSent) return;
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`${API}/api/interests/send`,
+                { profileId: id },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setInterestSent(true);
+            toast.success('Interest sent! 💌');
+        } catch (err) {
+            if (err.response?.data?.alreadySent) {
+                setInterestSent(true);
+                toast('Interest already sent!', { icon: '💌' });
+            } else {
+                toast.error(err.response?.data?.message || 'Failed to send interest');
+            }
+        }
+    };
+
+    const handleRevealNumber = async () => {
+        setNumberRevealed(true);
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`${API}/api/number-views/log`,
+                { profileId: id },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+        } catch (err) {
+            // Non-critical — number is already shown either way
+        }
     };
 
     const handleSendNumberRequest = async () => {
@@ -356,15 +396,26 @@ const ProfileDetail = () => {
                                 </div>
 
                                 {numberStatus === 'show' && (
-                                    <div style={styles.contactBox}>
-                                        <div style={styles.contactValue}>
-                                            +91 {profile.user?.mobile || '—'}
+                                    numberRevealed ? (
+                                        <div style={styles.contactBox}>
+                                            <div style={styles.contactValue}>
+                                                +91 {profile.user?.mobile || '—'}
+                                            </div>
+                                            <button style={styles.whatsappBtn}
+                                                onClick={() => window.open(`https://wa.me/91${profile.user?.mobile}`, '_blank')}>
+                                                💬 WhatsApp
+                                            </button>
                                         </div>
-                                        <button style={styles.whatsappBtn}
-                                            onClick={() => window.open(`https://wa.me/91${profile.user?.mobile}`, '_blank')}>
-                                            💬 WhatsApp
-                                        </button>
-                                    </div>
+                                    ) : (
+                                        <div style={styles.contactBox}>
+                                            <button style={styles.revealBtn} onClick={handleRevealNumber}>
+                                                👁️ View Contact Number
+                                            </button>
+                                            <p style={{ fontSize: '11.5px', color: '#9C8060', marginTop: '8px', textAlign: 'center' }}>
+                                                They'll be able to see that you viewed their number
+                                            </p>
+                                        </div>
+                                    )
                                 )}
 
                                 {numberStatus === 'upgrade' && (
@@ -504,7 +555,7 @@ const ProfileDetail = () => {
                                 <div style={styles.subSection}>
                                     <SubHeading icon={<PhoneIcon />}>Contact Details</SubHeading>
                                     <DetailPairs items={[
-                                        { label: 'Contact Number', value: numberStatus === 'show' ? `+91 ${profile.user?.mobile || ''}` : 'Protected' },
+                                        { label: 'Contact Number', value: (numberStatus === 'show' && numberRevealed) ? `+91 ${profile.user?.mobile || ''}` : 'Protected' },
                                         { label: 'Chat Status', value: 'Available on Gettimelam' },
                                     ]} />
                                 </div>
@@ -681,6 +732,7 @@ const styles = {
     contactBox: { background: '#F0FFF4', border: '1px solid #C3E6CB', borderRadius: '10px', padding: '14px', textAlign: 'center' },
     contactValue: { fontSize: '18px', fontWeight: '700', color: '#1A0A0A', marginBottom: '10px' },
     whatsappBtn: { width: '100%', padding: '10px', background: '#25D366', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
+    revealBtn: { width: '100%', padding: '12px', background: 'linear-gradient(135deg, #E3AC2A, #C98F12)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer' },
     lockBox: { background: '#FFF9E6', border: '1px solid #F5E6C0', borderRadius: '10px', padding: '16px', textAlign: 'center' },
     upgradeBtn: { padding: '9px 20px', background: '#C9A84C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
     requestBtn: { width: '100%', padding: '10px', background: '#8B1A1A', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },

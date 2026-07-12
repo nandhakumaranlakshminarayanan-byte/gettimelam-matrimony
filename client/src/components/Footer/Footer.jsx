@@ -1,6 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import SupportChatWidget from '../Support/SupportChatWidget';
+import LoginModal from '../Modals/LoginModal';
 
 const Footer = () => {
+    const { user } = useAuth();
+    const [showSupportChat, setShowSupportChat] = useState(false);
+    const [showLogin, setShowLogin] = useState(false);
+
+    const handleSupportClick = (e) => {
+        e.preventDefault();
+        if (!user) { setShowLogin(true); return; }
+        setShowSupportChat(true);
+    };
+
     return (
         <footer style={styles.footer}>
             <div style={styles.inner}>
@@ -27,7 +40,14 @@ const Footer = () => {
                     </div>
                     <div>
                         <h4 style={styles.colTitle}>Company</h4>
-                        {['About Us', 'Contact Us', 'Plans & Pricing', 'Blog', 'Privacy Policy', 'Terms & Conditions'].map(l => (
+                        {['About Us', 'Contact Us'].map(l => (
+                            <a key={l} href="/" style={styles.link}>{l}</a>
+                        ))}
+                        {/* Opens the live support chat instead of navigating */}
+                        <a href="/" onClick={handleSupportClick} style={{ ...styles.link, ...styles.supportLink }}>
+                            💬 Chat with Support Team
+                        </a>
+                        {['Plans & Pricing', 'Blog', 'Privacy Policy', 'Terms & Conditions'].map(l => (
                             <a key={l} href="/" style={styles.link}>{l}</a>
                         ))}
                     </div>
@@ -37,6 +57,9 @@ const Footer = () => {
                     <p style={styles.madeWith}>Made with ❤️ for Indian families</p>
                 </div>
             </div>
+
+            <SupportChatWidget open={showSupportChat} onClose={() => setShowSupportChat(false)} />
+            {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
         </footer>
     );
 };
@@ -50,6 +73,7 @@ const styles = {
     contact: { fontSize: '13px', lineHeight: 2, color: 'rgba(255,255,255,0.6)' },
     colTitle: { color: '#F5BE17', fontSize: '14px', fontWeight: '700', marginBottom: '16px' },
     link: { display: 'block', fontSize: '13px', color: 'rgba(255,255,255,0.5)', textDecoration: 'none', marginBottom: '8px' },
+    supportLink: { color: '#F5D98B', fontWeight: '600', cursor: 'pointer' },
     bottom: { borderTop: '1px solid rgba(245,190,23,0.2)', paddingTop: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' },
     madeWith: { color: '#F5BE17', fontWeight: '600' }
 };

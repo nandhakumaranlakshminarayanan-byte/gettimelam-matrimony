@@ -3,8 +3,7 @@ const mongoose = require('mongoose');
 const testimonialSchema = new mongoose.Schema({
     groomName: { type: String, required: true },
     brideName: { type: String, required: true },
-    groomPhoto: { type: String },
-    bridePhoto: { type: String },
+    couplePhoto: { type: String, default: '' },
     marriageDate: { type: Date },
     message: { type: String },
     city: { type: String },

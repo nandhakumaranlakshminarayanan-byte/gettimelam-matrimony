@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
+import SupportChatWidget from '../../components/Support/SupportChatWidget';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
@@ -146,6 +147,7 @@ const ServiceProvider = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('overview');
+    const [showSupportChat, setShowSupportChat] = useState(false);
     const [services, setServices] = useState([]);
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -394,6 +396,9 @@ const ServiceProvider = () => {
                                 {tab.label}
                             </div>
                         ))}
+                        <div style={{ ...styles.tab, color: '#1565C0' }} onClick={() => setShowSupportChat(true)}>
+                            💬 Chat with Support
+                        </div>
                         <div style={{ ...styles.tab, color: '#B71C1C' }} onClick={() => { logout(); navigate('/'); }}>
                             🚪 Logout
                         </div>
@@ -823,6 +828,7 @@ const ServiceProvider = () => {
                 </div>
             </div>
             <Footer />
+            <SupportChatWidget open={showSupportChat} onClose={() => setShowSupportChat(false)} />
         </div>
     );
 };

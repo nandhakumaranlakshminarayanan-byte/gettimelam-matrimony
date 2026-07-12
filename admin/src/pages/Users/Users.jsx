@@ -163,6 +163,12 @@ const Users = () => {
                                                             🏪 {u.category}
                                                         </div>
                                                     )}
+                                                    {/* Profile registered on behalf of someone else — surface who it's actually for */}
+                                                    {u.role === 'member' && u.profileFor && u.profileFor !== 'Myself' && (
+                                                        <div style={{ fontSize: '11px', color: '#8B1A1A', fontWeight: '600', marginTop: '2px' }}>
+                                                            👤 For {u.profileFor}: {u.profileName || '—'}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td style={styles.td}>{u.mobile}</td>
                                                 <td style={styles.td}>{u.email}</td>

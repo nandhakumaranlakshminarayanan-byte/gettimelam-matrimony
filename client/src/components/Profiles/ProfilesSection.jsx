@@ -22,7 +22,9 @@ const ProfilesSection = ({ onLoginClick }) => {
         try {
             const token = localStorage.getItem('token');
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
-            const res = await axios.get(`${API}/api/profiles`, { headers });
+            // /suggested already filters to opposite-gender profiles server-side,
+            // so this teaser never shows same-gender matches.
+            const res = await axios.get(`${API}/api/profiles/suggested`, { headers });
             setProfiles((res.data.profiles || []).slice(0, 6));
         } catch (err) {
             setProfiles([]);
@@ -57,9 +59,23 @@ const ProfilesSection = ({ onLoginClick }) => {
 
     const handleSendInterest = async (p) => {
         if (!user) { onLoginClick(); return; }
-        if (sentInterestIds.includes(p._id)) { toast('Interest already sent!', { icon: '💌' }); return; }
+        const token = localStorage.getItem('token');
+
+        // Already sent — clicking again withdraws it
+        if (sentInterestIds.includes(p._id)) {
+            try {
+                await axios.delete(`${API}/api/interests/${p._id}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setSentInterestIds(prev => prev.filter(id => id !== p._id));
+                toast('Interest withdrawn', { icon: '↩️' });
+            } catch (err) {
+                toast.error(err.response?.data?.message || 'Failed to withdraw interest');
+            }
+            return;
+        }
+
         try {
-            const token = localStorage.getItem('token');
             await axios.post(`${API}/api/interests/send`,
                 { profileId: p._id },
                 { headers: { Authorization: `Bearer ${token}` } }
@@ -132,6 +148,11 @@ const ProfilesSection = ({ onLoginClick }) => {
     };
 
     const getName = (p) => p.name || p.user?.name || 'Unknown';
+    const getAge = (dob) => {
+        if (!dob) return null;
+        const age = Math.floor((new Date() - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000));
+        return age > 0 ? age : null;
+    };
 
     // ✅ Check if user is unverified member
     const isUnverified = user && user.role === 'member' && !user.isVerified;
@@ -195,13 +216,13 @@ const ProfilesSection = ({ onLoginClick }) => {
                 <div style={styles.grid}>
                     {profiles.map((p, i) => {
                         const isShortlisted = shortlistedIds.includes(p._id);
-                        const isLiked = likedIds.includes(p._id);
                         const isSent = sentInterestIds.includes(p._id);
+                        const age = getAge(p.dateOfBirth);
 
                         return (
                             <div key={p._id || i} style={{ ...styles.card, position: 'relative', overflow: 'hidden' }}>
 
-                                {/* ✅ Blur overlay for unverified users */}
+                                {/* Blur overlay for unverified users */}
                                 {isUnverified && (
                                     <div style={styles.blurOverlay}>
                                         <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔒</div>
@@ -215,64 +236,60 @@ const ProfilesSection = ({ onLoginClick }) => {
                                     </div>
                                 )}
 
+                                {/* Photo — dominant, name & key facts overlaid */}
                                 <div style={{
                                     ...styles.photo,
                                     background: p.gender === 'Female'
-                                        ? 'linear-gradient(135deg, #FDEEF5, #F5D5E8)'
-                                        : 'linear-gradient(135deg, #EEF2FD, #D5DEF5)',
+                                        ? 'linear-gradient(160deg, #4A2030, #2A0C1C)'
+                                        : 'linear-gradient(160deg, #1F2A3D, #0C121F)',
                                     filter: isUnverified ? 'blur(4px)' : 'none'
                                 }}>
                                     {p.photo ? (
                                         <img src={`${API}${p.photo}`} alt={getName(p)}
-                                            style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #8B1A1A' }}
+                                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                                             onClick={() => !isUnverified && navigate(`/profile/${p._id}`)} />
                                     ) : (
                                         <span style={styles.avatar} onClick={() => !isUnverified && navigate(`/profile/${p._id}`)}>
                                             {p.gender === 'Female' ? '👩' : '👨'}
                                         </span>
                                     )}
+                                    <div style={styles.photoGradient} />
                                     <span style={styles.verified}>✓ Verified</span>
-                                    <button style={styles.heartBtn} onClick={() => handleShortlist(p)}>
+                                    <button style={styles.heartBtn} onClick={() => handleShortlist(p)} title="Shortlist">
                                         {isShortlisted ? '❤️' : '🤍'}
                                     </button>
+                                    <div style={styles.nameOverlay} onClick={() => !isUnverified && navigate(`/profile/${p._id}`)}>
+                                        <div style={styles.overlayName}>{getName(p)}</div>
+                                        <div style={styles.overlayMeta}>
+                                            {[age && `${age} yrs`, p.height, p.maritalStatus].filter(Boolean).join(' • ')}
+                                        </div>
+                                        <div style={styles.overlayMeta}>
+                                            {[p.city, p.education].filter(Boolean).join(' • ')}
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div style={{ ...styles.info, filter: isUnverified ? 'blur(4px)' : 'none' }}>
-                                    <div style={styles.nameRow}>
-                                        <div style={styles.name} onClick={() => !isUnverified && navigate(`/profile/${p._id}`)}>
-                                            {getName(p)}
-                                        </div>
-                                        <div style={styles.contactIcons}>
-                                            <button style={styles.phoneIcon} onClick={() => handleViewNumber(p)} title="Call">📞</button>
-                                            <button style={styles.waIcon} onClick={() => handleChat(p)} title="Send Message">💬</button>
-                                        </div>
-                                    </div>
-
-                                    <div style={styles.meta}>{p.occupation} • {p.city}</div>
-                                    <div style={styles.meta}>{p.religion} • {p.caste}</div>
-
-                                    <div style={styles.tags}>
-                                        {p.maritalStatus && <span style={styles.tag}>{p.maritalStatus}</span>}
-                                        {p.education && <span style={styles.tag}>{p.education}</span>}
-                                        {p.district && <span style={styles.tag}>{p.district}</span>}
-                                    </div>
-
-                                    <div style={styles.actions}>
-                                        <button style={{ ...styles.btnPrimary, opacity: isSent ? 0.7 : 1, background: isSent ? '#888' : '#8B1A1A' }}
-                                            onClick={() => handleSendInterest(p)} disabled={isSent}>
-                                            {isSent ? '✅ Sent' : '💌 Send Interest'}
-                                        </button>
-                                        <button style={styles.btnOutline} onClick={() => !isUnverified && navigate(`/profile/${p._id}`)}>
-                                            View Profile
-                                        </button>
-                                        <button style={{ ...styles.btnLike, background: isLiked ? '#2E7D32' : '#fff', color: isLiked ? '#fff' : '#8B1A1A', border: isLiked ? 'none' : '1.5px solid #8B1A1A' }}
-                                            onClick={() => handleLike(p)}>
-                                            👍
-                                        </button>
-                                    </div>
-
-                                    <button style={styles.chatBtn} onClick={() => handleChat(p)}>
-                                        💬 Send Message
+                                {/* Actions — Send Interest + View Profile (Shortlist is the heart above) */}
+                                <div style={{ ...styles.body3, filter: isUnverified ? 'blur(4px)' : 'none' }}>
+                                    <button
+                                        style={{
+                                            ...styles.btnInterest,
+                                            background: isSent ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg, #8B1A1A, #B71C1C)',
+                                            border: isSent ? '1.5px solid rgba(245,217,139,0.5)' : 'none',
+                                            color: isSent ? '#F5D98B' : '#fff',
+                                            boxShadow: 'none',
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.boxShadow = isSent ? '0 0 16px rgba(245,217,139,0.5)' : '0 0 18px rgba(183,28,28,0.65)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
+                                        onClick={() => handleSendInterest(p)}>
+                                        {isSent ? '✓ Sent — tap to cancel' : '💌 Send Interest'}
+                                    </button>
+                                    <button
+                                        style={{ ...styles.btnViewProfile, boxShadow: 'none' }}
+                                        onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 16px rgba(245,217,139,0.45)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
+                                        onClick={() => !isUnverified && navigate(`/profile/${p._id}`)}>
+                                        View Profile
                                     </button>
                                 </div>
                             </div>
@@ -318,24 +335,37 @@ const styles = {
     blurDesc: { fontSize: '11px', color: '#5F0909', marginBottom: '12px', lineHeight: 1.5 },
     blurBtn: { padding: '8px 16px', background: '#B71C1C', color: '#fff', borderRadius: '8px', fontSize: '12px', fontWeight: '700', textDecoration: 'none' },
 
-    grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' },
-    card: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(139,26,26,0.08)' },
-    photo: { height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', cursor: 'pointer' },
+    grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 240px))', gap: '18px', justifyContent: 'center' },
+    card: {
+        background: 'linear-gradient(160deg, #3A1020 0%, #22060E 100%)',
+        borderRadius: '14px', overflow: 'hidden',
+        boxShadow: '0 8px 26px rgba(0,0,0,0.35)',
+        border: '1px solid rgba(245,217,139,0.18)',
+        width: '100%',
+    },
+    photo: { height: '290px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', cursor: 'pointer', overflow: 'hidden' },
     avatar: { fontSize: '56px', cursor: 'pointer' },
-    verified: { position: 'absolute', top: '12px', right: '44px', background: '#1E6B3C', color: '#fff', fontSize: '11px', fontWeight: '600', padding: '4px 10px', borderRadius: '20px' },
-    heartBtn: { position: 'absolute', top: '10px', right: '10px', background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' },
-    info: { padding: '18px' },
-    nameRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' },
-    name: { fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: '600', color: '#1A0A0A', cursor: 'pointer', flex: 1 },
+    photoGradient: { position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, transparent 35%, transparent 55%, rgba(0,0,0,0.85) 100%)', pointerEvents: 'none' },
+    verified: { position: 'absolute', top: '10px', left: '10px', background: 'rgba(30,107,60,0.92)', color: '#fff', fontSize: '10.5px', fontWeight: '700', padding: '3px 9px', borderRadius: '20px' },
+    heartBtn: { position: 'absolute', top: '9px', right: '9px', background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' },
+    nameOverlay: { position: 'absolute', bottom: '10px', left: '14px', right: '14px', cursor: 'pointer' },
+    overlayName: { fontFamily: "'Playfair Display', serif", fontSize: '19px', fontWeight: '700', color: '#fff', textShadow: '0 2px 6px rgba(0,0,0,0.6)', marginBottom: '4px' },
+    overlayMeta: { fontSize: '11px', color: '#E4D0C8', lineHeight: 1.4, textShadow: '0 1px 4px rgba(0,0,0,0.5)' },
+    body3: { padding: '10px 12px 12px' },
+    btnInterest: { width: '100%', padding: '10px', border: 'none', borderRadius: '9px', color: '#fff', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', marginBottom: '7px', transition: 'box-shadow 0.2s ease' },
+    btnViewProfile: { width: '100%', padding: '9px', borderRadius: '9px', background: 'rgba(255,255,255,0.06)', border: '1.5px solid rgba(245,217,139,0.5)', color: '#F5D98B', fontSize: '11.5px', fontWeight: '600', cursor: 'pointer', transition: 'box-shadow 0.2s ease' },
+    info: { padding: '14px 16px' },
+    nameRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' },
+    name: { fontFamily: "'Playfair Display', serif", fontSize: '17px', fontWeight: '600', color: '#FFF8E1', cursor: 'pointer', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
     contactIcons: { display: 'flex', gap: '6px' },
-    phoneIcon: { width: '30px', height: '30px', borderRadius: '50%', border: '2px solid #4CAF50', background: '#fff', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    waIcon: { width: '30px', height: '30px', borderRadius: '50%', border: '2px solid #25D366', background: '#25D366', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    meta: { fontSize: '13px', color: '#7A6055', marginBottom: '2px', lineHeight: 1.6 },
-    tags: { display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '10px 0' },
-    tag: { fontSize: '11px', fontWeight: '500', padding: '4px 10px', borderRadius: '20px', background: '#FDF0F0', color: '#8B1A1A' },
-    actions: { display: 'flex', gap: '6px', marginTop: '10px', marginBottom: '8px' },
+    phoneIcon: { width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #4CAF50', background: '#fff', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    waIcon: { width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #25D366', background: '#25D366', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    meta: { fontSize: '12.5px', color: '#C9A876', marginBottom: '2px', lineHeight: 1.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    tags: { display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '8px 0' },
+    tag: { fontSize: '10.5px', fontWeight: '600', padding: '3px 9px', borderRadius: '20px', background: 'rgba(245,217,139,0.1)', border: '1px solid rgba(245,217,139,0.35)', color: '#F5D98B', whiteSpace: 'nowrap' },
+    actions: { display: 'flex', gap: '6px', marginTop: '8px', marginBottom: '7px' },
     btnPrimary: { flex: 1, padding: '9px', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' },
-    btnOutline: { flex: 1, padding: '9px', background: 'transparent', color: '#8B1A1A', border: '1.5px solid #8B1A1A', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' },
+    btnOutline: { flex: 1, padding: '9px', background: 'rgba(255,255,255,0.06)', color: '#F5D98B', border: '1.5px solid rgba(245,217,139,0.5)', borderRadius: '8px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' },
     btnLike: { padding: '9px 12px', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' },
     chatBtn: { width: '100%', padding: '9px', background: 'linear-gradient(135deg, #1565C0, #1976D2)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
     center: { textAlign: 'center', marginTop: '36px' },

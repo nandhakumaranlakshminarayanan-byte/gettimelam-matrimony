@@ -4,42 +4,69 @@ import Navbar from '../../components/Navbar';
 import API from '../../utils/api';
 import toast from 'react-hot-toast';
 
+const IMG_BASE = 'http://localhost:5000';
+
 const Testimonials = () => {
     const [testimonials, setTestimonials] = useState([]);
     const [showForm, setShowForm] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
         groomName: '', brideName: '', marriageDate: '',
         message: '', city: '', religion: 'Hindu'
     });
+    const [photo, setPhoto] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState('');
 
     useEffect(() => { fetchTestimonials(); }, []);
 
     const fetchTestimonials = async () => {
         try {
-            const res = await API.get('/admin/testimonials');
+            const res = await API.get('/testimonials/admin/all');
             setTestimonials(res.data.testimonials);
         } catch (err) {
             toast.error('Failed to load');
         }
     };
 
+    const handlePhotoChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setPhoto(file);
+        setPhotoPreview(URL.createObjectURL(file));
+    };
+
+    const resetForm = () => {
+        setForm({ groomName: '', brideName: '', marriageDate: '', message: '', city: '', religion: 'Hindu' });
+        setPhoto(null);
+        setPhotoPreview('');
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setSaving(true);
         try {
-            await API.post('/admin/testimonials', form);
+            const data = new FormData();
+            Object.entries(form).forEach(([k, v]) => data.append(k, v));
+            if (photo) data.append('couplePhoto', photo);
+
+            await API.post('/testimonials', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             toast.success('Success story added! 🎊');
             setShowForm(false);
-            setForm({ groomName: '', brideName: '', marriageDate: '', message: '', city: '', religion: 'Hindu' });
+            resetForm();
             fetchTestimonials();
         } catch (err) {
-            toast.error('Failed!');
+            toast.error(err.response?.data?.message || 'Failed!');
+        } finally {
+            setSaving(false);
         }
     };
 
     const handleDelete = async (id) => {
         if (!window.confirm('Delete this success story?')) return;
         try {
-            await API.delete(`/admin/testimonials/${id}`);
+            await API.delete(`/testimonials/${id}`);
             toast.success('Deleted!');
             fetchTestimonials();
         } catch (err) {
@@ -65,6 +92,23 @@ const Testimonials = () => {
                     {showForm && (
                         <form onSubmit={handleSubmit} style={styles.form}>
                             <h3 style={styles.formTitle}>Add New Success Story</h3>
+
+                            {/* Couple Photo */}
+                            <div style={{ marginBottom: '18px' }}>
+                                <label style={styles.label}>Couple Photo</label>
+                                <label style={styles.photoUpload}>
+                                    {photoPreview ? (
+                                        <img src={photoPreview} alt="Preview" style={styles.photoPreviewImg} />
+                                    ) : (
+                                        <div style={styles.photoPlaceholder}>
+                                            <div style={{ fontSize: '26px', marginBottom: '4px' }}>📷</div>
+                                            <div style={{ fontSize: '12px', color: '#888' }}>Click to upload photo</div>
+                                        </div>
+                                    )}
+                                    <input type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: 'none' }} />
+                                </label>
+                            </div>
+
                             <div style={styles.formGrid}>
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>Groom Name</label>
@@ -102,7 +146,9 @@ const Testimonials = () => {
                                     onChange={e => setForm({ ...form, message: e.target.value })}
                                 />
                             </div>
-                            <button type="submit" style={styles.submitBtn}>💍 Add Success Story</button>
+                            <button type="submit" style={{ ...styles.submitBtn, opacity: saving ? 0.7 : 1 }} disabled={saving}>
+                                {saving ? 'Saving...' : '💍 Add Success Story'}
+                            </button>
                         </form>
                     )}
 
@@ -111,11 +157,15 @@ const Testimonials = () => {
                         {testimonials.map(t => (
                             <div key={t._id} style={styles.card}>
                                 <div style={styles.cardHeader}>
-                                    <div style={styles.couple}>
-                                        <span style={styles.coupleEmoji}>👨</span>
-                                        <span style={styles.coupleHeart}>❤️</span>
-                                        <span style={styles.coupleEmoji}>👩</span>
-                                    </div>
+                                    {t.couplePhoto ? (
+                                        <img src={`${IMG_BASE}${t.couplePhoto}`} alt={`${t.groomName} & ${t.brideName}`} style={styles.coupleImg} />
+                                    ) : (
+                                        <div style={styles.couple}>
+                                            <span style={styles.coupleEmoji}>👨</span>
+                                            <span style={styles.coupleHeart}>❤️</span>
+                                            <span style={styles.coupleEmoji}>👩</span>
+                                        </div>
+                                    )}
                                     <button style={styles.deleteBtn} onClick={() => handleDelete(t._id)}>🗑️</button>
                                 </div>
                                 <div style={styles.coupleNames}>{t.groomName} & {t.brideName}</div>
@@ -123,6 +173,7 @@ const Testimonials = () => {
                                 {t.marriageDate && (
                                     <div style={styles.cardMeta}>💍 {new Date(t.marriageDate).toLocaleDateString('en-IN')}</div>
                                 )}
+                                {!t.isActive && <div style={styles.hiddenTag}>Hidden from website</div>}
                                 {t.message && <p style={styles.cardMsg}>"{t.message}"</p>}
                             </div>
                         ))}
@@ -154,6 +205,13 @@ const styles = {
         marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
     },
     formTitle: { fontSize: '16px', fontWeight: '700', color: '#1A0A0A', marginBottom: '16px' },
+    photoUpload: {
+        width: '160px', height: '160px', borderRadius: '12px',
+        border: '2px dashed #DDD', cursor: 'pointer', overflow: 'hidden',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FAFAFA',
+    },
+    photoPreviewImg: { width: '100%', height: '100%', objectFit: 'cover' },
+    photoPlaceholder: { textAlign: 'center' },
     formGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '16px' },
     formGroup: { marginBottom: '0' },
     label: { display: 'block', fontSize: '11px', fontWeight: '700', color: '#555', marginBottom: '5px', textTransform: 'uppercase' },
@@ -170,13 +228,15 @@ const styles = {
         background: '#fff', borderRadius: '12px', padding: '20px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #E0E0E0'
     },
-    cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
+    cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' },
+    coupleImg: { width: '72px', height: '72px', borderRadius: '10px', objectFit: 'cover' },
     couple: { display: 'flex', alignItems: 'center', gap: '4px' },
     coupleEmoji: { fontSize: '28px' },
     coupleHeart: { fontSize: '18px' },
     deleteBtn: { background: '#FFEBEE', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontSize: '14px' },
     coupleNames: { fontFamily: "'Georgia', serif", fontSize: '16px', fontWeight: '700', color: '#1A0A0A', marginBottom: '4px' },
     cardMeta: { fontSize: '12px', color: '#999', marginBottom: '2px' },
+    hiddenTag: { display: 'inline-block', fontSize: '10px', fontWeight: '700', color: '#B71C1C', background: '#FFEBEE', padding: '2px 8px', borderRadius: '999px', marginTop: '4px' },
     cardMsg: { fontSize: '13px', color: '#555', fontStyle: 'italic', marginTop: '8px', lineHeight: 1.5 },
     empty: { gridColumn: '1/-1', textAlign: 'center', padding: '60px' }
 };

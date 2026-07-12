@@ -9,7 +9,7 @@ const AdminAccess = () => {
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState({
-        name: '', email: '', mobile: '', password: ''
+        name: '', email: '', mobile: '', password: '', canHandleSupport: false
     });
 
     useEffect(() => { fetchAdmins(); }, []);
@@ -35,7 +35,7 @@ const AdminAccess = () => {
             await API.post('/admin/admins', form);
             toast.success('Admin account created! 🎊');
             setShowForm(false);
-            setForm({ name: '', email: '', mobile: '', password: '' });
+            setForm({ name: '', email: '', mobile: '', password: '', canHandleSupport: false });
             fetchAdmins();
         } catch (err) {
             toast.error(err.response?.data?.message || 'Failed!');
@@ -47,6 +47,16 @@ const AdminAccess = () => {
         try {
             await API.delete(`/admin/admins/${id}`);
             toast.success('Admin removed!');
+            fetchAdmins();
+        } catch (err) {
+            toast.error('Failed!');
+        }
+    };
+
+    const handleToggleSupport = async (id) => {
+        try {
+            const res = await API.put(`/admin/admins/${id}/toggle-support`);
+            toast.success(res.data.message);
             fetchAdmins();
         } catch (err) {
             toast.error('Failed!');
@@ -132,6 +142,13 @@ const AdminAccess = () => {
                                     </div>
                                 </div>
 
+                                <label style={styles.supportCheckboxRow}>
+                                    <input type="checkbox"
+                                        checked={form.canHandleSupport}
+                                        onChange={e => setForm({ ...form, canHandleSupport: e.target.checked })} />
+                                    <span>🎧 Can handle Support Chats — this admin can be assigned live chat conversations from members and service providers</span>
+                                </label>
+
                                 <div style={styles.formNote}>
                                     ⚠️ <strong>Important:</strong> This account will have <strong>full admin access</strong> to the panel including user management, bookings, and financial data. Share credentials securely.
                                 </div>
@@ -184,6 +201,13 @@ const AdminAccess = () => {
                                     </div>
                                     <div style={styles.adminRight}>
                                         <span style={styles.adminBadge}>🛡️ Full Admin</span>
+                                        {admin.canHandleSupport && (
+                                            <span style={styles.supportBadge}>🎧 Support Agent</span>
+                                        )}
+                                        <button style={styles.toggleSupportBtn}
+                                            onClick={() => handleToggleSupport(admin._id)}>
+                                            {admin.canHandleSupport ? 'Remove from Support' : 'Make Support Agent'}
+                                        </button>
                                         <button style={styles.deleteBtn}
                                             onClick={() => handleDelete(admin._id, admin.name)}>
                                             🗑️ Remove Access
@@ -237,6 +261,9 @@ const styles = {
     adminMeta: { fontSize: '12px', color: '#757575', marginBottom: '2px' },
     adminRight: { display: 'flex', gap: '10px', alignItems: 'center', flexShrink: 0 },
     adminBadge: { background: '#FCE4EC', color: '#880E4F', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '700' },
+    supportBadge: { background: '#E3F2FD', color: '#1565C0', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '700' },
+    toggleSupportBtn: { background: '#fff', border: '1.5px solid #1565C0', color: '#1565C0', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
+    supportCheckboxRow: { display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '13px', color: '#333', background: '#F3F8FF', padding: '12px 14px', borderRadius: '8px', marginBottom: '16px', cursor: 'pointer', lineHeight: 1.5 },
     deleteBtn: { padding: '8px 16px', background: '#FFEBEE', color: '#C62828', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
     empty: { textAlign: 'center', padding: '60px', background: '#fff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
     securityNote: { background: '#fff', borderRadius: '12px', padding: '20px', marginTop: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #E0E0E0' },

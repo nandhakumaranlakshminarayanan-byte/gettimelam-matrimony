@@ -26,6 +26,7 @@ const Sidebar = () => {
         { path: '/banners', Icon: IconImage, label: 'Banners' },
         { path: '/service-cards', Icon: IconLayers, label: 'Service Cards' },
         { path: '/messages', Icon: IconChat, label: 'Messages' },
+        { path: '/support-chat', Icon: IconChat, label: 'Support Chat' },
         { path: '/services', Icon: IconStore, label: 'Services' },
         { path: '/admin-access', Icon: IconShield, label: 'Admin Access' },
     ];

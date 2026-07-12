@@ -76,10 +76,21 @@ const getSuggestedMatches = async (req, res) => {
             filter.religion = myProfile.religion;
         }
 
-        const profiles = await Profile.find(filter)
+        let profiles = await Profile.find(filter)
             .populate('user', 'name email mobile')
             .sort({ createdAt: -1 })
             .limit(6);
+
+        // Religion narrowing is a soft preference, not a hard requirement —
+        // if it leaves zero results, fall back to gender-only matching so
+        // the section isn't empty just because nobody shares the religion yet.
+        if (profiles.length === 0 && filter.religion) {
+            const { religion, ...genderOnlyFilter } = filter;
+            profiles = await Profile.find(genderOnlyFilter)
+                .populate('user', 'name email mobile')
+                .sort({ createdAt: -1 })
+                .limit(6);
+        }
 
         res.json({ success: true, profiles });
     } catch (error) {

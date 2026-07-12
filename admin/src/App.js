@@ -10,6 +10,7 @@ import Services from './pages/Services/Services';
 import Plans from './pages/Plans/Plans';
 import Bookings from './pages/Bookings/Bookings';
 import Testimonials from './pages/Testimonials/Testimonials';
+import SupportChat from './pages/SupportChat/SupportChat';
 import Analytics from './pages/Analytics/Analytics';
 import Notifications from './pages/Notifications/Notifications';
 import Banners from './pages/Banners/Banners';
@@ -42,6 +43,7 @@ function App() {
           <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
           <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
           <Route path="/testimonials" element={<ProtectedRoute><Testimonials /></ProtectedRoute>} />
+          <Route path="/support-chat" element={<ProtectedRoute><SupportChat /></ProtectedRoute>} />
           <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/banners" element={<ProtectedRoute><Banners /></ProtectedRoute>} />

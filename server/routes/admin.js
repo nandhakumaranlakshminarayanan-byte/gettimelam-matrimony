@@ -4,7 +4,6 @@ const User = require('../models/User');
 const {
     getStats, getAllUsers, getAllProfiles, togglePremium, deleteUser, verifyProfile,
     getAllBookings, updateBookingStatus,
-    getTestimonials, createTestimonial, deleteTestimonial,
     getBanners, createBanner, toggleBanner, deleteBanner,
     getMessages, replyMessage, markMessageRead, deleteMessage,
     getNotifications, createNotification, deleteNotification,
@@ -118,10 +117,7 @@ router.put('/profiles/:id/verify', protect, adminOnly, verifyProfile);
 router.get('/bookings', protect, adminOnly, getAllBookings);
 router.put('/bookings/:id/status', protect, adminOnly, updateBookingStatus);
 
-// ── Testimonials ──
-router.get('/testimonials', protect, adminOnly, getTestimonials);
-router.post('/testimonials', protect, adminOnly, createTestimonial);
-router.delete('/testimonials/:id', protect, adminOnly, deleteTestimonial);
+// ── Testimonials moved to routes/testimonials.js (adds photo upload) ──
 
 // ── Banners ──
 router.get('/banners', protect, adminOnly, getBanners);
@@ -154,7 +150,7 @@ router.get('/admins', protect, adminOnly, async (req, res) => {
 router.post('/admins', protect, adminOnly, async (req, res) => {
     try {
         const bcrypt = require('bcryptjs');
-        const { name, email, mobile, password } = req.body;
+        const { name, email, mobile, password, canHandleSupport } = req.body;
         const exists = await User.findOne({ $or: [{ email }, { mobile }] });
         if (exists) return res.status(400).json({ success: false, message: 'Account already exists!' });
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -162,9 +158,23 @@ router.post('/admins', protect, adminOnly, async (req, res) => {
             name, email, mobile,
             password: hashedPassword,
             role: 'admin',
-            gender: 'Male'
+            gender: 'Male',
+            canHandleSupport: !!canHandleSupport,
         });
         res.status(201).json({ success: true, message: 'Admin created!', admin });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Toggle whether an admin can be assigned support chats
+router.put('/admins/:id/toggle-support', protect, adminOnly, async (req, res) => {
+    try {
+        const admin = await User.findById(req.params.id);
+        if (!admin || admin.role !== 'admin') return res.status(404).json({ success: false, message: 'Admin not found' });
+        admin.canHandleSupport = !admin.canHandleSupport;
+        await admin.save();
+        res.json({ success: true, message: admin.canHandleSupport ? 'Marked as support agent' : 'Removed as support agent', canHandleSupport: admin.canHandleSupport });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

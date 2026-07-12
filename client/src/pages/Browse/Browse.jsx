@@ -8,6 +8,7 @@ import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { CASTES } from '../../utils/casteData';
 
 const API = 'http://localhost:5000';
 
@@ -26,19 +27,27 @@ const Browse = () => {
     const [shortlistedIds, setShortlistedIds] = useState([]);
     const [hiddenIds, setHiddenIds] = useState([]);
     const [likedIds, setLikedIds] = useState([]);
+    const [sentInterestIds, setSentInterestIds] = useState([]);
 
     useEffect(() => { if (user) fetchProfiles(); else setLoading(false); }, [user]);
     // Guests get the sign-in popup instead of profiles
     useEffect(() => { if (!authLoading && !user) setShowLogin(true); }, [authLoading, user]);
     useEffect(() => { if (user) fetchShortlistedIds(); }, [user]);
     useEffect(() => { if (user) fetchLikedIds(); }, [user]);
+    useEffect(() => { if (user) fetchSentInterestIds(); }, [user]);
 
     const fetchProfiles = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
-            const res = await axios.get(`${API}/api/profiles`, { headers });
+            // Matrimony matches are opposite-gender only, same rule as Home
+            // and Dashboard — so Browse never returns same-gender profiles,
+            // regardless of the "Looking For" filter selection.
+            const oppositeGender = user?.gender === 'Female' ? 'Male'
+                : user?.gender === 'Male' ? 'Female' : '';
+            const params = oppositeGender ? { gender: oppositeGender } : {};
+            const res = await axios.get(`${API}/api/profiles`, { headers, params });
             const profiles = res.data.profiles || [];
             setAllProfiles(profiles);
             setDisplayProfiles(profiles);
@@ -62,6 +71,35 @@ const Browse = () => {
             const res = await axios.get(`${API}/api/likes/my-likes`, { headers: { Authorization: `Bearer ${token}` } });
             setLikedIds((res.data.profiles || []).map(p => p._id));
         } catch (err) { }
+    };
+
+    const fetchSentInterestIds = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/interests/sent`, { headers: { Authorization: `Bearer ${token}` } });
+            setSentInterestIds((res.data.interests || []).map(i => i.profile?._id).filter(Boolean));
+        } catch (err) { }
+    };
+
+    const handleSendInterest = async (profile) => {
+        if (!user) { setShowLogin(true); return; }
+        if (sentInterestIds.includes(profile._id)) { toast('Interest already sent!', { icon: '💌' }); return; }
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`${API}/api/interests/send`,
+                { profileId: profile._id },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setSentInterestIds(prev => [...prev, profile._id]);
+            toast.success(`Interest sent to ${getName(profile)}! 💌`);
+        } catch (err) {
+            if (err.response?.data?.alreadySent) {
+                setSentInterestIds(prev => [...prev, profile._id]);
+                toast('Interest already sent!', { icon: '💌' });
+            } else {
+                toast.error(err.response?.data?.message || 'Failed to send interest');
+            }
+        }
     };
 
     const handleShortlist = async (profile) => {
@@ -127,7 +165,7 @@ const Browse = () => {
         let filtered = allProfiles;
         if (filters.gender) filtered = filtered.filter(p => p.gender === filters.gender);
         if (filters.religion) filtered = filtered.filter(p => p.religion === filters.religion);
-        if (filters.caste) filtered = filtered.filter(p => p.caste?.toLowerCase().includes(filters.caste.toLowerCase()));
+        if (filters.caste) filtered = filtered.filter(p => p.caste === filters.caste);
         if (filters.district) filtered = filtered.filter(p => p.district === filters.district);
         if (filters.maritalStatus) filtered = filtered.filter(p => p.maritalStatus === filters.maritalStatus);
         setDisplayProfiles(filtered);
@@ -241,9 +279,19 @@ const Browse = () => {
                     <div style={styles.filterCard}>
                         <h3 style={styles.filterTitle}>🔍 {t('browse.filter_title')}</h3>
 
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>{t('browse.religion')}</label>
+                            <select name="religion" value={filters.religion}
+                                onChange={e => setFilters({ ...filters, religion: e.target.value, caste: '' })}
+                                style={styles.filterInput}>
+                                <option value="">{t('browse.all_religions')}</option>
+                                <option value="Hindu">Hindu</option>
+                                <option value="Muslim">Muslim</option>
+                                <option value="Christian">Christian</option>
+                            </select>
+                        </div>
+
                         {[
-                            { label: t('browse.looking_for'), name: 'gender', type: 'select', options: [['', t('browse.all')], ['Female', t('browse.bride')], ['Male', t('browse.groom')]] },
-                            { label: t('browse.religion'), name: 'religion', type: 'select', options: [['', t('browse.all_religions')], ['Hindu', 'Hindu'], ['Muslim', 'Muslim'], ['Christian', 'Christian']] },
                             { label: t('browse.marital_status'), name: 'maritalStatus', type: 'select', options: [['', t('browse.any')], ['Never Married', t('browse.never_married')], ['Divorced', t('browse.divorced')], ['Widowed', t('browse.widowed')]] },
                         ].map(f => (
                             <div key={f.name} style={styles.filterGroup}>
@@ -256,8 +304,12 @@ const Browse = () => {
 
                         <div style={styles.filterGroup}>
                             <label style={styles.filterLabel}>{t('browse.caste')}</label>
-                            <input name="caste" type="text" placeholder={t('browse.caste')}
-                                value={filters.caste} onChange={handleFilterChange} style={styles.filterInput} />
+                            <select name="caste" value={filters.caste} onChange={handleFilterChange} style={styles.filterInput}>
+                                <option value="">Any Caste</option>
+                                {(filters.religion ? (CASTES[filters.religion] || []) : Object.values(CASTES).flat())
+                                    .filter((c, i, arr) => arr.indexOf(c) === i) // de-dupe when showing all religions
+                                    .map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
                         </div>
 
                         <div style={styles.filterGroup}>
@@ -285,8 +337,6 @@ const Browse = () => {
                     <div style={styles.quickFilters}>
                         <h4 style={styles.quickTitle}>{t('browse.quick_filters')}</h4>
                         {[
-                            { label: 'Brides', filter: { gender: 'Female' } },
-                            { label: 'Grooms', filter: { gender: 'Male' } },
                             { label: 'Hindu', filter: { religion: 'Hindu' } },
                             { label: 'Muslim', filter: { religion: 'Muslim' } },
                             { label: 'Christian', filter: { religion: 'Christian' } },
@@ -401,6 +451,12 @@ const Browse = () => {
                                                 <button style={styles.wIconBtn} title="Message" onClick={() => handleChat(profile)}>💬</button>
                                                 <button style={styles.wIconBtn} title={t('browse.dont_show')} onClick={() => handleDontShow(profile._id)}>✕</button>
                                             </div>
+                                            <button
+                                                style={{ ...styles.wInterestBtn, opacity: sentInterestIds.includes(profile._id) ? 0.6 : 1 }}
+                                                disabled={sentInterestIds.includes(profile._id)}
+                                                onClick={() => handleSendInterest(profile)}>
+                                                {sentInterestIds.includes(profile._id) ? '✅ Interest Sent' : '💌 Send Interest'}
+                                            </button>
                                             <button style={styles.wViewDetailBtn}
                                                 onClick={() => navigate(`/profile/${profile._id}`)}>
                                                 View Detail
@@ -485,6 +541,11 @@ const styles = {
         width: '34px', height: '34px', borderRadius: '9px',
         background: '#fff', border: '1px solid #F0E0B0',
         cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    },
+    wInterestBtn: {
+        padding: '10px', background: 'linear-gradient(135deg, #8B1A1A, #B71C1C)',
+        border: 'none', color: '#fff', borderRadius: '8px',
+        fontSize: '12.5px', fontWeight: '700', cursor: 'pointer',
     },
     wViewDetailBtn: {
         padding: '10px', background: 'linear-gradient(135deg, #C98F12, #E3AC2A)',

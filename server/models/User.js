@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema({
     isPremium: { type: Boolean, default: false },
     plan: { type: String, default: 'free' },
     isVerified: { type: Boolean, default: false },
+    canHandleSupport: { type: Boolean, default: false }, // for admin accounts — can be assigned support chats
 
     // ── Service Provider-only fields ──
     businessName: {

@@ -3,6 +3,7 @@ import Navbar from '../../components/Navbar/Navbar';
 import Hero from '../../components/Hero/Hero';
 import ProfilesSection from '../../components/Profiles/ProfilesSection';
 import ServicesSection from '../../components/Services/ServicesSection';
+import SuccessStoriesSection from '../../components/SuccessStories/SuccessStoriesSection';
 import Footer from '../../components/Footer/Footer';
 import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
@@ -94,6 +95,7 @@ const Home = () => {
             )}
 
             <ServicesSection onLoginClick={() => setShowLogin(true)} />
+            {!user && <SuccessStoriesSection />}
             <Footer />
 
             {showLogin && (

@@ -9,17 +9,7 @@ const ACCENT = '#B71C1C';
 const GOLD = '#F5BE17';
 const BG = '#FFF8E1';
 
-const RELIGIONS = ['Hindu', 'Muslim', 'Christian', 'Jain', 'Buddhist', 'Sikh', 'Other'];
-
-const CASTES = {
-    Hindu: ['Brahmin', 'Kshatriya', 'Naicker/Vanniya Kula Kshatriyar', 'Mudaliar', 'Pillai', 'Chettiar', 'Gounder', 'Thevar/Maravar', 'Nadar', 'Scheduled Caste', 'Other'],
-    Muslim: ['Sunni', 'Shia', 'Sufi', 'Other'],
-    Christian: ['Roman Catholic', 'Protestant', 'CSI', 'Other'],
-    Jain: ['Digambara', 'Shvetambara', 'Other'],
-    Buddhist: ['Theravada', 'Mahayana', 'Other'],
-    Sikh: ['Jat Sikh', 'Khatri', 'Other'],
-    Other: ['Other'],
-};
+import { RELIGIONS, CASTES, getSubCastes } from '../../utils/casteData';
 
 const ZODIACS = ['Aries/Mesha', 'Taurus/Rishabha', 'Gemini/Mithuna', 'Cancer/Kataka', 'Leo/Simha', 'Virgo/Kanya', 'Libra/Thula', 'Scorpio/Vrischika', 'Sagittarius/Dhanus', 'Capricorn/Makara', 'Aquarius/Kumbha', 'Pisces/Meena'];
 
@@ -157,12 +147,13 @@ const Row = ({ children }) => (
 );
 
 // Password field with show/hide eye toggle
-const PasswordInput = ({ value, onChange, placeholder }) => {
+const PasswordInput = ({ value, onChange, placeholder, autoComplete = 'new-password' }) => {
     const [show, setShow] = React.useState(false);
     return (
         <div style={{ position: 'relative' }}>
             <input
                 type={show ? 'text' : 'password'}
+                autoComplete={autoComplete}
                 style={{ ...inp, paddingRight: '46px' }}
                 placeholder={placeholder}
                 value={value}
@@ -210,7 +201,7 @@ const Register = () => {
 
     const [s2, setS2] = useState({
         name: '', altMobile: '', profileFor: 'Myself', profileName: '',
-        gender: 'Male', motherTongue: 'Tamil', knownLanguages: ['Tamil'],
+        gender: '', motherTongue: 'Tamil', knownLanguages: ['Tamil'],
         religion: 'Hindu', caste: '', subCaste: '', gothra: '',
         maritalStatus: 'Unmarried', dateOfBirth: '', email: '', password: '', confirmPassword: '',
     });
@@ -313,12 +304,15 @@ const Register = () => {
 
     const validateStep2 = () => {
         if (!s2.name) { toast.error('Enter your name'); return false; }
+        if (!s2.gender) { toast.error('Select gender'); return false; }
         if (!s2.profileName) { toast.error('Enter ' + getProfileForLabel(s2.profileFor)); return false; }
         if (!s2.dateOfBirth) { toast.error('Select date of birth'); return false; }
         if (!s2.email) { toast.error('Enter email address'); return false; }
         if (!s2.password || s2.password.length < 6) { toast.error('Password must be at least 6 characters'); return false; }
         if (s2.password !== s2.confirmPassword) { toast.error('Passwords do not match'); return false; }
         if (!s2.religion) { toast.error('Select religion'); return false; }
+        if (!s2.caste) { toast.error('Select caste / division'); return false; }
+        if (!s2.subCaste) { toast.error('Select sub caste'); return false; }
         if (!s2.maritalStatus) { toast.error('Select marital status'); return false; }
         return true;
     };
@@ -416,7 +410,7 @@ const Register = () => {
                             <Label required>Mobile Number</Label>
                             <div style={{ display: 'flex', border: '1.5px solid ' + GOLD, borderRadius: '10px', overflow: 'hidden' }}>
                                 <span style={{ padding: '12px 14px', background: BG, fontWeight: '700', color: ACCENT, borderRight: '1px solid ' + GOLD, fontSize: '14px' }}>+91</span>
-                                <input type="tel" maxLength={10} placeholder="Enter 10-digit mobile number"
+                                <input type="tel" maxLength={10} placeholder="Enter 10-digit mobile number" autoComplete="off"
                                     value={mobile} onChange={e => setMobile(e.target.value.replace(/\D/g, ''))}
                                     style={{ flex: 1, padding: '12px 14px', border: 'none', outline: 'none', fontSize: '15px', fontFamily: 'inherit' }}
                                     disabled={otpVerified} />
@@ -434,7 +428,7 @@ const Register = () => {
                             <>
                                 <FG>
                                     <Label required>Enter OTP</Label>
-                                    <input type="tel" maxLength={6} placeholder="Enter 6-digit OTP"
+                                    <input type="tel" maxLength={6} placeholder="Enter 6-digit OTP" autoComplete="off"
                                         value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
                                         style={{ ...inp, textAlign: 'center', fontSize: '22px', letterSpacing: '8px', fontWeight: '700' }} />
                                     <p style={{ fontSize: '12px', color: '#999', marginTop: '8px', textAlign: 'center' }}>
@@ -476,7 +470,7 @@ const Register = () => {
                             <Label>Alternative Mobile Number</Label>
                             <div style={{ display: 'flex', border: '1.5px solid ' + GOLD, borderRadius: '10px', overflow: 'hidden' }}>
                                 <span style={{ padding: '12px 14px', background: BG, fontWeight: '700', color: ACCENT, borderRight: '1px solid ' + GOLD, fontSize: '14px' }}>+91</span>
-                                <input type="tel" maxLength={10} placeholder="Alternative number (optional)"
+                                <input type="tel" maxLength={10} placeholder="Alternative number (optional)" autoComplete="off"
                                     value={s2.altMobile} onChange={e => update2('altMobile', e.target.value.replace(/\D/g, ''))}
                                     style={{ flex: 1, padding: '12px 14px', border: 'none', outline: 'none', fontSize: '14px', fontFamily: 'inherit' }} />
                             </div>
@@ -523,15 +517,15 @@ const Register = () => {
                         </FG>
                         <FG>
                             <Label required>Email Address</Label>
-                            <input type="email" style={inp} placeholder="your@email.com" value={s2.email} onChange={e => update2('email', e.target.value)} />
+                            <input type="email" style={inp} placeholder="your@email.com" autoComplete="off" value={s2.email} onChange={e => update2('email', e.target.value)} />
                         </FG>
                         <FG>
                             <Label required>Password</Label>
-                            <PasswordInput placeholder="Min 6 characters" value={s2.password} onChange={e => update2('password', e.target.value)} />
+                            <PasswordInput placeholder="Min 6 characters" autoComplete="new-password" value={s2.password} onChange={e => update2('password', e.target.value)} />
                         </FG>
                         <FG>
                             <Label required>Re-enter Password</Label>
-                            <PasswordInput placeholder="Type the same password again" value={s2.confirmPassword} onChange={e => update2('confirmPassword', e.target.value)} />
+                            <PasswordInput placeholder="Type the same password again" autoComplete="new-password" value={s2.confirmPassword} onChange={e => update2('confirmPassword', e.target.value)} />
                             {s2.confirmPassword && s2.password !== s2.confirmPassword && (
                                 <div style={{ fontSize: '12px', color: '#C62828', marginTop: '6px' }}>
                                     Passwords do not match
@@ -553,7 +547,7 @@ const Register = () => {
                             </FG>
                             <FG half>
                                 <Label required>Caste / Division</Label>
-                                <select style={inp} value={s2.caste} onChange={e => update2('caste', e.target.value)}>
+                                <select style={inp} value={s2.caste} onChange={e => { update2('caste', e.target.value); update2('subCaste', ''); }}>
                                     <option value="">Select Caste</option>
                                     {(CASTES[s2.religion] || []).map(c => <option key={c}>{c}</option>)}
                                 </select>
@@ -561,8 +555,11 @@ const Register = () => {
                         </Row>
                         <Row>
                             <FG half>
-                                <Label>Sub Caste</Label>
-                                <input style={inp} placeholder="Sub caste" value={s2.subCaste} onChange={e => update2('subCaste', e.target.value)} />
+                                <Label required>Sub Caste</Label>
+                                <select style={inp} value={s2.subCaste} onChange={e => update2('subCaste', e.target.value)} disabled={!s2.caste}>
+                                    <option value="">{s2.caste ? 'Select Sub Caste' : 'Select Caste first'}</option>
+                                    {getSubCastes(s2.religion, s2.caste).map(sc => <option key={sc}>{sc}</option>)}
+                                </select>
                             </FG>
                             <FG half>
                                 <Label>Gothra</Label>

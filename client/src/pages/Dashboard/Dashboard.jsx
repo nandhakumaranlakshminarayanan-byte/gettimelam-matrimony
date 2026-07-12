@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
+import SupportChatWidget from '../../components/Support/SupportChatWidget';
 import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { CASTES, getSubCastes } from '../../utils/casteData';
 
 const API = 'http://localhost:5000';
 
@@ -58,11 +60,43 @@ const IncomingRequests = () => {
     );
 };
 
+const NumberViewsList = () => {
+    const [views, setViews] = useState([]);
+    useEffect(() => { fetchViews(); }, []);
+    const fetchViews = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/number-views/received`, { headers: { Authorization: `Bearer ${token}` } });
+            setViews(res.data.views || []);
+        } catch (err) { }
+    };
+    if (views.length === 0) return (
+        <p style={{ fontSize: '13px', color: '#7A5C00', textAlign: 'center', padding: '12px' }}>No one has viewed your number yet</p>
+    );
+    return (
+        <div>
+            {views.map(v => (
+                <div key={v._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#fff', borderRadius: '10px', border: '1px solid #F5BE17', marginBottom: '8px' }}>
+                    <div>
+                        <div style={{ fontWeight: '600', color: '#5F0909', fontSize: '14px' }}>{v.viewer?.name || 'Unknown'}</div>
+                        <div style={{ fontSize: '12px', color: '#7A5C00' }}>{v.viewer?.gender}</div>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#7A5C00' }}>
+                        {new Date(v.createdAt).toLocaleDateString('en-IN')}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const Dashboard = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState(
+        () => new URLSearchParams(window.location.search).get('tab') || 'overview'
+    );
     const [shortlistSubTab, setShortlistSubTab] = useState('shortlisted');
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
@@ -75,6 +109,24 @@ const Dashboard = () => {
     const [uploadingGallery, setUploadingGallery] = useState(false);
     const [suggestedMatches, setSuggestedMatches] = useState([]);
     const [shortlistedProfiles, setShortlistedProfiles] = useState([]);
+    const [receivedInterests, setReceivedInterests] = useState([]);
+    const [numberViewCount, setNumberViewCount] = useState(0);
+    const [showSupportChat, setShowSupportChat] = useState(false);
+    const [sentInterestIds, setSentInterestIds] = useState([]);
+    const [respondingId, setRespondingId] = useState(null);
+    const [editingInterestId, setEditingInterestId] = useState(null);
+    // Greet with "Welcome" the very first time someone opens their dashboard,
+    // then "Welcome back" on every visit after that.
+    const [isFirstVisit] = useState(() => {
+        if (!user?.id) return false;
+        const key = `gettimelam_dashboard_visited_${user.id}`;
+        const seen = localStorage.getItem(key);
+        if (!seen) {
+            localStorage.setItem(key, 'true');
+            return true;
+        }
+        return false;
+    });
     const [likedProfiles, setLikedProfiles] = useState([]);
     const [likedMeProfiles, setLikedMeProfiles] = useState([]);
 
@@ -101,7 +153,66 @@ const Dashboard = () => {
         fetchShortlist();
         fetchLikedProfiles();
         fetchLikedMe();
+        fetchReceivedInterests();
+        fetchSentInterestIds();
+        fetchNumberViewCount();
     }, [user]);
+
+    const fetchNumberViewCount = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/number-views/count`, { headers: { Authorization: `Bearer ${token}` } });
+            setNumberViewCount(res.data.count || 0);
+        } catch (err) { }
+    };
+
+    const fetchReceivedInterests = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/interests/received`, { headers: { Authorization: `Bearer ${token}` } });
+            setReceivedInterests(res.data.interests || []);
+        } catch (err) { setReceivedInterests([]); }
+    };
+
+    const fetchSentInterestIds = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/interests/sent`, { headers: { Authorization: `Bearer ${token}` } });
+            setSentInterestIds((res.data.interests || []).map(i => i.profile?._id).filter(Boolean));
+        } catch (err) { }
+    };
+
+    const handleSendInterest = async (profileId, name) => {
+        if (sentInterestIds.includes(profileId)) { toast('Interest already sent!', { icon: '💌' }); return; }
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`${API}/api/interests/send`, { profileId }, { headers: { Authorization: `Bearer ${token}` } });
+            setSentInterestIds(prev => [...prev, profileId]);
+            toast.success(`Interest sent to ${name}! 💌`);
+        } catch (err) {
+            if (err.response?.data?.alreadySent) {
+                setSentInterestIds(prev => [...prev, profileId]);
+                toast('Interest already sent!', { icon: '💌' });
+            } else {
+                toast.error(err.response?.data?.message || 'Failed to send interest');
+            }
+        }
+    };
+
+    const handleRespondInterest = async (interestId, status) => {
+        setRespondingId(interestId);
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`${API}/api/interests/${interestId}/respond`, { status }, { headers: { Authorization: `Bearer ${token}` } });
+            toast.success(status === 'accepted' ? 'Interest accepted! 🎉' : 'Interest declined');
+            setEditingInterestId(null);
+            fetchReceivedInterests();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to respond');
+        } finally {
+            setRespondingId(null);
+        }
+    };
 
     const fetchProfile = async () => {
         try {
@@ -202,6 +313,8 @@ const Dashboard = () => {
 
     const handleSaveProfile = async (e) => {
         e.preventDefault();
+        if (!form.caste) { toast.error('Select caste / division'); return; }
+        if (!form.subCaste) { toast.error('Select sub caste'); return; }
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
@@ -303,6 +416,9 @@ const Dashboard = () => {
                                 {tab.label}
                             </div>
                         ))}
+                        <div style={{ ...styles.tab, color: '#1565C0' }} onClick={() => setShowSupportChat(true)}>
+                            💬 Chat with Support
+                        </div>
                         <div style={{ ...styles.tab, color: '#B71C1C' }} onClick={() => { logout(); navigate('/'); }}>
                             🚪 Logout
                         </div>
@@ -315,15 +431,20 @@ const Dashboard = () => {
                     {/* OVERVIEW */}
                     {activeTab === 'overview' && (
                         <div>
-                            <h2 style={styles.pageTitle}>{t('dashboard.welcome')}, {profile?.name || user?.name}! 👋</h2>
+                            <h2 style={styles.pageTitle}>
+                                {t(isFirstVisit ? 'dashboard.welcome_first' : 'dashboard.welcome')}, {profile?.name || user?.name}! 👋
+                            </h2>
                             <div style={styles.statsGrid}>
                                 {[
-                                    { icon: '👁️', label: t('dashboard.profile_views'), value: '24', color: '#FFF8E1' },
-                                    { icon: '💌', label: t('dashboard.interests_received'), value: '8', color: '#FFF3E0' },
+                                    { icon: '👁️', label: t('dashboard.profile_views'), value: (profile?.views || 0).toString(), color: '#FFF8E1' },
+                                    { icon: '💌', label: t('dashboard.interests_received'), value: receivedInterests.length.toString(), color: '#FFF3E0' },
                                     { icon: '💍', label: t('dashboard.matches_found'), value: suggestedMatches.length.toString(), color: '#F1F8E9' },
                                     { icon: '⭐', label: t('dashboard.shortlisted'), value: shortlistedProfiles.length.toString(), color: '#FFF9E6' },
+                                    { icon: '📞', label: 'Number Viewed', value: numberViewCount.toString(), color: '#F3F0FF' },
                                 ].map(s => (
-                                    <div key={s.label} style={{ ...styles.statCard, background: s.color }}>
+                                    <div key={s.label}
+                                        style={{ ...styles.statCard, background: s.color, cursor: s.label === 'Number Viewed' ? 'pointer' : 'default' }}
+                                        onClick={() => { if (s.label === 'Number Viewed') setActiveTab('settings'); }}>
                                         <div style={styles.statIcon}>{s.icon}</div>
                                         <div style={styles.statValue}>{s.value}</div>
                                         <div style={styles.statLabel}>{s.label}</div>
@@ -366,35 +487,50 @@ const Dashboard = () => {
                             )}
 
                             <h3 style={styles.sectionTitle}>💍 Suggested Matches</h3>
-                            <div style={styles.matchesGrid}>
-                                {suggestedMatches.length === 0 ? (
-                                    <div style={{ textAlign: 'center', padding: '32px', color: '#7A5C00', background: '#FFF8E1', borderRadius: '12px', border: '1px solid #F5BE17' }}>
-                                        <div style={{ fontSize: '40px', marginBottom: '8px' }}>💍</div>
-                                        <p style={{ fontWeight: '600', marginBottom: '4px' }}>No matches yet!</p>
-                                        <p style={{ fontSize: '13px' }}>Complete your profile to get matched</p>
-                                        <button style={{ ...styles.interestBtn, marginTop: '12px' }} onClick={() => setActiveTab('profile')}>Complete Profile →</button>
-                                    </div>
-                                ) : (
-                                    suggestedMatches.map((m, i) => (
-                                        <div key={m._id || i} style={styles.matchCard}>
-                                            <div style={styles.matchPhoto}>
-                                                {m.photo ? (
-                                                    <img src={`${API}${m.photo}`} alt={m.name} style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
-                                                ) : (m.gender === 'Female' ? '👩' : '👨')}
-                                            </div>
-                                            <div style={styles.matchInfo}>
-                                                <div style={styles.matchName}>{m.name}</div>
-                                                <div style={styles.matchMeta}>{m.occupation} • {m.city}</div>
-                                                <div style={styles.matchMeta}>{m.religion} • {m.caste}</div>
-                                            </div>
-                                            <div style={styles.matchActions}>
-                                                <button style={styles.interestBtn}>💌 Interest</button>
-                                                <button style={styles.viewBtn} onClick={() => navigate(`/profile/${m._id}`)}>View</button>
-                                            </div>
+                            {user?.role === 'member' && !user?.isVerified ? (
+                                <div style={styles.verifyLockBox}>
+                                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔒</div>
+                                    <p style={{ fontWeight: '700', color: '#8B1A1A', marginBottom: '4px' }}>Account Pending Verification</p>
+                                    <p style={{ fontSize: '13px', color: '#7A5C00' }}>
+                                        Matches unlock once our team verifies your account. We'll call you within 24 hours.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div style={styles.matchesGrid}>
+                                    {suggestedMatches.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '32px', color: '#7A5C00', background: '#FFF8E1', borderRadius: '12px', border: '1px solid #F5BE17' }}>
+                                            <div style={{ fontSize: '40px', marginBottom: '8px' }}>💍</div>
+                                            <p style={{ fontWeight: '600', marginBottom: '4px' }}>No matches yet!</p>
+                                            <p style={{ fontSize: '13px' }}>Complete your profile to get matched</p>
+                                            <button style={{ ...styles.interestBtn, marginTop: '12px' }} onClick={() => setActiveTab('profile')}>Complete Profile →</button>
                                         </div>
-                                    ))
-                                )}
-                            </div>
+                                    ) : (
+                                        suggestedMatches.map((m, i) => (
+                                            <div key={m._id || i} style={styles.matchCard}>
+                                                <div style={styles.matchPhoto}>
+                                                    {m.photo ? (
+                                                        <img src={`${API}${m.photo}`} alt={m.name} style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                    ) : (m.gender === 'Female' ? '👩' : '👨')}
+                                                </div>
+                                                <div style={styles.matchInfo}>
+                                                    <div style={styles.matchName}>{m.name}</div>
+                                                    <div style={styles.matchMeta}>{m.occupation} • {m.city}</div>
+                                                    <div style={styles.matchMeta}>{m.religion} • {m.caste}</div>
+                                                </div>
+                                                <div style={styles.matchActions}>
+                                                    <button
+                                                        style={{ ...styles.interestBtn, opacity: sentInterestIds.includes(m._id) ? 0.6 : 1 }}
+                                                        onClick={() => handleSendInterest(m._id, m.name)}
+                                                        disabled={sentInterestIds.includes(m._id)}>
+                                                        {sentInterestIds.includes(m._id) ? '✅ Sent' : '💌 Interest'}
+                                                    </button>
+                                                    <button style={styles.viewBtn} onClick={() => navigate(`/profile/${m._id}`)}>View</button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -420,9 +556,7 @@ const Dashboard = () => {
                                             ]
                                         },
                                         {
-                                            title: 'Religious Details', fields: [
-                                                { name: 'religion', label: 'Religion', type: 'select', options: ['Hindu', 'Muslim', 'Christian'] },
-                                                { name: 'caste', label: 'Caste', type: 'text', placeholder: 'Enter caste' },
+                                            title: 'Astro Details', fields: [
                                                 { name: 'rasi', label: 'Rasi', type: 'select', options: ['Mesham', 'Rishabam', 'Mithunam', 'Kadagam', 'Simmam', 'Kanni', 'Thulam', 'Viruchigam', 'Dhanusu', 'Magaram', 'Kumbam', 'Meenam'] },
                                                 { name: 'nakshatra', label: 'Nakshatra', type: 'select', options: ['Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha', 'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishtha', 'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'] },
                                                 { name: 'dosham', label: 'Dosham', type: 'select', options: ['No', 'Yes', "Doesn't Matter"] },
@@ -503,6 +637,39 @@ const Dashboard = () => {
                                         </div>
                                     ))}
 
+                                    {/* Hand-coded so Caste and Sub Caste can cascade off Religion */}
+                                    <div style={styles.formSection}>
+                                        <h3 style={styles.formSectionTitle}>Religious Details</h3>
+                                        <div style={styles.formGrid}>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>Religion</label>
+                                                <select name="religion" value={form.religion}
+                                                    onChange={e => setForm({ ...form, religion: e.target.value, caste: '', subCaste: '' })}
+                                                    style={styles.input}>
+                                                    <option value="">Select</option>
+                                                    {Object.keys(CASTES).map(r => <option key={r}>{r}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>Caste / Division</label>
+                                                <select name="caste" value={form.caste}
+                                                    onChange={e => setForm({ ...form, caste: e.target.value, subCaste: '' })}
+                                                    style={styles.input} disabled={!form.religion}>
+                                                    <option value="">{form.religion ? 'Select Caste' : 'Select religion first'}</option>
+                                                    {(CASTES[form.religion] || []).map(c => <option key={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>Sub Caste</label>
+                                                <select name="subCaste" value={form.subCaste} onChange={handleChange}
+                                                    style={styles.input} disabled={!form.caste}>
+                                                    <option value="">{form.caste ? 'Select Sub Caste' : 'Select caste first'}</option>
+                                                    {getSubCastes(form.religion, form.caste).map(sc => <option key={sc}>{sc}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div style={styles.formSection}>
                                         <h3 style={styles.formSectionTitle}>About Me</h3>
                                         <textarea name="about" placeholder="Write something about yourself..."
@@ -525,6 +692,7 @@ const Dashboard = () => {
                                                     { label: 'Marital Status', value: profile.maritalStatus },
                                                     { label: 'Religion', value: profile.religion },
                                                     { label: 'Caste', value: profile.caste },
+                                                    { label: 'Sub Caste', value: profile.subCaste },
                                                     { label: 'Rasi', value: profile.rasi },
                                                     { label: 'Nakshatra', value: profile.nakshatra },
                                                     { label: 'Dosham', value: profile.dosham },
@@ -637,13 +805,89 @@ const Dashboard = () => {
                     {/* INTERESTS TAB */}
                     {activeTab === 'interests' && (
                         <div>
-                            <h2 style={styles.pageTitle}>💌 Interests</h2>
-                            <div style={styles.emptyProfile}>
-                                <div style={{ fontSize: '60px', marginBottom: '16px' }}>💌</div>
-                                <h3>No Interests Yet!</h3>
-                                <p style={{ color: '#7A5C00', marginBottom: '20px' }}>Browse profiles and send interests to connect</p>
-                                <button style={styles.saveBtn} onClick={() => navigate('/browse')}>Browse Profiles →</button>
-                            </div>
+                            <h2 style={styles.pageTitle}>💌 Interests Received ({receivedInterests.length})</h2>
+                            {receivedInterests.length === 0 ? (
+                                <div style={styles.emptyProfile}>
+                                    <div style={{ fontSize: '60px', marginBottom: '16px' }}>💌</div>
+                                    <h3>No Interests Yet!</h3>
+                                    <p style={{ color: '#7A5C00', marginBottom: '20px' }}>When someone sends you interest, it'll show up here</p>
+                                    <button style={styles.saveBtn} onClick={() => navigate('/browse')}>Browse Profiles →</button>
+                                </div>
+                            ) : (
+                                <div style={styles.matchesGrid}>
+                                    {receivedInterests.map(intr => {
+                                        const senderProfile = intr.senderProfile;
+                                        const senderName = intr.sender?.name || senderProfile?.name || 'A member';
+                                        return (
+                                            <div key={intr._id} style={styles.matchCard}>
+                                                <div style={styles.matchPhoto}>
+                                                    {senderProfile?.photo ? (
+                                                        <img src={`${API}${senderProfile.photo}`} alt={senderName}
+                                                            style={{ width: '52px', height: '52px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                    ) : (intr.sender?.gender === 'Female' ? '👩' : '👨')}
+                                                </div>
+                                                <div style={styles.matchInfo}>
+                                                    <div style={styles.matchName}>{senderName}</div>
+                                                    <div style={styles.matchMeta}>
+                                                        {new Date(intr.createdAt).toLocaleDateString('en-IN')}
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                                        <span style={{
+                                                            display: 'inline-block', fontSize: '11px', fontWeight: '700',
+                                                            padding: '2px 10px', borderRadius: '999px',
+                                                            background: intr.status === 'accepted' ? '#E8F5E9' : intr.status === 'declined' ? '#FFEBEE' : '#FFF8E1',
+                                                            color: intr.status === 'accepted' ? '#2E7D32' : intr.status === 'declined' ? '#C62828' : '#8B6914',
+                                                        }}>
+                                                            {intr.status === 'accepted' ? '✅ Accepted' : intr.status === 'declined' ? '❌ Declined' : '⏳ Pending'}
+                                                        </span>
+                                                        {intr.status !== 'pending' && editingInterestId !== intr._id && (
+                                                            <span style={styles.changeDecisionLink}
+                                                                onClick={() => setEditingInterestId(intr._id)}>
+                                                                ✎ Change decision
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div style={styles.matchActions}>
+                                                    {(intr.status === 'pending' || editingInterestId === intr._id) ? (
+                                                        <>
+                                                            {intr.status !== 'accepted' && (
+                                                                <button
+                                                                    style={{ ...styles.interestBtn, background: '#2E7D32' }}
+                                                                    disabled={respondingId === intr._id}
+                                                                    onClick={() => handleRespondInterest(intr._id, 'accepted')}>
+                                                                    {respondingId === intr._id ? '⏳' : '✓ Accept'}
+                                                                </button>
+                                                            )}
+                                                            {intr.status !== 'declined' && (
+                                                                <button
+                                                                    style={{ ...styles.viewBtn, color: '#C62828', borderColor: '#C62828' }}
+                                                                    disabled={respondingId === intr._id}
+                                                                    onClick={() => handleRespondInterest(intr._id, 'declined')}>
+                                                                    Decline
+                                                                </button>
+                                                            )}
+                                                            {editingInterestId === intr._id && (
+                                                                <button
+                                                                    style={{ ...styles.viewBtn, color: '#7A5C00', borderColor: '#E0D0B0' }}
+                                                                    onClick={() => setEditingInterestId(null)}>
+                                                                    Cancel
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        senderProfile?._id && (
+                                                            <button style={styles.viewBtn} onClick={() => navigate(`/profile/${senderProfile._id}`)}>
+                                                                View Profile
+                                                            </button>
+                                                        )
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -651,7 +895,16 @@ const Dashboard = () => {
                     {activeTab === 'matches' && (
                         <div>
                             <h2 style={styles.pageTitle}>💍 Your Matches</h2>
-                            {suggestedMatches.length === 0 ? (
+                            {user?.role === 'member' && !user?.isVerified ? (
+                                <div style={styles.verifyLockBox}>
+                                    <div style={{ fontSize: '46px', marginBottom: '12px' }}>🔒</div>
+                                    <h3 style={{ color: '#8B1A1A', marginBottom: '6px' }}>Account Pending Verification</h3>
+                                    <p style={{ fontSize: '13px', color: '#7A5C00' }}>
+                                        Our team will call you within 24 hours to verify your account.<br />
+                                        Matches unlock right after that.
+                                    </p>
+                                </div>
+                            ) : suggestedMatches.length === 0 ? (
                                 <div style={styles.emptyProfile}>
                                     <div style={{ fontSize: '60px', marginBottom: '16px' }}>💍</div>
                                     <h3>Complete your profile to see matches!</h3>
@@ -673,7 +926,12 @@ const Dashboard = () => {
                                                 <div style={styles.matchMeta}>{m.religion} • {m.caste}</div>
                                             </div>
                                             <div style={styles.matchActions}>
-                                                <button style={styles.interestBtn}>💌 Interest</button>
+                                                <button
+                                                    style={{ ...styles.interestBtn, opacity: sentInterestIds.includes(m._id) ? 0.6 : 1 }}
+                                                    onClick={() => handleSendInterest(m._id, m.name)}
+                                                    disabled={sentInterestIds.includes(m._id)}>
+                                                    {sentInterestIds.includes(m._id) ? '✅ Sent' : '💌 Interest'}
+                                                </button>
                                                 <button style={styles.viewBtn} onClick={() => navigate(`/profile/${m._id}`)}>View</button>
                                             </div>
                                         </div>
@@ -774,6 +1032,10 @@ const Dashboard = () => {
                                     <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#5F0909', marginBottom: '12px' }}>📬 Number Requests</h4>
                                     <IncomingRequests />
                                 </div>
+                                <div style={{ marginTop: '20px' }}>
+                                    <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#5F0909', marginBottom: '12px' }}>👁️ Number Viewed By ({numberViewCount})</h4>
+                                    <NumberViewsList />
+                                </div>
                             </div>
 
                             <div style={styles.formSection}>
@@ -809,11 +1071,14 @@ const Dashboard = () => {
 
             {showLogin && <LoginModal onClose={() => setShowLogin(false)} onSwitchToRegister={() => { setShowLogin(false); setShowRegister(true); }} />}
             {showRegister && <RegisterModal onClose={() => setShowRegister(false)} onSwitchToLogin={() => { setShowRegister(false); setShowLogin(true); }} />}
+            <SupportChatWidget open={showSupportChat} onClose={() => setShowSupportChat(false)} />
         </div>
     );
 };
 
 const styles = {
+    verifyLockBox: { textAlign: 'center', padding: '36px 24px', background: '#FFF3E0', border: '1px solid #F5C99B', borderRadius: '12px' },
+    changeDecisionLink: { fontSize: '11px', color: '#B8860B', cursor: 'pointer', textDecoration: 'underline', fontWeight: '600' },
     container: { maxWidth: '1200px', margin: '0 auto', padding: '32px 24px', display: 'grid', gridTemplateColumns: '280px 1fr', gap: '28px', alignItems: 'start' },
     sidebar: {},
     userCard: { background: '#fff', borderRadius: '16px', padding: '24px', textAlign: 'center', boxShadow: '0 4px 24px rgba(223,155,8,0.12)', marginBottom: '16px', border: '1px solid #F5BE17' },
@@ -833,7 +1098,7 @@ const styles = {
     tabActive: { background: '#FFF8E1', color: '#B71C1C', fontWeight: '700', borderLeft: '3px solid #B71C1C' },
     main: { background: '#fff', borderRadius: '16px', padding: '28px', boxShadow: '0 4px 24px rgba(223,155,8,0.12)', minHeight: '600px', border: '1px solid #F5E6A0' },
     pageTitle: { fontFamily: "'Playfair Display', serif", fontSize: '26px', color: '#5F0909', marginBottom: '24px' },
-    statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' },
+    statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px', marginBottom: '24px' },
     statCard: { borderRadius: '12px', padding: '20px', textAlign: 'center', border: '1px solid #F5BE17' },
     statIcon: { fontSize: '28px', marginBottom: '8px' },
     statValue: { fontFamily: "'Playfair Display', serif", fontSize: '28px', fontWeight: '700', color: '#B71C1C', marginBottom: '4px' },

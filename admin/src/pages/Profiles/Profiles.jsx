@@ -65,7 +65,13 @@ const Profiles = () => {
                                         )}
                                     </div>
                                     <div style={styles.info}>
-                                        <div style={styles.name}>{p.user?.name || p.name}</div>
+                                        <div style={styles.name}>{p.name || p.user?.name}</div>
+                                        {/* If someone registered this profile on behalf of a relative, surface that clearly */}
+                                        {p.profileFor && p.profileFor !== 'Myself' && (
+                                            <div style={styles.registeredBy}>
+                                                👤 Registered by {p.user?.name || 'account holder'} ({p.profileFor})
+                                            </div>
+                                        )}
                                         <div style={styles.meta}>📞 {p.user?.mobile}</div>
                                         <div style={styles.meta}>{p.religion} • {p.caste}</div>
                                         <div style={styles.meta}>{p.occupation} • {p.city}</div>
@@ -119,6 +125,7 @@ const styles = {
     },
     info: { padding: '16px' },
     name: { fontWeight: '700', fontSize: '15px', color: '#1A0A0A', marginBottom: '6px' },
+    registeredBy: { fontSize: '11px', color: '#8B1A1A', fontWeight: '600', marginBottom: '6px' },
     meta: { fontSize: '12px', color: '#757575', marginBottom: '3px' },
     actions: { marginTop: '12px' },
     verifyBtn: {
