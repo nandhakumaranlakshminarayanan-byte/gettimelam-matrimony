@@ -10,6 +10,10 @@ import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { CASTES, getSubCastes } from '../../utils/casteData';
+import { NAKSHATRA_NAMES, getNakshatraDropdownLabel, getLocalizedNakshatra } from '../../utils/nakshatraData';
+import { getLocalizedRasi } from '../../utils/rasiData';
+
+const LANGUAGES = ['Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Hindi', 'English', 'Urdu', 'Bengali', 'Marathi'];
 
 const API = 'http://localhost:5000';
 
@@ -134,6 +138,7 @@ const Dashboard = () => {
         name: '', dateOfBirth: '', height: '', weight: '',
         complexion: '', maritalStatus: 'Never Married',
         religion: 'Hindu', caste: '', subCaste: '',
+        motherTongue: '', knownLanguages: [],
         rasi: '', nakshatra: '', dosham: 'No',
         education: '', occupation: '', annualIncome: '',
         city: '', district: '', state: 'Tamil Nadu',
@@ -142,7 +147,7 @@ const Dashboard = () => {
         prefAgeMin: '', prefAgeMax: '', prefHeightMin: '', prefHeightMax: '',
         prefMaritalStatus: '', prefMotherTongue: '', prefEatingHabits: '',
         prefDrinkingHabits: '', prefSmokingHabits: '', prefEducation: '',
-        prefOccupation: '', prefAnnualIncome: '', prefReligion: '', prefCaste: '',
+        prefOccupation: '', prefAnnualIncome: '', prefReligion: '', prefCaste: '', prefSubCaste: '',
         prefCountry: 'India', prefState: '', prefCity: '',
     });
 
@@ -219,7 +224,17 @@ const Dashboard = () => {
             const token = localStorage.getItem('token');
             const res = await axios.get(`${API}/api/profiles/my`, { headers: { Authorization: `Bearer ${token}` } });
             setProfile(res.data.profile);
-            setForm(res.data.profile);
+            const fetched = res.data.profile;
+            // First time viewing Partner Preferences, default Religion/Caste/Sub
+            // Caste to the member's own values so the form isn't blank — but
+            // only ever as a starting point; once they've saved a preference
+            // (even an explicit "Doesn't Matter"/"Any"), never overwrite it.
+            setForm({
+                ...fetched,
+                prefReligion: fetched.prefReligion || fetched.religion || '',
+                prefCaste: fetched.prefCaste || fetched.caste || '',
+                prefSubCaste: fetched.prefSubCaste || fetched.subCaste || '',
+            });
             if (res.data.profile.photo) {
                 const photo = res.data.profile.photo;
                 setPhotoUrl(photo.startsWith('http') ? photo : `${API}${photo}`);
@@ -555,10 +570,105 @@ const Dashboard = () => {
                                                 { name: 'familyType', label: 'Family Type', type: 'select', options: ['Nuclear', 'Joint'] },
                                             ]
                                         },
+                                    ].map(section => (
+                                        <div key={section.title} style={styles.formSection}>
+                                            <h3 style={styles.formSectionTitle}>{section.title}</h3>
+                                            <div style={styles.formGrid}>
+                                                {section.fields.map(f => (
+                                                    <div key={f.name} style={styles.formGroup}>
+                                                        <label style={styles.label}>{f.label}</label>
+                                                        {f.type === 'select' ? (
+                                                            <select name={f.name} value={form[f.name]} onChange={handleChange} style={styles.input}>
+                                                                <option value="">Select</option>
+                                                                {f.options.map(o => <option key={o} value={o}>{f.getLabel ? f.getLabel(o) : o}</option>)}
+                                                            </select>
+                                                        ) : (
+                                                            <input name={f.name} type="text" placeholder={f.placeholder}
+                                                                value={form[f.name]} onChange={handleChange} style={styles.input} />
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {/* Hand-coded so Caste and Sub Caste can cascade off Religion -- moved
+                                        up next to Personal Details (was previously buried below every
+                                        Partner Preference section, which made it look missing) so members
+                                        can find and correct their own Religion/Caste/Sub Caste easily. */}
+                                    <div style={styles.formSection}>
+                                        <h3 style={styles.formSectionTitle}>Religious Details</h3>
+                                        <div style={styles.formGrid}>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>Religion</label>
+                                                <select name="religion" value={form.religion}
+                                                    onChange={e => setForm({ ...form, religion: e.target.value, caste: '', subCaste: '' })}
+                                                    style={styles.input}>
+                                                    <option value="">Select</option>
+                                                    {Object.keys(CASTES).map(r => <option key={r}>{r}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>Caste / Division</label>
+                                                <select name="caste" value={form.caste}
+                                                    onChange={e => setForm({ ...form, caste: e.target.value, subCaste: '' })}
+                                                    style={styles.input} disabled={!form.religion}>
+                                                    <option value="">{form.religion ? 'Select Caste' : 'Select religion first'}</option>
+                                                    {(CASTES[form.religion] || []).map(c => <option key={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>Sub Caste</label>
+                                                <select name="subCaste" value={form.subCaste} onChange={handleChange}
+                                                    style={styles.input} disabled={!form.caste}>
+                                                    <option value="">{form.caste ? 'Select Sub Caste' : 'Select caste first'}</option>
+                                                    {getSubCastes(form.religion, form.caste).map(sc => <option key={sc}>{sc}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Hand-coded (not the generic field renderer) because Known
+                                        Languages is a multi-select checkbox group, not a plain select. */}
+                                    <div style={styles.formSection}>
+                                        <h3 style={styles.formSectionTitle}>Language Details</h3>
+                                        <div style={styles.formGrid}>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>Mother Tongue</label>
+                                                <select name="motherTongue" value={form.motherTongue} onChange={handleChange} style={styles.input}>
+                                                    <option value="">Select</option>
+                                                    {LANGUAGES.map(l => <option key={l}>{l}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>Known Languages</label>
+                                                <div style={styles.langPillRow}>
+                                                    {LANGUAGES.map(l => {
+                                                        const active = (form.knownLanguages || []).includes(l);
+                                                        return (
+                                                            <button type="button" key={l}
+                                                                onClick={() => {
+                                                                    const current = form.knownLanguages || [];
+                                                                    setForm({
+                                                                        ...form,
+                                                                        knownLanguages: active ? current.filter(x => x !== l) : [...current, l],
+                                                                    });
+                                                                }}
+                                                                style={active ? styles.langPillActive : styles.langPill}>
+                                                                {l}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {[
                                         {
                                             title: 'Astro Details', fields: [
                                                 { name: 'rasi', label: 'Rasi', type: 'select', options: ['Mesham', 'Rishabam', 'Mithunam', 'Kadagam', 'Simmam', 'Kanni', 'Thulam', 'Viruchigam', 'Dhanusu', 'Magaram', 'Kumbam', 'Meenam'] },
-                                                { name: 'nakshatra', label: 'Nakshatra', type: 'select', options: ['Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha', 'Mula', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishtha', 'Shatabhisha', 'Purva Bhadrapada', 'Uttara Bhadrapada', 'Revati'] },
+                                                { name: 'nakshatra', label: 'Nakshatra', type: 'select', options: NAKSHATRA_NAMES, getLabel: getNakshatraDropdownLabel },
                                                 { name: 'dosham', label: 'Dosham', type: 'select', options: ['No', 'Yes', "Doesn't Matter"] },
                                             ]
                                         },
@@ -603,12 +713,6 @@ const Dashboard = () => {
                                             ]
                                         },
                                         {
-                                            title: '🕉️ Partner Preferences — Religious', fields: [
-                                                { name: 'prefReligion', label: 'Religion', type: 'select', options: ['Hindu', 'Muslim', 'Christian', "Doesn't Matter"] },
-                                                { name: 'prefCaste', label: 'Caste / Sub Caste', type: 'text', placeholder: 'e.g. Any, or specific caste' },
-                                            ]
-                                        },
-                                        {
                                             title: '📍 Partner Preferences — Location', fields: [
                                                 { name: 'prefCountry', label: 'Country', type: 'text', placeholder: 'India' },
                                                 { name: 'prefState', label: 'State', type: 'text', placeholder: 'e.g. Tamil Nadu' },
@@ -625,7 +729,7 @@ const Dashboard = () => {
                                                         {f.type === 'select' ? (
                                                             <select name={f.name} value={form[f.name]} onChange={handleChange} style={styles.input}>
                                                                 <option value="">Select</option>
-                                                                {f.options.map(o => <option key={o}>{o}</option>)}
+                                                                {f.options.map(o => <option key={o} value={o}>{f.getLabel ? f.getLabel(o) : o}</option>)}
                                                             </select>
                                                         ) : (
                                                             <input name={f.name} type="text" placeholder={f.placeholder}
@@ -637,40 +741,46 @@ const Dashboard = () => {
                                         </div>
                                     ))}
 
-                                    {/* Hand-coded so Caste and Sub Caste can cascade off Religion */}
+                                    {/* Hand-coded so Caste and Sub Caste can cascade off Religion — same
+                                        pattern as the member's own Religious Details near the top of the
+                                        form, but with "Doesn't Matter" / "Any" fallbacks since this is a
+                                        preference, not a fact about the member. */}
                                     <div style={styles.formSection}>
-                                        <h3 style={styles.formSectionTitle}>Religious Details</h3>
+                                        <h3 style={styles.formSectionTitle}>🕉️ Partner Preferences — Religious</h3>
                                         <div style={styles.formGrid}>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Religion</label>
-                                                <select name="religion" value={form.religion}
-                                                    onChange={e => setForm({ ...form, religion: e.target.value, caste: '', subCaste: '' })}
+                                                <select name="prefReligion" value={form.prefReligion}
+                                                    onChange={e => setForm({ ...form, prefReligion: e.target.value, prefCaste: '', prefSubCaste: '' })}
                                                     style={styles.input}>
                                                     <option value="">Select</option>
+                                                    <option value="Doesn't Matter">Doesn't Matter</option>
                                                     {Object.keys(CASTES).map(r => <option key={r}>{r}</option>)}
                                                 </select>
                                             </div>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Caste / Division</label>
-                                                <select name="caste" value={form.caste}
-                                                    onChange={e => setForm({ ...form, caste: e.target.value, subCaste: '' })}
-                                                    style={styles.input} disabled={!form.religion}>
-                                                    <option value="">{form.religion ? 'Select Caste' : 'Select religion first'}</option>
-                                                    {(CASTES[form.religion] || []).map(c => <option key={c}>{c}</option>)}
+                                                <select name="prefCaste" value={form.prefCaste}
+                                                    onChange={e => setForm({ ...form, prefCaste: e.target.value, prefSubCaste: '' })}
+                                                    style={styles.input} disabled={!form.prefReligion || form.prefReligion === "Doesn't Matter"}>
+                                                    <option value="">{!form.prefReligion ? 'Select religion first' : form.prefReligion === "Doesn't Matter" ? 'Any' : 'Select Caste'}</option>
+                                                    <option value="Any">Any</option>
+                                                    {(CASTES[form.prefReligion] || []).map(c => <option key={c}>{c}</option>)}
                                                 </select>
                                             </div>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Sub Caste</label>
-                                                <select name="subCaste" value={form.subCaste} onChange={handleChange}
-                                                    style={styles.input} disabled={!form.caste}>
-                                                    <option value="">{form.caste ? 'Select Sub Caste' : 'Select caste first'}</option>
-                                                    {getSubCastes(form.religion, form.caste).map(sc => <option key={sc}>{sc}</option>)}
+                                                <select name="prefSubCaste" value={form.prefSubCaste} onChange={handleChange}
+                                                    style={styles.input} disabled={!form.prefCaste || form.prefCaste === 'Any'}>
+                                                    <option value="">{!form.prefCaste ? 'Select caste first' : form.prefCaste === 'Any' ? 'Any' : 'Select Sub Caste'}</option>
+                                                    <option value="Any">Any</option>
+                                                    {getSubCastes(form.prefReligion, form.prefCaste).map(sc => <option key={sc}>{sc}</option>)}
                                                 </select>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div style={styles.formSection}>
+                                                                        <div style={styles.formSection}>
                                         <h3 style={styles.formSectionTitle}>About Me</h3>
                                         <textarea name="about" placeholder="Write something about yourself..."
                                             value={form.about} onChange={handleChange} rows={4}
@@ -690,11 +800,13 @@ const Dashboard = () => {
                                                     { label: 'Height', value: profile.height },
                                                     { label: 'Complexion', value: profile.complexion },
                                                     { label: 'Marital Status', value: profile.maritalStatus },
+                                                    { label: 'Mother Tongue', value: profile.motherTongue },
+                                                    { label: 'Known Languages', value: (profile.knownLanguages || []).join(', ') },
                                                     { label: 'Religion', value: profile.religion },
                                                     { label: 'Caste', value: profile.caste },
                                                     { label: 'Sub Caste', value: profile.subCaste },
-                                                    { label: 'Rasi', value: profile.rasi },
-                                                    { label: 'Nakshatra', value: profile.nakshatra },
+                                                    { label: 'Rasi', value: getLocalizedRasi(profile.rasi, profile.motherTongue) },
+                                                    { label: 'Nakshatra', value: getLocalizedNakshatra(profile.nakshatra, profile.motherTongue) },
                                                     { label: 'Dosham', value: profile.dosham },
                                                     { label: 'Education', value: profile.education },
                                                     { label: 'Occupation', value: profile.occupation },
@@ -738,6 +850,7 @@ const Dashboard = () => {
                                                         { label: 'Annual Income', value: profile.prefAnnualIncome },
                                                         { label: 'Religion', value: profile.prefReligion },
                                                         { label: 'Caste', value: profile.prefCaste },
+                                                        { label: 'Sub Caste', value: profile.prefSubCaste },
                                                         { label: 'Location', value: [profile.prefCity, profile.prefState, profile.prefCountry].filter(Boolean).join(', ') },
                                                     ].filter(i => i.value).map(item => (
                                                         <div key={item.label} style={styles.profileField}>
@@ -1125,6 +1238,9 @@ const styles = {
     formGroup: { marginBottom: '0' },
     label: { display: 'block', fontSize: '11px', fontWeight: '600', color: '#7A5C00', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
     input: { width: '100%', padding: '11px 14px', border: '1.5px solid #F5BE17', borderRadius: '8px', fontSize: '14px', color: '#5F0909', background: '#fff', outline: 'none', fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box' },
+    langPillRow: { display: 'flex', flexWrap: 'wrap', gap: '8px' },
+    langPill: { padding: '8px 14px', border: '1.5px solid #F5BE17', borderRadius: '20px', fontSize: '13px', fontWeight: '600', color: '#7A5C00', background: '#fff', cursor: 'pointer' },
+    langPillActive: { padding: '8px 14px', border: '1.5px solid #B71C1C', borderRadius: '20px', fontSize: '13px', fontWeight: '600', color: '#fff', background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', cursor: 'pointer' },
     saveBtn: { padding: '12px 28px', background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' },
     profileView: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' },
     profileField: { display: 'flex', flexDirection: 'column', padding: '12px 16px', borderBottom: '1px solid #FFF8E1' },

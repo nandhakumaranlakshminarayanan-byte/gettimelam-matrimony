@@ -6,6 +6,7 @@ import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { NAKSHATRAS, NAKSHATRA_NAMES, getNakshatraDropdownLabel } from '../../utils/nakshatraData';
 
 const API = 'http://localhost:5000';
 
@@ -24,14 +25,9 @@ const rasiList = [
     { name: 'Meenam', symbol: '♓', element: 'Water', lord: 'Jupiter' },
 ];
 
-const nakshatraList = [
-    'Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra',
-    'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni',
-    'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha',
-    'Anuradha', 'Jyeshtha', 'Mula', 'Purva Ashadha', 'Uttara Ashadha',
-    'Shravana', 'Dhanishtha', 'Shatabhisha', 'Purva Bhadrapada',
-    'Uttara Bhadrapada', 'Revati'
-];
+// Nakshatra list (all languages) now lives in utils/nakshatraData.js —
+// imported above as NAKSHATRAS / NAKSHATRA_NAMES so the Guide and the
+// dropdowns can never drift apart.
 
 // Compatibility matrix
 const compatibilityMatrix = {
@@ -116,8 +112,8 @@ const Horoscope = () => {
         // Nakshatra bonus
         let nakshatraBonus = 0;
         if (boy.nakshatra && girl.nakshatra) {
-            const boyIdx = nakshatraList.indexOf(boy.nakshatra);
-            const girlIdx = nakshatraList.indexOf(girl.nakshatra);
+            const boyIdx = NAKSHATRA_NAMES.indexOf(boy.nakshatra);
+            const girlIdx = NAKSHATRA_NAMES.indexOf(girl.nakshatra);
             const diff = Math.abs(boyIdx - girlIdx);
             if (diff === 0) nakshatraBonus = 10;
             else if (diff <= 3) nakshatraBonus = 7;
@@ -266,8 +262,8 @@ const Horoscope = () => {
                                         style={styles.input}
                                     >
                                         <option value="">Select Nakshatra</option>
-                                        {nakshatraList.map(n => (
-                                            <option key={n}>{n}</option>
+                                        {NAKSHATRA_NAMES.map(n => (
+                                            <option key={n} value={n}>{getNakshatraDropdownLabel(n)}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -358,8 +354,8 @@ const Horoscope = () => {
                                         style={styles.input}
                                     >
                                         <option value="">Select Nakshatra</option>
-                                        {nakshatraList.map(n => (
-                                            <option key={n}>{n}</option>
+                                        {NAKSHATRA_NAMES.map(n => (
+                                            <option key={n} value={n}>{getNakshatraDropdownLabel(n)}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -494,10 +490,20 @@ const Horoscope = () => {
                     <div>
                         <h2 style={styles.guideTitle}>🌙 Nakshatra (Star) Guide</h2>
                         <div style={styles.nakshatraGrid}>
-                            {nakshatraList.map((n, i) => (
-                                <div key={i} style={styles.nakshatraCard}>
+                            {NAKSHATRAS.map((n, i) => (
+                                <div key={n.name} style={styles.nakshatraCard}>
                                     <div style={styles.nakshatraNum}>{i + 1}</div>
-                                    <div style={styles.nakshatraName}>{n}</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={styles.nakshatraName}>{n.name}</div>
+                                        <div style={styles.nakshatraLangGrid}>
+                                            <span style={styles.nakshatraLang}><b>Sanskrit:</b> {n.sa}</span>
+                                            <span style={styles.nakshatraLang}><b>Hindi:</b> {n.hi}</span>
+                                            <span style={styles.nakshatraLang}><b>Telugu:</b> {n.te}</span>
+                                            <span style={styles.nakshatraLang}><b>Kannada:</b> {n.kn}</span>
+                                            <span style={styles.nakshatraLang}><b>Tamil:</b> {n.ta}</span>
+                                            <span style={styles.nakshatraLang}><b>Malayalam:</b> {n.ml}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -878,7 +884,7 @@ const styles = {
     },
     nakshatraGrid: {
         display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)',
+        gridTemplateColumns: 'repeat(2, 1fr)',
         gap: '12px'
     },
     nakshatraCard: {
@@ -886,7 +892,7 @@ const styles = {
         borderRadius: '10px',
         padding: '14px',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: '10px',
         boxShadow: '0 2px 12px rgba(139,26,26,0.06)'
     },
@@ -904,9 +910,20 @@ const styles = {
         flexShrink: 0
     },
     nakshatraName: {
-        fontSize: '13px',
-        fontWeight: '600',
-        color: '#2C1810'
+        fontSize: '14px',
+        fontWeight: '700',
+        color: '#2C1810',
+        marginBottom: '6px'
+    },
+    nakshatraLangGrid: {
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '4px 12px'
+    },
+    nakshatraLang: {
+        fontSize: '12px',
+        color: '#7A6055',
+        lineHeight: 1.5
     }
 };
 

@@ -59,6 +59,7 @@ const profileSchema = new mongoose.Schema({
     prefAnnualIncome: { type: String },
     prefReligion: { type: String },
     prefCaste: { type: String },
+    prefSubCaste: { type: String },
     prefCountry: { type: String },
     prefState: { type: String },
     prefCity: { type: String },

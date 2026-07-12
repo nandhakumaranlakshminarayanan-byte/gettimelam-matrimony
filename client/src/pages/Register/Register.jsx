@@ -203,7 +203,7 @@ const Register = () => {
         name: '', altMobile: '', profileFor: 'Myself', profileName: '',
         gender: '', motherTongue: 'Tamil', knownLanguages: ['Tamil'],
         religion: 'Hindu', caste: '', subCaste: '', gothra: '',
-        maritalStatus: 'Unmarried', dateOfBirth: '', email: '', password: '', confirmPassword: '',
+        maritalStatus: 'Never Married', dateOfBirth: '', email: '', password: '', confirmPassword: '',
     });
 
     const [s3, setS3] = useState({
@@ -568,7 +568,7 @@ const Register = () => {
                         </Row>
                         <FG>
                             <Label required>Marital Status</Label>
-                            <PillSelect options={['Unmarried', 'Widowed', 'Divorced', 'Awaiting divorce']}
+                            <PillSelect options={['Never Married', 'Widowed', 'Divorced', 'Separated']}
                                 value={s2.maritalStatus} onChange={v => update2('maritalStatus', v)} />
                         </FG>
                         <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
@@ -8,19 +8,21 @@ import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { CASTES } from '../../utils/casteData';
+import { CASTES, getSubCastes } from '../../utils/casteData';
 
 const API = 'http://localhost:5000';
 
 const Browse = () => {
     const { user, loading: authLoading } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const { t } = useTranslation();
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [profilesLoaded, setProfilesLoaded] = useState(false);
     const [filters, setFilters] = useState({
-        gender: '', religion: '', caste: '', district: '', maritalStatus: '', minAge: '', maxAge: ''
+        gender: '', religion: '', caste: '', subCaste: '', district: '', maritalStatus: '', minAge: '', maxAge: ''
     });
     const [allProfiles, setAllProfiles] = useState([]);
     const [displayProfiles, setDisplayProfiles] = useState([]);
@@ -28,6 +30,9 @@ const Browse = () => {
     const [hiddenIds, setHiddenIds] = useState([]);
     const [likedIds, setLikedIds] = useState([]);
     const [sentInterestIds, setSentInterestIds] = useState([]);
+    const [myProfile, setMyProfile] = useState(null);
+    const [myProfileLoaded, setMyProfileLoaded] = useState(false);
+    const [initialFilterApplied, setInitialFilterApplied] = useState(false);
 
     useEffect(() => { if (user) fetchProfiles(); else setLoading(false); }, [user]);
     // Guests get the sign-in popup instead of profiles
@@ -35,6 +40,22 @@ const Browse = () => {
     useEffect(() => { if (user) fetchShortlistedIds(); }, [user]);
     useEffect(() => { if (user) fetchLikedIds(); }, [user]);
     useEffect(() => { if (user) fetchSentInterestIds(); }, [user]);
+    useEffect(() => { if (user) fetchMyProfile(); else setMyProfileLoaded(true); }, [user]);
+
+    // Used to default Browse's filters to the member's own religion/caste/
+    // district/preferred-marital-status on first load (still fully
+    // editable — see the effect below).
+    const fetchMyProfile = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${API}/api/profiles/my`, { headers: { Authorization: `Bearer ${token}` } });
+            setMyProfile(res.data.profile);
+        } catch (err) {
+            setMyProfile(null);
+        } finally {
+            setMyProfileLoaded(true);
+        }
+    };
 
     const fetchProfiles = async () => {
         setLoading(true);
@@ -50,11 +71,11 @@ const Browse = () => {
             const res = await axios.get(`${API}/api/profiles`, { headers, params });
             const profiles = res.data.profiles || [];
             setAllProfiles(profiles);
-            setDisplayProfiles(profiles);
+            setDisplayProfiles(filterProfiles(profiles, filters));
         } catch (err) {
             setAllProfiles([]);
             setDisplayProfiles([]);
-        } finally { setLoading(false); }
+        } finally { setLoading(false); setProfilesLoaded(true); }
     };
 
     const fetchShortlistedIds = async () => {
@@ -161,20 +182,83 @@ const Browse = () => {
 
     const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
 
-    const applyFilters = () => {
-        let filtered = allProfiles;
-        if (filters.gender) filtered = filtered.filter(p => p.gender === filters.gender);
-        if (filters.religion) filtered = filtered.filter(p => p.religion === filters.religion);
-        if (filters.caste) filtered = filtered.filter(p => p.caste === filters.caste);
-        if (filters.district) filtered = filtered.filter(p => p.district === filters.district);
-        if (filters.maritalStatus) filtered = filtered.filter(p => p.maritalStatus === filters.maritalStatus);
+    // Pure filter logic shared by applyFilters (user clicks Apply/a Quick
+    // Filter/Reset) and fetchProfiles (a background re-fetch, e.g. triggered
+    // by AuthContext's tab-visibility user refresh) — so a background
+    // refetch can never silently wipe an active filter back to "show
+    // everyone".
+    const filterProfiles = (list, f) => {
+        let filtered = list;
+        if (f.gender) filtered = filtered.filter(p => p.gender === f.gender);
+        if (f.religion) filtered = filtered.filter(p => p.religion === f.religion);
+        if (f.caste) filtered = filtered.filter(p => p.caste === f.caste);
+        if (f.subCaste) filtered = filtered.filter(p => p.subCaste === f.subCaste);
+        if (f.district) filtered = filtered.filter(p => p.district === f.district);
+        if (f.maritalStatus) filtered = filtered.filter(p => p.maritalStatus === f.maritalStatus);
+        return filtered;
+    };
+
+    const applyFilters = (overrideFilters) => {
+        const f = overrideFilters || filters;
+        const filtered = filterProfiles(allProfiles, f);
         setDisplayProfiles(filtered);
         toast.success(`Found ${filtered.length} profiles!`);
     };
 
+    // Browse's filter only supports Never Married/Divorced/Widowed (no
+    // "Separated", which the member's own profile can have, and no "Doesn't
+    // Matter" from Partner Preferences) — anything else falls back to no
+    // filter (blank/Any).
+    const BROWSE_MARITAL_OPTIONS = ['Never Married', 'Divorced', 'Widowed'];
+    const mapMaritalStatusForFilter = (status) => BROWSE_MARITAL_OPTIONS.includes(status) ? status : '';
+
+    // On first load: a Navbar link (e.g. "Hindu Matrimony" -> ?religion=Hindu)
+    // wins if present — that's an explicit, fresh choice. Otherwise, default
+    // Browse to the member's own religion/caste/subcaste/district/marital
+    // status so it opens already narrowed to "people like them" — but this
+    // is only ever a starting point; changing or resetting the filters
+    // afterward works normally from here.
+    useEffect(() => {
+        if (!profilesLoaded || !myProfileLoaded || initialFilterApplied) return;
+
+        const params = new URLSearchParams(location.search);
+        const religion = params.get('religion');
+        const maritalStatus = params.get('maritalStatus');
+
+        if (religion || maritalStatus) {
+            const urlFilters = {
+                gender: '', religion: religion || '', caste: '', subCaste: '', district: '',
+                maritalStatus: maritalStatus || '', minAge: '', maxAge: '',
+            };
+            setFilters(urlFilters);
+            applyFilters(urlFilters);
+            setInitialFilterApplied(true);
+            return;
+        }
+
+        if (myProfile && (myProfile.religion || myProfile.caste || myProfile.district)) {
+            const defaults = {
+                gender: '', religion: myProfile.religion || '', caste: myProfile.caste || '',
+                subCaste: myProfile.subCaste || '', district: myProfile.district || '',
+                maritalStatus: mapMaritalStatusForFilter(myProfile.maritalStatus), minAge: '', maxAge: '',
+            };
+            setFilters(defaults);
+            applyFilters(defaults);
+        }
+        setInitialFilterApplied(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.search, profilesLoaded, myProfileLoaded, myProfile, initialFilterApplied]);
+
     const resetFilters = () => {
-        setFilters({ gender: '', religion: '', caste: '', district: '', maritalStatus: '', minAge: '', maxAge: '' });
-        setDisplayProfiles(allProfiles);
+        const defaults = myProfile && (myProfile.religion || myProfile.caste || myProfile.district)
+            ? {
+                gender: '', religion: myProfile.religion || '', caste: myProfile.caste || '',
+                subCaste: myProfile.subCaste || '', district: myProfile.district || '',
+                maritalStatus: mapMaritalStatusForFilter(myProfile.maritalStatus), minAge: '', maxAge: '',
+            }
+            : { gender: '', religion: '', caste: '', subCaste: '', district: '', maritalStatus: '', minAge: '', maxAge: '' };
+        setFilters(defaults);
+        applyFilters(defaults);
     };
 
     const getName = (p) => p.name || p.user?.name || 'Unknown';
@@ -282,7 +366,7 @@ const Browse = () => {
                         <div style={styles.filterGroup}>
                             <label style={styles.filterLabel}>{t('browse.religion')}</label>
                             <select name="religion" value={filters.religion}
-                                onChange={e => setFilters({ ...filters, religion: e.target.value, caste: '' })}
+                                onChange={e => setFilters({ ...filters, religion: e.target.value, caste: '', subCaste: '' })}
                                 style={styles.filterInput}>
                                 <option value="">{t('browse.all_religions')}</option>
                                 <option value="Hindu">Hindu</option>
@@ -304,11 +388,22 @@ const Browse = () => {
 
                         <div style={styles.filterGroup}>
                             <label style={styles.filterLabel}>{t('browse.caste')}</label>
-                            <select name="caste" value={filters.caste} onChange={handleFilterChange} style={styles.filterInput}>
+                            <select name="caste" value={filters.caste}
+                                onChange={e => setFilters({ ...filters, caste: e.target.value, subCaste: '' })}
+                                style={styles.filterInput}>
                                 <option value="">Any Caste</option>
                                 {(filters.religion ? (CASTES[filters.religion] || []) : Object.values(CASTES).flat())
                                     .filter((c, i, arr) => arr.indexOf(c) === i) // de-dupe when showing all religions
                                     .map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Sub Caste</label>
+                            <select name="subCaste" value={filters.subCaste} onChange={handleFilterChange}
+                                style={styles.filterInput} disabled={!filters.caste}>
+                                <option value="">{filters.caste ? 'Any Sub Caste' : 'Select caste first'}</option>
+                                {getSubCastes(filters.religion, filters.caste).map(sc => <option key={sc} value={sc}>{sc}</option>)}
                             </select>
                         </div>
 
@@ -330,7 +425,7 @@ const Browse = () => {
                             </div>
                         </div>
 
-                        <button style={styles.applyBtn} onClick={applyFilters}>{t('browse.apply_filters')}</button>
+                        <button style={styles.applyBtn} onClick={() => applyFilters()}>{t('browse.apply_filters')}</button>
                         <button style={styles.resetBtn} onClick={resetFilters}>{t('browse.reset')}</button>
                     </div>
 
@@ -343,7 +438,11 @@ const Browse = () => {
                             { label: 'Puducherry', filter: { district: 'Puducherry' } },
                         ].map(q => (
                             <span key={q.label} style={styles.quickTag}
-                                onClick={() => setFilters({ ...filters, ...q.filter })}>
+                                onClick={() => {
+                                    const merged = { ...filters, ...q.filter };
+                                    setFilters(merged);
+                                    applyFilters(merged);
+                                }}>
                                 {q.label}
                             </span>
                         ))}

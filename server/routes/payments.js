@@ -40,7 +40,7 @@ router.post('/create-order', protect, async (req, res) => {
         const order = await razorpay.orders.create({
             amount: plan.price * 100, // Razorpay uses paise
             currency: 'INR',
-            receipt: `plan_${plan._id}_${Date.now()}`,
+            receipt: `rcpt_${plan._id.toString().slice(-8)}_${Date.now()}`, // Razorpay caps receipt at 40 chars
             notes: { planId: plan._id.toString(), userId: req.user.id },
         });
 
@@ -53,7 +53,15 @@ router.post('/create-order', protect, async (req, res) => {
             plan: { id: plan._id, name: plan.name, price: plan.price, features: plan.features },
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        // The Razorpay SDK rejects with a plain object like
+        // { statusCode, error: { description, code } } when the Razorpay
+        // API itself refuses the request (bad key, test/live mismatch,
+        // inactive account, amount too low, etc.) — NOT a real JS Error,
+        // so error.message is undefined for those cases. Log the whole
+        // thing server-side and dig the real description out of both shapes.
+        console.error('[payments/create-order] failed:', JSON.stringify(error, null, 2));
+        const razorpayMsg = error?.error?.description;
+        res.status(500).json({ success: false, message: razorpayMsg || error.message || 'Payment gateway error — see server logs' });
     }
 });
 
@@ -112,7 +120,9 @@ router.post('/verify', protect, async (req, res) => {
 
         res.json({ success: true, message: 'Payment verified — welcome to ' + plan.name + '!', subscription });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error('[payments/verify] failed:', JSON.stringify(error, null, 2));
+        const razorpayMsg = error?.error?.description;
+        res.status(500).json({ success: false, message: razorpayMsg || error.message || 'Payment gateway error — see server logs' });
     }
 });
 

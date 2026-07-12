@@ -8,6 +8,8 @@ import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { getLocalizedNakshatra } from '../../utils/nakshatraData';
+import { getLocalizedRasi } from '../../utils/rasiData';
 
 const API = 'http://localhost:5000';
 
@@ -533,6 +535,7 @@ const ProfileDetail = () => {
                                         { label: 'Height', value: profile.height },
                                         { label: 'Weight', value: profile.weight },
                                         { label: 'Mother Tongue', value: profile.motherTongue },
+                                        { label: 'Known Languages', value: (profile.knownLanguages || []).join(', ') },
                                         { label: 'Marital Status', value: profile.maritalStatus },
                                         { label: 'Complexion', value: profile.complexion },
                                         { label: 'Family Type', value: profile.familyType },
@@ -544,8 +547,8 @@ const ProfileDetail = () => {
                                         { label: 'Religion', value: profile.religion },
                                         { label: 'Caste / Sub Caste', value: [profile.caste, profile.subCaste].filter(Boolean).join(' / ') },
                                         { label: 'Gothra', value: profile.gothra },
-                                        { label: 'Rasi', value: profile.rasi },
-                                        { label: 'Nakshatra', value: profile.nakshatra },
+                                        { label: 'Rasi', value: getLocalizedRasi(profile.rasi, profile.motherTongue) },
+                                        { label: 'Nakshatra', value: getLocalizedNakshatra(profile.nakshatra, profile.motherTongue) },
                                         { label: 'Dosham', value: profile.dosham },
                                     ]} />
                                 </div>
@@ -627,7 +630,8 @@ const ProfileDetail = () => {
                                             <SubHeading icon={<BookIcon />}>Religious Preferences</SubHeading>
                                             <DetailPairs items={[
                                                 { label: 'Religion', value: profile.prefReligion },
-                                                { label: 'Caste / Sub Caste', value: profile.prefCaste },
+                                                { label: 'Caste', value: profile.prefCaste },
+                                                { label: 'Sub Caste', value: profile.prefSubCaste },
                                             ]} />
                                         </div>
                                     </div>
