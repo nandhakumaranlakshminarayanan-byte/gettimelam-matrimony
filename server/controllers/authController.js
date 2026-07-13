@@ -77,7 +77,7 @@ const registerUser = async (req, res) => {
             const {
                 name, profileFor, profileName, gender, dateOfBirth,
                 motherTongue, knownLanguages, religion, caste, subCaste,
-                gothra, maritalStatus, zodiac, star, dosham,
+                gothra, maritalStatus, rasi, nakshatra, dosham,
                 city, district, state, country,
                 workingCity, workingDistrict, workingState, workingCountry,
                 education, employed, occupation, occupationRemark,
@@ -89,41 +89,62 @@ const registerUser = async (req, res) => {
             // Created by = account name (Nandhu) if profile is for someone else
             const createdBy = (profileFor && profileFor !== 'Myself') ? name : null;
 
-            await Profile.create({
-                user: user._id,
-                name: profilePersonName,        // ✅ Gopi
-                createdByName: createdBy,       // ✅ Nandhu
-                profileFor: profileFor || 'Myself',
-                gender,
-                dateOfBirth,
-                motherTongue,
-                knownLanguages: knownLanguages || [],
-                religion,
-                caste,
-                subCaste,
-                gothra,
-                maritalStatus: maritalStatus || 'Never Married',
-                rasi: zodiac,
-                nakshatra: star,
-                dosham: dosham || 'No',
-                height: req.body.height,
-                complexion: req.body.complexion,
-                familyType: req.body.familyType,
-                city,
-                district,
-                state: state || 'Tamil Nadu',
-                country: country || 'India',
-                workingCity,
-                workingDistrict,
-                workingState,
-                workingCountry,
-                education,
-                employed,
-                occupation,
-                occupationRemark,
-                annualIncome,
-                about: aboutMe,
-            });
+            try {
+                await Profile.create({
+                    user: user._id,
+                    name: profilePersonName,        // ✅ Gopi
+                    createdByName: createdBy,       // ✅ Nandhu
+                    profileFor: profileFor || 'Myself',
+                    gender,
+                    dateOfBirth,
+                    motherTongue,
+                    knownLanguages: knownLanguages || [],
+                    religion,
+                    caste,
+                    subCaste,
+                    gothra,
+                    maritalStatus: maritalStatus || 'Never Married',
+                    rasi,
+                    nakshatra,
+                    dosham: dosham || 'No',
+                    height: req.body.height,
+                    complexion: req.body.complexion,
+                    // familyType is enum-restricted (['Joint','Nuclear']) with no
+                    // default — an empty string from an untouched selector isn't
+                    // "unset" as far as Mongoose is concerned and fails enum
+                    // validation, so convert '' to undefined explicitly.
+                    familyType: req.body.familyType || undefined,
+                    aadharNumber: req.body.aadharNumber || null,
+                    aadharStatus: req.body.aadharNumber ? 'pending' : 'not_submitted',
+                    aadharSubmittedAt: req.body.aadharNumber ? new Date() : null,
+                    city,
+                    district,
+                    state: state || 'Tamil Nadu',
+                    country: country || 'India',
+                    workingCity,
+                    workingDistrict,
+                    workingState,
+                    workingCountry,
+                    education,
+                    employed,
+                    occupation,
+                    occupationRemark,
+                    annualIncome,
+                    about: aboutMe,
+                });
+            } catch (profileError) {
+                // Profile creation failed (e.g. a validation error) — the
+                // User record was already created above. Without this
+                // rollback, that User is orphaned: it has no profile, but
+                // its email/mobile are now taken, so every future
+                // registration attempt with those same details fails with
+                // "Account already exists" and the person is stuck forever.
+                await User.findByIdAndDelete(user._id);
+                return res.status(400).json({
+                    success: false,
+                    message: `Could not create profile: ${profileError.message}`,
+                });
+            }
         }
 
         const responseUser = {

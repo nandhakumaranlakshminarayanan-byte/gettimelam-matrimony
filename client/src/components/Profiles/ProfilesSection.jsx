@@ -330,7 +330,7 @@ const styles = {
     verifyBannerBtn: { padding: '10px 20px', background: '#F5BE17', color: '#5F0909', borderRadius: '8px', fontSize: '13px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' },
 
     // ✅ Blur overlay
-    blurOverlay: { position: 'absolute', inset: 0, backdropFilter: 'blur(2px)', background: 'rgba(255,255,255,0.75)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '16px', padding: '20px', textAlign: 'center' },
+    blurOverlay: { position: 'absolute', inset: 0, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', background: 'rgba(255,255,255,0.94)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '16px', padding: '20px', textAlign: 'center' },
     blurTitle: { fontSize: '14px', fontWeight: '700', color: '#B71C1C', marginBottom: '6px' },
     blurDesc: { fontSize: '11px', color: '#5F0909', marginBottom: '12px', lineHeight: 1.5 },
     blurBtn: { padding: '8px 16px', background: '#B71C1C', color: '#fff', borderRadius: '8px', fontSize: '12px', fontWeight: '700', textDecoration: 'none' },

@@ -8,7 +8,10 @@ import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { CASTES, getSubCastes } from '../../utils/casteData';
+import { CASTES, getSubCastes, RELIGIONS } from '../../utils/casteData';
+import { NAKSHATRA_NAMES, getNakshatraDropdownLabel } from '../../utils/nakshatraData';
+import { RASI_NAMES } from '../../utils/rasiData';
+import { STATES_AND_UTS, getDistrictsForState } from '../../utils/indiaLocationData';
 
 const API = 'http://localhost:5000';
 
@@ -22,7 +25,7 @@ const Browse = () => {
     const [loading, setLoading] = useState(true);
     const [profilesLoaded, setProfilesLoaded] = useState(false);
     const [filters, setFilters] = useState({
-        gender: '', religion: '', caste: '', subCaste: '', district: '', maritalStatus: '', minAge: '', maxAge: ''
+        gender: '', religion: '', caste: '', subCaste: '', state: '', district: '', maritalStatus: '', rasi: '', nakshatra: '', dosham: '', minAge: '', maxAge: ''
     });
     const [allProfiles, setAllProfiles] = useState([]);
     const [displayProfiles, setDisplayProfiles] = useState([]);
@@ -193,8 +196,14 @@ const Browse = () => {
         if (f.religion) filtered = filtered.filter(p => p.religion === f.religion);
         if (f.caste) filtered = filtered.filter(p => p.caste === f.caste);
         if (f.subCaste) filtered = filtered.filter(p => p.subCaste === f.subCaste);
+        if (f.state) filtered = filtered.filter(p => p.state === f.state);
         if (f.district) filtered = filtered.filter(p => p.district === f.district);
         if (f.maritalStatus) filtered = filtered.filter(p => p.maritalStatus === f.maritalStatus);
+        if (f.rasi) filtered = filtered.filter(p => p.rasi === f.rasi);
+        if (f.nakshatra) filtered = filtered.filter(p => p.nakshatra === f.nakshatra);
+        if (f.dosham) filtered = filtered.filter(p => p.dosham === f.dosham);
+        if (f.minAge) filtered = filtered.filter(p => { const age = getAge(p.dateOfBirth); return age !== null && age >= Number(f.minAge); });
+        if (f.maxAge) filtered = filtered.filter(p => { const age = getAge(p.dateOfBirth); return age !== null && age <= Number(f.maxAge); });
         return filtered;
     };
 
@@ -227,8 +236,8 @@ const Browse = () => {
 
         if (religion || maritalStatus) {
             const urlFilters = {
-                gender: '', religion: religion || '', caste: '', subCaste: '', district: '',
-                maritalStatus: maritalStatus || '', minAge: '', maxAge: '',
+                gender: '', religion: religion || '', caste: '', subCaste: '', state: '', district: '',
+                maritalStatus: maritalStatus || '', rasi: '', nakshatra: '', dosham: '', minAge: '', maxAge: '',
             };
             setFilters(urlFilters);
             applyFilters(urlFilters);
@@ -239,7 +248,8 @@ const Browse = () => {
         if (myProfile && (myProfile.religion || myProfile.caste || myProfile.district)) {
             const defaults = {
                 gender: '', religion: myProfile.religion || '', caste: myProfile.caste || '',
-                subCaste: myProfile.subCaste || '', district: myProfile.district || '',
+                subCaste: myProfile.subCaste || '', state: myProfile.state || '', district: myProfile.district || '',
+                rasi: myProfile.rasi || '', nakshatra: myProfile.nakshatra || '', dosham: myProfile.dosham || '',
                 maritalStatus: mapMaritalStatusForFilter(myProfile.maritalStatus), minAge: '', maxAge: '',
             };
             setFilters(defaults);
@@ -253,13 +263,18 @@ const Browse = () => {
         const defaults = myProfile && (myProfile.religion || myProfile.caste || myProfile.district)
             ? {
                 gender: '', religion: myProfile.religion || '', caste: myProfile.caste || '',
-                subCaste: myProfile.subCaste || '', district: myProfile.district || '',
+                subCaste: myProfile.subCaste || '', state: myProfile.state || '', district: myProfile.district || '',
+                rasi: myProfile.rasi || '', nakshatra: myProfile.nakshatra || '', dosham: myProfile.dosham || '',
                 maritalStatus: mapMaritalStatusForFilter(myProfile.maritalStatus), minAge: '', maxAge: '',
             }
-            : { gender: '', religion: '', caste: '', subCaste: '', district: '', maritalStatus: '', minAge: '', maxAge: '' };
+            : { gender: '', religion: '', caste: '', subCaste: '', state: '', district: '', maritalStatus: '', rasi: '', nakshatra: '', dosham: '', minAge: '', maxAge: '' };
         setFilters(defaults);
         applyFilters(defaults);
     };
+
+    // Same verification lock as Home's ProfilesSection — unverified members
+    // should never see full profile details, only Home enforced this before.
+    const isUnverified = user && user.role === 'member' && !user.isVerified;
 
     const getName = (p) => p.name || p.user?.name || 'Unknown';
     const getAge = (dob) => { if (!dob) return null; const age = Math.floor((new Date() - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000)); return age > 0 ? age : null; };
@@ -369,9 +384,7 @@ const Browse = () => {
                                 onChange={e => setFilters({ ...filters, religion: e.target.value, caste: '', subCaste: '' })}
                                 style={styles.filterInput}>
                                 <option value="">{t('browse.all_religions')}</option>
-                                <option value="Hindu">Hindu</option>
-                                <option value="Muslim">Muslim</option>
-                                <option value="Christian">Christian</option>
+                                {RELIGIONS.map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
                         </div>
 
@@ -408,12 +421,48 @@ const Browse = () => {
                         </div>
 
                         <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>State / UT</label>
+                            <select name="state" value={filters.state}
+                                onChange={e => setFilters({ ...filters, state: e.target.value, district: '' })}
+                                style={styles.filterInput}>
+                                <option value="">Any</option>
+                                {STATES_AND_UTS.map(s => <option key={s}>{s}</option>)}
+                            </select>
+                        </div>
+
+                        <div style={styles.filterGroup}>
                             <label style={styles.filterLabel}>{t('browse.district')}</label>
-                            <select name="district" value={filters.district} onChange={handleFilterChange} style={styles.filterInput}>
-                                <option value="">{t('browse.all')}</option>
-                                {['Chennai', 'Coimbatore', 'Madurai', 'Trichy', 'Salem', 'Erode', 'Tirunelveli', 'Vellore', 'Puducherry', 'Thoothukudi'].map(d => (
+                            <select name="district" value={filters.district} onChange={handleFilterChange}
+                                style={styles.filterInput} disabled={!filters.state}>
+                                <option value="">{filters.state ? t('browse.all') : 'Select state first'}</option>
+                                {getDistrictsForState(filters.state).map(d => (
                                     <option key={d}>{d}</option>
                                 ))}
+                            </select>
+                        </div>
+
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Zodiac (Rasi)</label>
+                            <select name="rasi" value={filters.rasi} onChange={handleFilterChange} style={styles.filterInput}>
+                                <option value="">Any</option>
+                                {RASI_NAMES.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        </div>
+
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Star (Nakshatra)</label>
+                            <select name="nakshatra" value={filters.nakshatra} onChange={handleFilterChange} style={styles.filterInput}>
+                                <option value="">Any</option>
+                                {NAKSHATRA_NAMES.map(n => <option key={n} value={n}>{getNakshatraDropdownLabel(n)}</option>)}
+                            </select>
+                        </div>
+
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Dosham</label>
+                            <select name="dosham" value={filters.dosham} onChange={handleFilterChange} style={styles.filterInput}>
+                                <option value="">Any</option>
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
                             </select>
                         </div>
 
@@ -462,6 +511,26 @@ const Browse = () => {
                         )}
                     </div>
 
+                    {/* Same banner as Home's ProfilesSection — unverified members
+                        get a clear explanation instead of just locked cards. */}
+                    {isUnverified && (
+                        <div style={styles.verifyBanner}>
+                            <div style={styles.verifyBannerLeft}>
+                                <div style={{ fontSize: '28px', marginRight: '14px' }}>🔒</div>
+                                <div>
+                                    <div style={styles.verifyBannerTitle}>Account Pending Verification</div>
+                                    <div style={styles.verifyBannerDesc}>
+                                        Our team will call you within 24 hours to verify your account.
+                                        Profile cards will be unlocked after verification.
+                                    </div>
+                                </div>
+                            </div>
+                            <a href="tel:7339682802" style={styles.verifyBannerBtn}>
+                                📞 Contact Support: 7339682802
+                            </a>
+                        </div>
+                    )}
+
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                             <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
@@ -493,7 +562,19 @@ const Browse = () => {
                                 ].filter(d => d.value);
 
                                 return (
-                                    <div key={profile._id} style={styles.wideCard}>
+                                    <div key={profile._id} style={{ ...styles.wideCard, position: 'relative', overflow: 'hidden' }}>
+                                        {isUnverified && (
+                                            <div style={styles.blurOverlay}>
+                                                <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔒</div>
+                                                <div style={styles.blurTitle}>Account Not Verified</div>
+                                                <div style={styles.blurDesc}>
+                                                    Our team will verify your account via call within 24 hours
+                                                </div>
+                                                <a href="tel:7339682802" style={styles.blurBtn}>
+                                                    📞 7339682802
+                                                </a>
+                                            </div>
+                                        )}
                                         {/* Photo — left */}
                                         <div style={styles.wPhotoBox}>
                                             {profile.photo ? (
@@ -594,6 +675,15 @@ const Browse = () => {
 
 const styles = {
     // ── Wide horizontal profile card ──
+    verifyBanner: { background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', borderRadius: '16px', padding: '20px 24px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' },
+    verifyBannerLeft: { display: 'flex', alignItems: 'center', flex: 1 },
+    verifyBannerTitle: { fontSize: '16px', fontWeight: '700', color: '#fff', marginBottom: '4px' },
+    verifyBannerDesc: { fontSize: '13px', color: 'rgba(255,255,255,0.85)', lineHeight: 1.5 },
+    verifyBannerBtn: { padding: '10px 20px', background: '#F5BE17', color: '#5F0909', borderRadius: '8px', fontSize: '13px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' },
+    blurOverlay: { position: 'absolute', inset: 0, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', background: 'rgba(255,255,255,0.94)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' },
+    blurTitle: { fontSize: '14px', fontWeight: '700', color: '#B71C1C', marginBottom: '6px' },
+    blurDesc: { fontSize: '11px', color: '#5F0909', marginBottom: '12px', lineHeight: 1.5 },
+    blurBtn: { padding: '8px 16px', background: '#B71C1C', color: '#fff', borderRadius: '8px', fontSize: '12px', fontWeight: '700', textDecoration: 'none' },
     wideCard: {
         display: 'grid',
         gridTemplateColumns: '220px 1fr 240px',

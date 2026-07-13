@@ -67,6 +67,7 @@ const ProfileDetail = () => {
     const [shortlisted, setShortlisted] = useState(false);
     const [shortlistLoading, setShortlistLoading] = useState(false);
     const [activePhoto, setActivePhoto] = useState(0); // ✅ gallery
+    const [showHoroscope, setShowHoroscope] = useState(false);
 
     useEffect(() => {
         fetchProfile();
@@ -185,6 +186,83 @@ const ProfileDetail = () => {
         } else {
             toast.error('Cannot start chat with this profile');
         }
+    };
+
+    // Draws a simple horoscope certificate onto an offscreen canvas and
+    // triggers a PNG download — no backend or extra library needed for this.
+    const getAge = (dob) => {
+        if (!dob) return null;
+        const age = Math.floor((new Date() - new Date(dob)) / (365.25 * 24 * 60 * 60 * 1000));
+        return age > 0 ? age : null;
+    };
+
+    const handleDownloadHoroscope = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 600;
+        const ctx = canvas.getContext('2d');
+
+        // Background
+        ctx.fillStyle = '#FFFDF4';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = '#F5BE17';
+        ctx.lineWidth = 6;
+        ctx.strokeRect(15, 15, canvas.width - 30, canvas.height - 30);
+
+        // Title
+        ctx.fillStyle = '#5F0909';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 30px Georgia, serif';
+        ctx.fillText('Horoscope Details', canvas.width / 2, 90);
+        ctx.font = '16px Georgia, serif';
+        ctx.fillStyle = '#B71C1C';
+        ctx.fillText('Gettimelam Matrimony', canvas.width / 2, 120);
+
+        // Divider
+        ctx.strokeStyle = '#F5BE17';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(80, 145);
+        ctx.lineTo(canvas.width - 80, 145);
+        ctx.stroke();
+
+        const age = getAge(profile.dateOfBirth);
+        const dobFormatted = profile.dateOfBirth
+            ? new Date(profile.dateOfBirth).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+            : 'Not specified';
+
+        const rows = [
+            ['Name', profile.name || 'Not specified'],
+            ['Date of Birth', dobFormatted],
+            ['Age', age ? `${age} years` : 'Not specified'],
+            ['Gender', profile.gender || 'Not specified'],
+            ['Rasi (Zodiac)', getLocalizedRasi(profile.rasi, profile.motherTongue) || 'Not specified'],
+            ['Nakshatra (Star)', getLocalizedNakshatra(profile.nakshatra, profile.motherTongue) || 'Not specified'],
+            ['Dosham', profile.dosham || 'Not specified'],
+        ];
+
+        ctx.textAlign = 'left';
+        let y = 200;
+        rows.forEach(([label, value]) => {
+            ctx.font = 'bold 17px Georgia, serif';
+            ctx.fillStyle = '#7A5C00';
+            ctx.fillText(label, 100, y);
+            ctx.font = '17px Georgia, serif';
+            ctx.fillStyle = '#2C1810';
+            ctx.fillText(String(value), 340, y);
+            y += 48;
+        });
+
+        // Footer note
+        ctx.textAlign = 'center';
+        ctx.font = 'italic 12px Georgia, serif';
+        ctx.fillStyle = '#9C8060';
+        ctx.fillText('Generated on ' + new Date().toLocaleDateString('en-IN'), canvas.width / 2, canvas.height - 40);
+
+        const link = document.createElement('a');
+        link.download = `${(profile.name || 'horoscope').replace(/\s+/g, '_')}_Horoscope.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
     };
 
     const handleShortlist = async () => {
@@ -663,6 +741,36 @@ const ProfileDetail = () => {
                                 </div>
                             )}
                         </div>
+
+                        {/* ══ Horoscope ══ */}
+                        <div style={styles.groupCard}>
+                            <h2 style={styles.groupTitle}>Horoscope</h2>
+                            <div style={styles.groupRule} />
+
+                            {!showHoroscope ? (
+                                <div style={styles.prefPlaceholder}>
+                                    <StarIcon size={26} />
+                                    <p style={{ margin: '10px 0 16px', fontSize: '13px', color: '#9C8060' }}>
+                                        Horoscope details are hidden by default.
+                                    </p>
+                                    <button style={styles.viewHoroscopeBtn} onClick={() => setShowHoroscope(true)}>
+                                        👁 View Horoscope
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <DetailPairs items={[
+                                        { label: 'Date of Birth', value: profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null },
+                                        { label: 'Rasi (Zodiac)', value: getLocalizedRasi(profile.rasi, profile.motherTongue) },
+                                        { label: 'Nakshatra (Star)', value: getLocalizedNakshatra(profile.nakshatra, profile.motherTongue) },
+                                        { label: 'Dosham', value: profile.dosham },
+                                    ]} />
+                                    <button style={{ ...styles.viewHoroscopeBtn, marginTop: '16px' }} onClick={handleDownloadHoroscope}>
+                                        ⬇ Download Horoscope
+                                    </button>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -688,6 +796,7 @@ const styles = {
     subSection: { marginBottom: '22px' },
     pairRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px', marginBottom: '4px' },
     prefPlaceholder: { textAlign: 'center', padding: '30px 20px' },
+    viewHoroscopeBtn: { padding: '11px 26px', background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer' },
 
     container: { maxWidth: '1100px', margin: '0 auto', padding: '32px 24px' },
     backBtn: { padding: '8px 16px', background: 'transparent', border: '1.5px solid #8B1A1A', color: '#8B1A1A', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '24px' },

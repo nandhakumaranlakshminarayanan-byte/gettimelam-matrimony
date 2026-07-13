@@ -5,7 +5,7 @@ const path = require('path');
 const Profile = require('../models/Profile');
 const {
     createProfile, getProfiles, getProfileById,
-    updateProfile, getMyProfile, getSuggestedMatches
+    updateProfile, getMyProfile, getSuggestedMatches, submitAadhar,
 } = require('../controllers/profileController');
 const { protect, optionalProtect } = require('../middleware/authMiddleware');
 
@@ -28,11 +28,31 @@ const upload = multer({
     }
 });
 
+// Aadhar/Horoscope documents are commonly PDF scans, not just photos —
+// separate multer instance so the profile-photo uploader stays image-only.
+const docStorage = multer.diskStorage({
+    destination: function (req, file, cb) { cb(null, 'uploads/'); },
+    filename: function (req, file, cb) {
+        cb(null, `doc_${Date.now()}${path.extname(file.originalname)}`);
+    }
+});
+const uploadDoc = multer({
+    storage: docStorage,
+    limits: { fileSize: 8 * 1024 * 1024 },
+    fileFilter: function (req, file, cb) {
+        const types = /jpeg|jpg|png|webp|pdf/;
+        const valid = types.test(path.extname(file.originalname).toLowerCase());
+        if (valid) cb(null, true);
+        else cb(new Error('Only image or PDF files allowed!'));
+    }
+});
+
 // ── Profile routes ──
 router.get('/', protect, getProfiles);
 router.post('/', protect, createProfile);
 router.get('/my', protect, getMyProfile);
 router.get('/suggested', protect, getSuggestedMatches);
+router.put('/aadhar', protect, submitAadhar);
 
 // ✅ Upload routes BEFORE /:id
 router.post('/upload-photo', protect, upload.single('photo'), async (req, res) => {
@@ -89,6 +109,56 @@ router.post('/upload-photos', protect, upload.array('photos', 15), async (req, r
             photos: updatedProfile.photos,
             fullUrls: photoUrls.map(url => `http://localhost:5000${url}`)
         });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ✅ Upload Aadhar card document/photo (up to 2 — front & back)
+router.post('/upload-aadhar-docs', protect, uploadDoc.array('documents', 2), async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ success: false, message: 'No files uploaded' });
+        }
+        const docUrls = req.files.map(f => `/uploads/${f.filename}`);
+        const profile = await Profile.findOne({ user: req.user.id });
+        if (!profile) return res.status(404).json({ success: false, message: 'Create your profile first!' });
+
+        const existing = profile.aadharDocuments || [];
+        if (existing.length + docUrls.length > 2) {
+            return res.status(400).json({ success: false, message: `Max 2 Aadhar documents. You have ${existing.length}.` });
+        }
+        const updated = await Profile.findOneAndUpdate(
+            { user: req.user.id },
+            { $push: { aadharDocuments: { $each: docUrls } } },
+            { new: true }
+        );
+        res.json({ success: true, message: 'Aadhar document(s) uploaded! ✅', aadharDocuments: updated.aadharDocuments });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ✅ Upload Horoscope document/image (up to 2)
+router.post('/upload-horoscope-docs', protect, uploadDoc.array('documents', 2), async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ success: false, message: 'No files uploaded' });
+        }
+        const docUrls = req.files.map(f => `/uploads/${f.filename}`);
+        const profile = await Profile.findOne({ user: req.user.id });
+        if (!profile) return res.status(404).json({ success: false, message: 'Create your profile first!' });
+
+        const existing = profile.horoscopeDocuments || [];
+        if (existing.length + docUrls.length > 2) {
+            return res.status(400).json({ success: false, message: `Max 2 horoscope documents. You have ${existing.length}.` });
+        }
+        const updated = await Profile.findOneAndUpdate(
+            { user: req.user.id },
+            { $push: { horoscopeDocuments: { $each: docUrls } } },
+            { new: true }
+        );
+        res.json({ success: true, message: 'Horoscope document(s) uploaded! ✅', horoscopeDocuments: updated.horoscopeDocuments });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

@@ -10,14 +10,20 @@ const GOLD = '#F5BE17';
 const BG = '#FFF8E1';
 
 import { RELIGIONS, CASTES, getSubCastes } from '../../utils/casteData';
+import { STATES_AND_UTS, getDistrictsForState } from '../../utils/indiaLocationData';
+import { RASI_NAMES } from '../../utils/rasiData';
+import { NAKSHATRA_NAMES, getNakshatraDropdownLabel } from '../../utils/nakshatraData';
 
-const ZODIACS = ['Aries/Mesha', 'Taurus/Rishabha', 'Gemini/Mithuna', 'Cancer/Kataka', 'Leo/Simha', 'Virgo/Kanya', 'Libra/Thula', 'Scorpio/Vrischika', 'Sagittarius/Dhanus', 'Capricorn/Makara', 'Aquarius/Kumbha', 'Pisces/Meena'];
+// STATES previously lived here as a short 11-item list (missing 25 states/
+// UTs) — now imported above as the full 36 states/UTs, each cascading to
+// its real district list instead of everyone sharing Tamil Nadu's.
 
-const STARS = ['Ashwini', 'Bharani', 'Krittika', 'Rohini', 'Mrigashira', 'Ardra', 'Punarvasu', 'Pushya', 'Ashlesha', 'Magha', 'Purva Phalguni', 'Uttara Phalguni', 'Hasta', 'Chitra', 'Swati', 'Vishakha', 'Anuradha', 'Jyeshtha', 'Moola', 'Purva Ashadha', 'Uttara Ashadha', 'Shravana', 'Dhanishta', 'Shatabhisha', 'Purva Bhadra', 'Uttara Bhadra', 'Revati', 'Avittam 1st part', 'Avittam 2nd part', 'Avittam 3rd part', 'Avittam 4th part'];
-
-const STATES = ['Andhra Pradesh', 'Tamil Nadu', 'Karnataka', 'Kerala', 'Telangana', 'Maharashtra', 'Delhi', 'Gujarat', 'Rajasthan', 'Puducherry', 'Other'];
-
-const TN_DISTRICTS = ['Chennai', 'Coimbatore', 'Madurai', 'Trichy', 'Salem', 'Erode', 'Tirunelveli', 'Vellore', 'Puducherry', 'Thoothukudi', 'Thanjavur', 'Dindigul', 'Kanchipuram', 'Tiruppur', 'Namakkal', 'Cuddalore', 'Villupuram', 'Other'];
+// ZODIACS/STARS/TN_DISTRICTS previously lived here as local arrays using a
+// different vocabulary than the rest of the app (e.g. "Pisces/Meena" and
+// "Moola"/"Avittam 1st part" instead of the canonical "Meenam" and
+// "Mula"/"Dhanishtha" used by the horoscope calculator, Dashboard, and
+// Browse) — now imported above from the shared data files everyone else
+// already uses, so registration can't drift out of sync again.
 
 const EDUCATION = ['10th', '12th', 'Diploma', 'Advance Diploma', 'B.A', 'B.Sc', 'B.Com', 'B.E/B.Tech', 'BCA', 'BBA', 'M.A', 'M.Sc', 'M.Com', 'M.E/M.Tech', 'MCA', 'MBA', 'Ph.D', 'Other'];
 
@@ -200,18 +206,18 @@ const Register = () => {
     const [sendingOtp, setSendingOtp] = useState(false);
 
     const [s2, setS2] = useState({
-        name: '', altMobile: '', profileFor: 'Myself', profileName: '',
-        gender: '', motherTongue: 'Tamil', knownLanguages: ['Tamil'],
-        religion: 'Hindu', caste: '', subCaste: '', gothra: '',
+        name: '', altMobile: '', aadharNumber: '', profileFor: 'Myself', profileName: '',
+        gender: '', motherTongue: 'Tamil', motherTongueOther: '', knownLanguages: ['Tamil'], knownLanguagesOther: '',
+        religion: 'Hindu', religionOther: '', caste: '', casteOther: '', subCaste: '', subCasteOther: '', gothra: '',
         maritalStatus: 'Never Married', dateOfBirth: '', email: '', password: '', confirmPassword: '',
     });
 
     const [s3, setS3] = useState({
         zodiac: '', star: '', dosham: 'No',
         height: '', complexion: '', familyType: '',
-        country: 'India', state: 'Tamil Nadu', district: '', city: '',
-        workingCountry: 'India', workingState: 'Tamil Nadu', workingDistrict: '', workingCity: '',
-        education: '', employed: '', occupation: '', occupationRemark: '', annualIncome: '',
+        country: 'India', countryOther: '', state: 'Tamil Nadu', stateOther: '', district: '', districtOther: '', city: '',
+        workingCountry: 'India', workingCountryOther: '', workingState: 'Tamil Nadu', workingDistrict: '', workingCity: '',
+        education: '', educationOther: '', employed: '', employedOther: '', occupation: '', occupationOther: '', occupationRemark: '', annualIncome: '',
         aboutMe: '',
     });
 
@@ -304,23 +310,30 @@ const Register = () => {
 
     const validateStep2 = () => {
         if (!s2.name) { toast.error('Enter your name'); return false; }
+        if (s2.aadharNumber && s2.aadharNumber.length !== 12) { toast.error('Aadhar number must be exactly 12 digits (or leave it blank)'); return false; }
         if (!s2.gender) { toast.error('Select gender'); return false; }
-        if (!s2.profileName) { toast.error('Enter ' + getProfileForLabel(s2.profileFor)); return false; }
+        if (s2.profileFor !== 'Myself' && !s2.profileName) { toast.error('Enter ' + getProfileForLabel(s2.profileFor)); return false; }
         if (!s2.dateOfBirth) { toast.error('Select date of birth'); return false; }
         if (!s2.email) { toast.error('Enter email address'); return false; }
         if (!s2.password || s2.password.length < 6) { toast.error('Password must be at least 6 characters'); return false; }
         if (s2.password !== s2.confirmPassword) { toast.error('Passwords do not match'); return false; }
         if (!s2.religion) { toast.error('Select religion'); return false; }
+        if (s2.religion === 'Other' && !s2.religionOther.trim()) { toast.error('Please specify your religion'); return false; }
         if (!s2.caste) { toast.error('Select caste / division'); return false; }
+        if (s2.caste === 'Other' && !s2.casteOther.trim()) { toast.error('Please specify your caste'); return false; }
         if (!s2.subCaste) { toast.error('Select sub caste'); return false; }
+        if (s2.subCaste === 'Other' && !s2.subCasteOther.trim()) { toast.error('Please specify your sub caste'); return false; }
         if (!s2.maritalStatus) { toast.error('Select marital status'); return false; }
         return true;
     };
 
     const validateStep3 = () => {
         if (!s3.district) { toast.error('Select your district'); return false; }
+        if (s3.district === 'Other' && !s3.districtOther.trim()) { toast.error('Please specify your district'); return false; }
         if (!s3.city) { toast.error('Enter your city'); return false; }
         if (!s3.education) { toast.error('Select education'); return false; }
+        if (s3.education === 'Other' && !s3.educationOther.trim()) { toast.error('Please specify your education'); return false; }
+        if (s3.state === 'Other' && !s3.stateOther.trim()) { toast.error('Please specify your state'); return false; }
         if (!profilePhotos[0]) { toast.error('Add at least 1 profile photo'); return false; }
         return true;
     };
@@ -328,26 +341,82 @@ const Register = () => {
     const handleSubmit = async () => {
         setLoading(true);
         try {
+            // Where the member picked "Other" and typed a value, submit the
+            // typed text as the real field value (not the literal word
+            // "Other") — and note which fields were custom-entered so admin
+            // can spot them later (Profile.customFields).
+            const resolvedReligion = s2.religion === 'Other' ? s2.religionOther.trim() : s2.religion;
+            const resolvedCaste = s2.caste === 'Other' ? s2.casteOther.trim() : s2.caste;
+            const resolvedSubCaste = s2.subCaste === 'Other' ? s2.subCasteOther.trim() : s2.subCaste;
+            const resolvedState = s3.state === 'Other' ? s3.stateOther.trim() : s3.state;
+            const resolvedDistrict = s3.district === 'Other' ? s3.districtOther.trim() : s3.district;
+            const resolvedEducation = s3.education === 'Other' ? s3.educationOther.trim() : s3.education;
+            const resolvedCountry = s3.country === 'Other' ? s3.countryOther.trim() : s3.country;
+            const resolvedWorkingCountry = s3.workingCountry === 'Other' ? s3.workingCountryOther.trim() : s3.workingCountry;
+            const resolvedEmployed = s3.employed === 'Other' ? s3.employedOther.trim() : s3.employed;
+            const resolvedOccupation = s3.occupation === 'Other' ? s3.occupationOther.trim() : s3.occupation;
+            const resolvedMotherTongue = s2.motherTongue === 'Other' ? s2.motherTongueOther.trim() : s2.motherTongue;
+            // Known Languages is a multi-select — replace the literal
+            // "Other" entry with whatever they typed (comma-separated for
+            // more than one), keep every other pill they picked as-is.
+            const resolvedKnownLanguages = s2.knownLanguages.includes('Other')
+                ? [
+                    ...s2.knownLanguages.filter(l => l !== 'Other'),
+                    ...s2.knownLanguagesOther.split(',').map(l => l.trim()).filter(Boolean),
+                ]
+                : s2.knownLanguages;
+            const customFields = [
+                s2.religion === 'Other' && 'religion',
+                s2.caste === 'Other' && 'caste',
+                s2.subCaste === 'Other' && 'subCaste',
+                s3.state === 'Other' && 'state',
+                s3.district === 'Other' && 'district',
+                s3.education === 'Other' && 'education',
+                s3.country === 'Other' && 'country',
+                s3.workingCountry === 'Other' && 'workingCountry',
+                s3.employed === 'Other' && 'employed',
+                s3.occupation === 'Other' && 'occupation',
+            ].filter(Boolean);
+
             const payload = {
                 role: 'member', mobile,
-                name: s2.name, altMobile: s2.altMobile,
-                profileFor: s2.profileFor, profileName: s2.profileName,
+                name: s2.name, altMobile: s2.altMobile, aadharNumber: s2.aadharNumber || undefined,
+                profileFor: s2.profileFor, profileName: s2.profileFor === 'Myself' ? s2.name : s2.profileName,
                 gender: s2.gender, dateOfBirth: s2.dateOfBirth,
                 email: s2.email, password: s2.password,
-                motherTongue: s2.motherTongue, knownLanguages: s2.knownLanguages,
-                religion: s2.religion, caste: s2.caste,
-                subCaste: s2.subCaste, gothra: s2.gothra,
+                motherTongue: resolvedMotherTongue, knownLanguages: resolvedKnownLanguages,
+                religion: resolvedReligion, caste: resolvedCaste,
+                subCaste: resolvedSubCaste, gothra: s2.gothra,
                 maritalStatus: s2.maritalStatus,
-                zodiac: s3.zodiac, star: s3.star, dosham: s3.dosham,
+                rasi: s3.zodiac, nakshatra: s3.star, dosham: s3.dosham,
                 height: s3.height, complexion: s3.complexion, familyType: s3.familyType,
-                country: s3.country, state: s3.state, district: s3.district, city: s3.city,
-                workingCountry: s3.workingCountry, workingState: s3.workingState,
+                country: resolvedCountry, state: resolvedState, district: resolvedDistrict, city: s3.city,
+                workingCountry: resolvedWorkingCountry, workingState: s3.workingState,
                 workingDistrict: s3.workingDistrict, workingCity: s3.workingCity,
-                education: s3.education, employed: s3.employed,
-                occupation: s3.occupation, occupationRemark: s3.occupationRemark,
+                education: resolvedEducation, employed: resolvedEmployed,
+                occupation: resolvedOccupation, occupationRemark: s3.occupationRemark,
                 annualIncome: s3.annualIncome, aboutMe: s3.aboutMe,
+                customFields,
             };
             await register(payload);
+
+            // Let admin know about any "Other" values entered, so they can
+            // review and add real options for them (Profile Options page →
+            // Pending Suggestions). Only for the 6 categories that system
+            // covers (Religion/Caste/Sub Caste/State/District/Job) —
+            // Education/Employed/Country aren't part of that system, so
+            // they're just saved as free text with no admin notification.
+            const suggestions = [
+                s2.religion === 'Other' && { category: 'religion', value: resolvedReligion, parent: null },
+                s2.caste === 'Other' && { category: 'caste', value: resolvedCaste, parent: resolvedReligion },
+                s2.subCaste === 'Other' && { category: 'subcaste', value: resolvedSubCaste, parent: `${resolvedReligion}|${resolvedCaste}` },
+                s3.state === 'Other' && { category: 'state', value: resolvedState, parent: null },
+                s3.district === 'Other' && { category: 'district', value: resolvedDistrict, parent: resolvedState },
+                s3.occupation === 'Other' && { category: 'job', value: resolvedOccupation, parent: null },
+            ].filter(Boolean);
+            for (const s of suggestions) {
+                API.post('/options/suggest', { ...s, suggestedByName: s2.name }).catch(() => { });
+            }
 
             // Upload the profile photos selected in step 3.
             // register() stores the auth token, so these calls are authorized.
@@ -371,6 +440,38 @@ const Register = () => {
                 } catch (photoErr) {
                     const msg = photoErr.response?.data?.message || photoErr.message;
                     toast.error(`Account created, but photo upload failed: ${msg}. Add photos from your Dashboard.`, { duration: 6000 });
+                }
+            }
+
+            // Upload Aadhar card document(s), if provided — these were
+            // previously captured in local state but never actually sent
+            // anywhere ("silently discarded" per handoff notes).
+            const selectedAadharDocs = idProofs.filter(Boolean);
+            if (selectedAadharDocs.length > 0) {
+                try {
+                    const aadharData = new FormData();
+                    selectedAadharDocs.forEach(f => aadharData.append('documents', f));
+                    await API.post('/profiles/upload-aadhar-docs', aadharData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                } catch (docErr) {
+                    const msg = docErr.response?.data?.message || docErr.message;
+                    toast.error(`Account created, but Aadhar document upload failed: ${msg}. Add it from your Dashboard.`, { duration: 6000 });
+                }
+            }
+
+            // Upload Horoscope document(s), if provided
+            const selectedHoroscopeDocs = horoscopeImages.filter(Boolean);
+            if (selectedHoroscopeDocs.length > 0) {
+                try {
+                    const horoscopeData = new FormData();
+                    selectedHoroscopeDocs.forEach(f => horoscopeData.append('documents', f));
+                    await API.post('/profiles/upload-horoscope-docs', horoscopeData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                } catch (docErr) {
+                    const msg = docErr.response?.data?.message || docErr.message;
+                    toast.error(`Account created, but Horoscope document upload failed: ${msg}. Add it from your Dashboard.`, { duration: 6000 });
                 }
             }
 
@@ -476,16 +577,24 @@ const Register = () => {
                             </div>
                         </FG>
                         <FG>
+                            <Label>Aadhar Number <span style={{ fontWeight: '400', color: '#999', fontSize: '12px' }}>(optional — you can also add this after registering)</span></Label>
+                            <input type="text" maxLength={12} placeholder="12-digit Aadhar number" autoComplete="off"
+                                value={s2.aadharNumber} onChange={e => update2('aadharNumber', e.target.value.replace(/\D/g, ''))}
+                                style={inp} />
+                        </FG>
+                        <FG>
                             <Label required>Profile Created For</Label>
                             <select style={inp} value={s2.profileFor} onChange={e => update2('profileFor', e.target.value)}>
                                 {PROFILE_FOR_OPTIONS.map(o => <option key={o}>{o}</option>)}
                             </select>
                         </FG>
-                        <FG>
-                            <Label required>{getProfileForLabel(s2.profileFor)}</Label>
-                            <input style={inp} placeholder={'Enter ' + getProfileForLabel(s2.profileFor)}
-                                value={s2.profileName} onChange={e => update2('profileName', e.target.value)} />
-                        </FG>
+                        {s2.profileFor !== 'Myself' && (
+                            <FG>
+                                <Label required>{getProfileForLabel(s2.profileFor)}</Label>
+                                <input style={inp} placeholder={'Enter ' + getProfileForLabel(s2.profileFor)}
+                                    value={s2.profileName} onChange={e => update2('profileName', e.target.value)} />
+                            </FG>
+                        )}
                         <FG>
                             <Label required>Gender</Label>
                             <div style={{ display: 'flex', gap: '12px', marginTop: '6px' }}>
@@ -506,14 +615,22 @@ const Register = () => {
                             </FG>
                             <FG half>
                                 <Label>Mother Tongue</Label>
-                                <select style={inp} value={s2.motherTongue} onChange={e => update2('motherTongue', e.target.value)}>
-                                    {LANGUAGES.map(l => <option key={l}>{l}</option>)}
+                                <select style={inp} value={s2.motherTongue} onChange={e => { update2('motherTongue', e.target.value); update2('motherTongueOther', ''); }}>
+                                    {[...LANGUAGES, 'Other'].map(l => <option key={l}>{l}</option>)}
                                 </select>
+                                {s2.motherTongue === 'Other' && (
+                                    <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify your mother tongue"
+                                        value={s2.motherTongueOther} onChange={e => update2('motherTongueOther', e.target.value)} />
+                                )}
                             </FG>
                         </Row>
                         <FG>
                             <Label>Known Languages</Label>
-                            <MultiPill options={LANGUAGES} values={s2.knownLanguages} onChange={v => update2('knownLanguages', v)} />
+                            <MultiPill options={[...LANGUAGES, 'Other']} values={s2.knownLanguages} onChange={v => update2('knownLanguages', v)} />
+                            {s2.knownLanguages.includes('Other') && (
+                                <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify — separate multiple with commas"
+                                    value={s2.knownLanguagesOther} onChange={e => update2('knownLanguagesOther', e.target.value)} />
+                            )}
                         </FG>
                         <FG>
                             <Label required>Email Address</Label>
@@ -541,25 +658,37 @@ const Register = () => {
                         <Row>
                             <FG half>
                                 <Label required>Religion</Label>
-                                <select style={inp} value={s2.religion} onChange={e => { update2('religion', e.target.value); update2('caste', ''); }}>
+                                <select style={inp} value={s2.religion} onChange={e => { update2('religion', e.target.value); update2('caste', ''); update2('religionOther', ''); }}>
                                     {RELIGIONS.map(r => <option key={r}>{r}</option>)}
                                 </select>
+                                {s2.religion === 'Other' && (
+                                    <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify your religion"
+                                        value={s2.religionOther} onChange={e => update2('religionOther', e.target.value)} />
+                                )}
                             </FG>
                             <FG half>
                                 <Label required>Caste / Division</Label>
-                                <select style={inp} value={s2.caste} onChange={e => { update2('caste', e.target.value); update2('subCaste', ''); }}>
+                                <select style={inp} value={s2.caste} onChange={e => { update2('caste', e.target.value); update2('casteOther', ''); update2('subCaste', ''); update2('subCasteOther', ''); }}>
                                     <option value="">Select Caste</option>
                                     {(CASTES[s2.religion] || []).map(c => <option key={c}>{c}</option>)}
                                 </select>
+                                {s2.caste === 'Other' && (
+                                    <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify your caste"
+                                        value={s2.casteOther} onChange={e => update2('casteOther', e.target.value)} />
+                                )}
                             </FG>
                         </Row>
                         <Row>
                             <FG half>
                                 <Label required>Sub Caste</Label>
-                                <select style={inp} value={s2.subCaste} onChange={e => update2('subCaste', e.target.value)} disabled={!s2.caste}>
+                                <select style={inp} value={s2.subCaste} onChange={e => { update2('subCaste', e.target.value); update2('subCasteOther', ''); }} disabled={!s2.caste}>
                                     <option value="">{s2.caste ? 'Select Sub Caste' : 'Select Caste first'}</option>
                                     {getSubCastes(s2.religion, s2.caste).map(sc => <option key={sc}>{sc}</option>)}
                                 </select>
+                                {s2.subCaste === 'Other' && (
+                                    <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify your sub caste"
+                                        value={s2.subCasteOther} onChange={e => update2('subCasteOther', e.target.value)} />
+                                )}
                             </FG>
                             <FG half>
                                 <Label>Gothra</Label>
@@ -608,14 +737,14 @@ const Register = () => {
                                 <Label>Zodiac (Rasi)</Label>
                                 <select style={inp} value={s3.zodiac} onChange={e => update3('zodiac', e.target.value)}>
                                     <option value="">Select Zodiac</option>
-                                    {ZODIACS.map(z => <option key={z}>{z}</option>)}
+                                    {RASI_NAMES.map(z => <option key={z}>{z}</option>)}
                                 </select>
                             </FG>
                             <FG half>
                                 <Label>Star (Nakshatra)</Label>
                                 <select style={inp} value={s3.star} onChange={e => update3('star', e.target.value)}>
                                     <option value="">Select Star</option>
-                                    {STARS.map(s => <option key={s}>{s}</option>)}
+                                    {NAKSHATRA_NAMES.map(s => <option key={s} value={s}>{getNakshatraDropdownLabel(s)}</option>)}
                                 </select>
                             </FG>
                         </Row>
@@ -634,24 +763,39 @@ const Register = () => {
                         <Row>
                             <FG half>
                                 <Label>Country</Label>
-                                <select style={inp} value={s3.country} onChange={e => update3('country', e.target.value)}>
+                                <select style={inp} value={s3.country} onChange={e => { update3('country', e.target.value); update3('countryOther', ''); }}>
                                     <option>India</option><option>Other</option>
                                 </select>
+                                {s3.country === 'Other' && (
+                                    <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify your country"
+                                        value={s3.countryOther} onChange={e => update3('countryOther', e.target.value)} />
+                                )}
                             </FG>
                             <FG half>
                                 <Label>State</Label>
-                                <select style={inp} value={s3.state} onChange={e => update3('state', e.target.value)}>
-                                    {STATES.map(s => <option key={s}>{s}</option>)}
+                                <select style={inp} value={s3.state}
+                                    onChange={e => { update3('state', e.target.value); update3('stateOther', ''); update3('district', ''); update3('districtOther', ''); }}>
+                                    <option value="">Select State</option>
+                                    {[...STATES_AND_UTS, 'Other'].map(s => <option key={s}>{s}</option>)}
                                 </select>
+                                {s3.state === 'Other' && (
+                                    <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify your state"
+                                        value={s3.stateOther} onChange={e => update3('stateOther', e.target.value)} />
+                                )}
                             </FG>
                         </Row>
                         <Row>
                             <FG half>
                                 <Label required>District</Label>
-                                <select style={inp} value={s3.district} onChange={e => update3('district', e.target.value)}>
-                                    <option value="">Select District</option>
-                                    {TN_DISTRICTS.map(d => <option key={d}>{d}</option>)}
+                                <select style={inp} value={s3.district} onChange={e => { update3('district', e.target.value); update3('districtOther', ''); }}
+                                    disabled={!s3.state}>
+                                    <option value="">{s3.state ? 'Select District' : 'Select state first'}</option>
+                                    {[...getDistrictsForState(s3.state), 'Other'].map(d => <option key={d}>{d}</option>)}
                                 </select>
+                                {s3.district === 'Other' && (
+                                    <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify your district"
+                                        value={s3.districtOther} onChange={e => update3('districtOther', e.target.value)} />
+                                )}
                             </FG>
                             <FG half>
                                 <Label required>City</Label>
@@ -661,25 +805,37 @@ const Register = () => {
                         <SectionTitle>💼 Education & Career</SectionTitle>
                         <FG>
                             <Label required>Education</Label>
-                            <select style={inp} value={s3.education} onChange={e => update3('education', e.target.value)}>
+                            <select style={inp} value={s3.education} onChange={e => { update3('education', e.target.value); update3('educationOther', ''); }}>
                                 <option value="">Select Education</option>
                                 {EDUCATION.map(e => <option key={e}>{e}</option>)}
                             </select>
+                            {s3.education === 'Other' && (
+                                <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify your education"
+                                    value={s3.educationOther} onChange={e => update3('educationOther', e.target.value)} />
+                            )}
                         </FG>
                         <Row>
                             <FG half>
                                 <Label>Employed</Label>
-                                <select style={inp} value={s3.employed} onChange={e => update3('employed', e.target.value)}>
+                                <select style={inp} value={s3.employed} onChange={e => { update3('employed', e.target.value); update3('employedOther', ''); }}>
                                     <option value="">Select</option>
                                     {EMPLOYMENT.map(e => <option key={e}>{e}</option>)}
                                 </select>
+                                {s3.employed === 'Other' && (
+                                    <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify"
+                                        value={s3.employedOther} onChange={e => update3('employedOther', e.target.value)} />
+                                )}
                             </FG>
                             <FG half>
                                 <Label>Occupation</Label>
-                                <select style={inp} value={s3.occupation} onChange={e => update3('occupation', e.target.value)}>
+                                <select style={inp} value={s3.occupation} onChange={e => { update3('occupation', e.target.value); update3('occupationOther', ''); }}>
                                     <option value="">Select</option>
                                     {OCCUPATIONS.map(o => <option key={o}>{o}</option>)}
                                 </select>
+                                {s3.occupation === 'Other' && (
+                                    <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify your occupation"
+                                        value={s3.occupationOther} onChange={e => update3('occupationOther', e.target.value)} />
+                                )}
                             </FG>
                         </Row>
                         <FG>
@@ -697,23 +853,30 @@ const Register = () => {
                         <Row>
                             <FG half>
                                 <Label>Working Country</Label>
-                                <select style={inp} value={s3.workingCountry} onChange={e => update3('workingCountry', e.target.value)}>
+                                <select style={inp} value={s3.workingCountry} onChange={e => { update3('workingCountry', e.target.value); update3('workingCountryOther', ''); }}>
                                     <option>India</option><option>Other</option>
                                 </select>
+                                {s3.workingCountry === 'Other' && (
+                                    <input style={{ ...inp, marginTop: '8px' }} placeholder="Please specify"
+                                        value={s3.workingCountryOther} onChange={e => update3('workingCountryOther', e.target.value)} />
+                                )}
                             </FG>
                             <FG half>
                                 <Label>Working State</Label>
-                                <select style={inp} value={s3.workingState} onChange={e => update3('workingState', e.target.value)}>
-                                    {STATES.map(s => <option key={s}>{s}</option>)}
+                                <select style={inp} value={s3.workingState}
+                                    onChange={e => { update3('workingState', e.target.value); update3('workingDistrict', ''); }}>
+                                    <option value="">Select State</option>
+                                    {STATES_AND_UTS.map(s => <option key={s}>{s}</option>)}
                                 </select>
                             </FG>
                         </Row>
                         <Row>
                             <FG half>
                                 <Label>Working District</Label>
-                                <select style={inp} value={s3.workingDistrict} onChange={e => update3('workingDistrict', e.target.value)}>
-                                    <option value="">Select District</option>
-                                    {TN_DISTRICTS.map(d => <option key={d}>{d}</option>)}
+                                <select style={inp} value={s3.workingDistrict} onChange={e => update3('workingDistrict', e.target.value)}
+                                    disabled={!s3.workingState}>
+                                    <option value="">{s3.workingState ? 'Select District' : 'Select state first'}</option>
+                                    {getDistrictsForState(s3.workingState).map(d => <option key={d}>{d}</option>)}
                                 </select>
                             </FG>
                             <FG half>
@@ -753,8 +916,8 @@ const Register = () => {
                             )}
                         </FG>
                         <FG>
-                            <Label>ID Proof</Label>
-                            <p style={{ fontSize: '12px', color: '#999', margin: '0 0 10px' }}>Aadhaar Card, License, or Voter ID</p>
+                            <Label>Aadhar Card {' '}<span style={{ fontWeight: '400', color: '#999', fontSize: '12px' }}>(optional — front &amp; back)</span></Label>
+                            <p style={{ fontSize: '12px', color: '#999', margin: '0 0 10px' }}>Upload a photo or scan of your Aadhar card — this helps admin verify your profile faster.</p>
                             <div style={{ display: 'flex', gap: '12px' }}>
                                 {[0, 1].map(i => <PhotoBox key={i} multiple label="Click to Add" preview={idPreviews[i]} onChange={e => handleIdChange(i, e)} small />)}
                             </div>
@@ -789,16 +952,21 @@ const Register = () => {
                         <PreviewSection title="📱 Contact">
                             <PreviewRow label="Mobile" value={'+91 ' + mobile} />
                             {s2.altMobile && <PreviewRow label="Alt Mobile" value={'+91 ' + s2.altMobile} />}
+                            {s2.aadharNumber && <PreviewRow label="Aadhar Number" value={s2.aadharNumber} />}
                             <PreviewRow label="Email" value={s2.email} />
                         </PreviewSection>
                         <PreviewSection title="👤 Personal Details">
                             <PreviewRow label="Your Name" value={s2.name} />
                             <PreviewRow label="Profile For" value={s2.profileFor} />
-                            <PreviewRow label={getProfileForLabel(s2.profileFor)} value={s2.profileName} />
+                            {s2.profileFor !== 'Myself' && (
+                                <PreviewRow label={getProfileForLabel(s2.profileFor)} value={s2.profileName} />
+                            )}
                             <PreviewRow label="Gender" value={s2.gender} />
                             <PreviewRow label="Date of Birth" value={s2.dateOfBirth} />
-                            <PreviewRow label="Mother Tongue" value={s2.motherTongue} />
-                            <PreviewRow label="Known Languages" value={s2.knownLanguages.join(', ')} />
+                            <PreviewRow label="Mother Tongue" value={s2.motherTongue === 'Other' ? s2.motherTongueOther : s2.motherTongue} />
+                            <PreviewRow label="Known Languages" value={(s2.knownLanguages.includes('Other')
+                                ? [...s2.knownLanguages.filter(l => l !== 'Other'), ...s2.knownLanguagesOther.split(',').map(l => l.trim()).filter(Boolean)]
+                                : s2.knownLanguages).join(', ')} />
                             <PreviewRow label="Marital Status" value={s2.maritalStatus} />
                             <PreviewRow label="Height" value={s3.height} />
                             <PreviewRow label="Complexion" value={s3.complexion} />
@@ -806,8 +974,8 @@ const Register = () => {
                         </PreviewSection>
                         <PreviewSection title="🕉️ Community">
                             <PreviewRow label="Religion" value={s2.religion} />
-                            <PreviewRow label="Caste" value={s2.caste} />
-                            {s2.subCaste && <PreviewRow label="Sub Caste" value={s2.subCaste} />}
+                            <PreviewRow label="Caste" value={s2.caste === 'Other' ? s2.casteOther : s2.caste} />
+                            {s2.subCaste && <PreviewRow label="Sub Caste" value={s2.subCaste === 'Other' ? s2.subCasteOther : s2.subCaste} />}
                             {s2.gothra && <PreviewRow label="Gothra" value={s2.gothra} />}
                         </PreviewSection>
                         <PreviewSection title="🔮 Horoscope">
@@ -821,8 +989,8 @@ const Register = () => {
                         </PreviewSection>
                         <PreviewSection title="💼 Career">
                             <PreviewRow label="Education" value={s3.education} />
-                            {s3.employed && <PreviewRow label="Employed" value={s3.employed} />}
-                            {s3.occupation && <PreviewRow label="Occupation" value={s3.occupation} />}
+                            {s3.employed && <PreviewRow label="Employed" value={s3.employed === 'Other' ? s3.employedOther : s3.employed} />}
+                            {s3.occupation && <PreviewRow label="Occupation" value={s3.occupation === 'Other' ? s3.occupationOther : s3.occupation} />}
                             {s3.annualIncome && <PreviewRow label="Annual Income" value={s3.annualIncome} />}
                         </PreviewSection>
                         {s3.aboutMe && (

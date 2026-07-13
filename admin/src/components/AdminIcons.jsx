@@ -33,6 +33,7 @@ export const IconX = (p) => (<I {...p}><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/
 export const IconTrash = (p) => (<I {...p}><path d="M4 6.5h16M9.5 6V4.5A1.5 1.5 0 0111 3h2a1.5 1.5 0 011.5 1.5V6"/><path d="M6 6.5l1 13A2 2 0 009 21.5h6a2 2 0 002-2l1-13"/><path d="M10 10.5v7M14 10.5v7"/></I>);
 export const IconClock = (p) => (<I {...p}><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.5 2.5"/></I>);
 export const IconBan = (p) => (<I {...p}><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></I>);
+export const IconSliders = (p) => (<I {...p}><path d="M4 6.5h9M17 6.5h3M4 17.5h3M11 17.5h9"/><circle cx="15" cy="6.5" r="2"/><circle cx="7" cy="17.5" r="2"/></I>);
 
 export default {
     IconGrid, IconUsers, IconIdCard, IconCalendar, IconCard, IconHeart,

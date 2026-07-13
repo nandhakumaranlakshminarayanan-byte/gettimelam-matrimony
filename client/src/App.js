@@ -16,6 +16,7 @@ import ProfileDetail from './pages/Profile/ProfileDetail';
 import Messages from './pages/Messages/Messages';
 import LanguageSelect from './pages/LanguageSelect/LanguageSelect';
 import Register from './pages/Register/Register'; {/* ✅ ADD THIS */ }
+import AadharReminder from './components/AadharReminder/AadharReminder';
 import './App.css';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
     <AuthProvider>
       <Router>
         <Toaster position="top-center" />
+        <AadharReminder />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/register" element={<Register />} />  {/* ✅ ADD THIS */}

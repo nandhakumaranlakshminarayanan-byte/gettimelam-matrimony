@@ -163,7 +163,36 @@ const getMyProfile = async (req, res) => {
     }
 };
 
+// @route   PUT /api/profiles/aadhar
+// Member submits (or resubmits after a rejection) their Aadhar number.
+// Loose 12-digit check only — this isn't meant to validate the number is
+// real, just to catch obvious typos before it goes to admin.
+const submitAadhar = async (req, res) => {
+    try {
+        const { aadharNumber } = req.body;
+        const digitsOnly = (aadharNumber || '').replace(/\s/g, '');
+        if (!/^\d{12}$/.test(digitsOnly)) {
+            return res.status(400).json({ success: false, message: 'Aadhar number must be exactly 12 digits' });
+        }
+        const profile = await Profile.findOneAndUpdate(
+            { user: req.user.id },
+            {
+                aadharNumber: digitsOnly,
+                aadharStatus: 'pending',
+                aadharSubmittedAt: new Date(),
+                aadharReviewedAt: null,
+                aadharRejectReason: null,
+            },
+            { new: true }
+        );
+        if (!profile) return res.status(404).json({ success: false, message: 'Profile not found' });
+        res.json({ success: true, message: 'Aadhar submitted — pending admin review', profile });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     createProfile, getProfiles, getProfileById,
-    updateProfile, getMyProfile, getSuggestedMatches
+    updateProfile, getMyProfile, getSuggestedMatches, submitAadhar,
 };

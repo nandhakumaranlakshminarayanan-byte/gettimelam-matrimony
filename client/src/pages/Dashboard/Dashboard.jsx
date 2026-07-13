@@ -9,9 +9,10 @@ import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { CASTES, getSubCastes } from '../../utils/casteData';
+import { CASTES, getSubCastes, RELIGIONS } from '../../utils/casteData';
 import { NAKSHATRA_NAMES, getNakshatraDropdownLabel, getLocalizedNakshatra } from '../../utils/nakshatraData';
-import { getLocalizedRasi } from '../../utils/rasiData';
+import { getLocalizedRasi, RASI_NAMES } from '../../utils/rasiData';
+import { STATES_AND_UTS, getDistrictsForState } from '../../utils/indiaLocationData';
 
 const LANGUAGES = ['Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Hindi', 'English', 'Urdu', 'Bengali', 'Marathi'];
 
@@ -106,6 +107,8 @@ const Dashboard = () => {
     const [showRegister, setShowRegister] = useState(false);
     const [profile, setProfile] = useState(null);
     const [editing, setEditing] = useState(false);
+    const [aadharInput, setAadharInput] = useState('');
+    const [aadharSubmitting, setAadharSubmitting] = useState(false);
     const [loading, setLoading] = useState(false);
     const [photoUrl, setPhotoUrl] = useState(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -137,17 +140,18 @@ const Dashboard = () => {
     const [form, setForm] = useState({
         name: '', dateOfBirth: '', height: '', weight: '',
         complexion: '', maritalStatus: 'Never Married',
-        religion: 'Hindu', caste: '', subCaste: '',
+        religion: 'Hindu', religionOther: '', caste: '', casteOther: '', subCaste: '', subCasteOther: '',
         motherTongue: '', knownLanguages: [],
         rasi: '', nakshatra: '', dosham: 'No',
         education: '', occupation: '', annualIncome: '',
-        city: '', district: '', state: 'Tamil Nadu',
+        city: '', district: '', districtOther: '', state: 'Tamil Nadu',
         about: '', fatherOccupation: '', motherOccupation: '',
         siblings: '', familyType: 'Nuclear',
         prefAgeMin: '', prefAgeMax: '', prefHeightMin: '', prefHeightMax: '',
         prefMaritalStatus: '', prefMotherTongue: '', prefEatingHabits: '',
         prefDrinkingHabits: '', prefSmokingHabits: '', prefEducation: '',
         prefOccupation: '', prefAnnualIncome: '', prefReligion: '', prefCaste: '', prefSubCaste: '',
+        prefRasi: '', prefNakshatra: '', prefDosham: '',
         prefCountry: 'India', prefState: '', prefCity: '',
     });
 
@@ -225,12 +229,28 @@ const Dashboard = () => {
             const res = await axios.get(`${API}/api/profiles/my`, { headers: { Authorization: `Bearer ${token}` } });
             setProfile(res.data.profile);
             const fetched = res.data.profile;
+            // If a saved Religion/District isn't one of the dropdown's
+            // canonical options, it was entered via "Other" — show the
+            // select as "Other" with the real value prefilled in the text
+            // box, instead of it just not matching any option.
+            const religionIsCustom = fetched.religion && !RELIGIONS.includes(fetched.religion);
+            const casteIsCustom = fetched.caste && !(CASTES[fetched.religion] || []).includes(fetched.caste);
+            const subCasteIsCustom = fetched.subCaste && !getSubCastes(fetched.religion, fetched.caste).includes(fetched.subCaste);
+            const districtIsCustom = fetched.district && !getDistrictsForState(fetched.state).includes(fetched.district);
             // First time viewing Partner Preferences, default Religion/Caste/Sub
             // Caste to the member's own values so the form isn't blank — but
             // only ever as a starting point; once they've saved a preference
             // (even an explicit "Doesn't Matter"/"Any"), never overwrite it.
             setForm({
                 ...fetched,
+                religion: religionIsCustom ? 'Other' : fetched.religion,
+                religionOther: religionIsCustom ? fetched.religion : '',
+                caste: casteIsCustom ? 'Other' : fetched.caste,
+                casteOther: casteIsCustom ? fetched.caste : '',
+                subCaste: subCasteIsCustom ? 'Other' : fetched.subCaste,
+                subCasteOther: subCasteIsCustom ? fetched.subCaste : '',
+                district: districtIsCustom ? 'Other' : fetched.district,
+                districtOther: districtIsCustom ? fetched.district : '',
                 prefReligion: fetched.prefReligion || fetched.religion || '',
                 prefCaste: fetched.prefCaste || fetched.caste || '',
                 prefSubCaste: fetched.prefSubCaste || fetched.subCaste || '',
@@ -326,20 +346,74 @@ const Dashboard = () => {
         } catch (err) { toast.error('Failed to delete!'); }
     };
 
+    const handleSubmitAadhar = async (e) => {
+        e.preventDefault();
+        const digitsOnly = aadharInput.replace(/\D/g, '');
+        if (digitsOnly.length !== 12) { toast.error('Aadhar number must be exactly 12 digits'); return; }
+        setAadharSubmitting(true);
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`${API}/api/profiles/aadhar`, { aadharNumber: digitsOnly }, { headers: { Authorization: `Bearer ${token}` } });
+            toast.success('Aadhar submitted — pending admin review');
+            setAadharInput('');
+            fetchProfile();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to submit Aadhar');
+        } finally {
+            setAadharSubmitting(false);
+        }
+    };
+
     const handleSaveProfile = async (e) => {
         e.preventDefault();
         if (!form.caste) { toast.error('Select caste / division'); return; }
+        if (form.caste === 'Other' && !form.casteOther?.trim()) { toast.error('Please specify your caste'); return; }
         if (!form.subCaste) { toast.error('Select sub caste'); return; }
+        if (form.subCaste === 'Other' && !form.subCasteOther?.trim()) { toast.error('Please specify your sub caste'); return; }
+        if (form.religion === 'Other' && !form.religionOther?.trim()) { toast.error('Please specify your religion'); return; }
+        if (form.district === 'Other' && !form.districtOther?.trim()) { toast.error('Please specify your district'); return; }
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
+            // Where Religion/Caste/Sub Caste/District is "Other", submit the
+            // typed text as the real value (not the literal word "Other"),
+            // and note which fields were custom-entered so admin can spot
+            // them on the Users page.
+            const customFields = [
+                form.religion === 'Other' && 'religion',
+                form.caste === 'Other' && 'caste',
+                form.subCaste === 'Other' && 'subCaste',
+                form.district === 'Other' && 'district',
+            ].filter(Boolean);
+            const payload = {
+                ...form,
+                religion: form.religion === 'Other' ? form.religionOther.trim() : form.religion,
+                caste: form.caste === 'Other' ? form.casteOther.trim() : form.caste,
+                subCaste: form.subCaste === 'Other' ? form.subCasteOther.trim() : form.subCaste,
+                district: form.district === 'Other' ? form.districtOther.trim() : form.district,
+                customFields,
+            };
             if (profile) {
-                await axios.put(`${API}/api/profiles/${profile._id}`, form, { headers: { Authorization: `Bearer ${token}` } });
+                await axios.put(`${API}/api/profiles/${profile._id}`, payload, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success('Profile updated! ✅');
             } else {
-                await axios.post(`${API}/api/profiles`, { ...form }, { headers: { Authorization: `Bearer ${token}` } });
+                await axios.post(`${API}/api/profiles`, payload, { headers: { Authorization: `Bearer ${token}` } });
                 toast.success('Profile created! 🎊');
             }
+
+            // Let admin know about any "Other" values entered, so they can
+            // review and add real options for them (Profile Options page →
+            // Pending Suggestions).
+            const suggestions = [
+                form.religion === 'Other' && { category: 'religion', value: payload.religion, parent: null },
+                form.caste === 'Other' && { category: 'caste', value: payload.caste, parent: payload.religion },
+                form.subCaste === 'Other' && { category: 'subcaste', value: payload.subCaste, parent: `${payload.religion}|${payload.caste}` },
+                form.district === 'Other' && { category: 'district', value: payload.district, parent: form.state },
+            ].filter(Boolean);
+            for (const s of suggestions) {
+                axios.post(`${API}/api/options/suggest`, { ...s, suggestedByName: form.name }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => { });
+            }
+
             setEditing(false);
             fetchProfile();
             fetchSuggestedMatches();
@@ -559,6 +633,43 @@ const Dashboard = () => {
                                 </button>
                             </div>
 
+                            {/* Aadhar verification status — same gate that unlocks admin
+                                verifying the whole profile, so it's surfaced right up top. */}
+                            <div style={styles.aadharBox}>
+                                {(!profile?.aadharStatus || profile.aadharStatus === 'not_submitted') && (
+                                    <>
+                                        <div style={styles.aadharTitle}>🪪 Aadhar Verification Needed</div>
+                                        <p style={styles.aadharDesc}>Submit your Aadhar number so admin can verify your profile — this unlocks full visibility to other members.</p>
+                                        <form onSubmit={handleSubmitAadhar} style={styles.aadharForm}>
+                                            <input style={styles.aadharInput} placeholder="12-digit Aadhar number" maxLength={12}
+                                                value={aadharInput} onChange={e => setAadharInput(e.target.value.replace(/\D/g, ''))} />
+                                            <button type="submit" style={styles.aadharBtn} disabled={aadharSubmitting}>
+                                                {aadharSubmitting ? 'Submitting...' : 'Submit'}
+                                            </button>
+                                        </form>
+                                    </>
+                                )}
+                                {profile?.aadharStatus === 'pending' && (
+                                    <div style={{ ...styles.aadharTitle, color: '#7A5C00' }}>⏳ Aadhar submitted — pending admin review</div>
+                                )}
+                                {profile?.aadharStatus === 'approved' && (
+                                    <div style={{ ...styles.aadharTitle, color: '#2E7D32' }}>✅ Aadhar verified</div>
+                                )}
+                                {profile?.aadharStatus === 'rejected' && (
+                                    <>
+                                        <div style={{ ...styles.aadharTitle, color: '#B71C1C' }}>❌ Aadhar rejected{profile.aadharRejectReason ? ` — ${profile.aadharRejectReason}` : ''}</div>
+                                        <p style={styles.aadharDesc}>Please double-check the number and resubmit.</p>
+                                        <form onSubmit={handleSubmitAadhar} style={styles.aadharForm}>
+                                            <input style={styles.aadharInput} placeholder="12-digit Aadhar number" maxLength={12}
+                                                value={aadharInput} onChange={e => setAadharInput(e.target.value.replace(/\D/g, ''))} />
+                                            <button type="submit" style={styles.aadharBtn} disabled={aadharSubmitting}>
+                                                {aadharSubmitting ? 'Submitting...' : 'Resubmit'}
+                                            </button>
+                                        </form>
+                                    </>
+                                )}
+                            </div>
+
                             {editing ? (
                                 <form onSubmit={handleSaveProfile}>
                                     {[
@@ -602,28 +713,41 @@ const Dashboard = () => {
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Religion</label>
                                                 <select name="religion" value={form.religion}
-                                                    onChange={e => setForm({ ...form, religion: e.target.value, caste: '', subCaste: '' })}
+                                                    onChange={e => setForm({ ...form, religion: e.target.value, religionOther: '', caste: '', subCaste: '' })}
                                                     style={styles.input}>
                                                     <option value="">Select</option>
                                                     {Object.keys(CASTES).map(r => <option key={r}>{r}</option>)}
                                                 </select>
+                                                {form.religion === 'Other' && (
+                                                    <input name="religionOther" value={form.religionOther} onChange={handleChange}
+                                                        placeholder="Please specify your religion" style={{ ...styles.input, marginTop: '8px' }} />
+                                                )}
                                             </div>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Caste / Division</label>
                                                 <select name="caste" value={form.caste}
-                                                    onChange={e => setForm({ ...form, caste: e.target.value, subCaste: '' })}
+                                                    onChange={e => setForm({ ...form, caste: e.target.value, casteOther: '', subCaste: '', subCasteOther: '' })}
                                                     style={styles.input} disabled={!form.religion}>
                                                     <option value="">{form.religion ? 'Select Caste' : 'Select religion first'}</option>
                                                     {(CASTES[form.religion] || []).map(c => <option key={c}>{c}</option>)}
                                                 </select>
+                                                {form.caste === 'Other' && (
+                                                    <input name="casteOther" value={form.casteOther} onChange={handleChange}
+                                                        placeholder="Please specify your caste" style={{ ...styles.input, marginTop: '8px' }} />
+                                                )}
                                             </div>
                                             <div style={styles.formGroup}>
                                                 <label style={styles.label}>Sub Caste</label>
-                                                <select name="subCaste" value={form.subCaste} onChange={handleChange}
+                                                <select name="subCaste" value={form.subCaste}
+                                                    onChange={e => setForm({ ...form, subCaste: e.target.value, subCasteOther: '' })}
                                                     style={styles.input} disabled={!form.caste}>
                                                     <option value="">{form.caste ? 'Select Sub Caste' : 'Select caste first'}</option>
                                                     {getSubCastes(form.religion, form.caste).map(sc => <option key={sc}>{sc}</option>)}
                                                 </select>
+                                                {form.subCaste === 'Other' && (
+                                                    <input name="subCasteOther" value={form.subCasteOther} onChange={handleChange}
+                                                        placeholder="Please specify your sub caste" style={{ ...styles.input, marginTop: '8px' }} />
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -679,12 +803,64 @@ const Dashboard = () => {
                                                 { name: 'annualIncome', label: 'Annual Income', type: 'select', options: ['Below 1 Lakh', '1-2 Lakhs', '2-5 Lakhs', '5-10 Lakhs', '10-20 Lakhs', '20+ Lakhs'] },
                                             ]
                                         },
-                                        {
-                                            title: 'Location', fields: [
-                                                { name: 'city', label: 'City', type: 'text', placeholder: 'Enter city' },
-                                                { name: 'district', label: 'District', type: 'select', options: ['Chennai', 'Coimbatore', 'Madurai', 'Trichy', 'Salem', 'Erode', 'Tirunelveli', 'Vellore', 'Thoothukudi', 'Puducherry'] },
-                                            ]
-                                        },
+                                    ].map(section => (
+                                        <div key={section.title} style={styles.formSection}>
+                                            <h3 style={styles.formSectionTitle}>{section.title}</h3>
+                                            <div style={styles.formGrid}>
+                                                {section.fields.map(f => (
+                                                    <div key={f.name} style={styles.formGroup}>
+                                                        <label style={styles.label}>{f.label}</label>
+                                                        {f.type === 'select' ? (
+                                                            <select name={f.name} value={form[f.name]} onChange={handleChange} style={styles.input}>
+                                                                <option value="">Select</option>
+                                                                {f.options.map(o => <option key={o} value={o}>{f.getLabel ? f.getLabel(o) : o}</option>)}
+                                                            </select>
+                                                        ) : (
+                                                            <input name={f.name} type="text" placeholder={f.placeholder}
+                                                                value={form[f.name]} onChange={handleChange} style={styles.input} />
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {/* Hand-coded so District can show an "Other" text box, same
+                                        pattern as Religion above. */}
+                                    <div style={styles.formSection}>
+                                        <h3 style={styles.formSectionTitle}>Location</h3>
+                                        <div style={styles.formGrid}>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>City</label>
+                                                <input name="city" type="text" placeholder="Enter city"
+                                                    value={form.city} onChange={handleChange} style={styles.input} />
+                                            </div>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>State / UT</label>
+                                                <select name="state" value={form.state}
+                                                    onChange={e => setForm({ ...form, state: e.target.value, district: '', districtOther: '' })}
+                                                    style={styles.input}>
+                                                    <option value="">Select State</option>
+                                                    {STATES_AND_UTS.map(s => <option key={s}>{s}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>District</label>
+                                                <select name="district" value={form.district}
+                                                    onChange={e => setForm({ ...form, district: e.target.value, districtOther: '' })}
+                                                    style={styles.input} disabled={!form.state}>
+                                                    <option value="">{form.state ? 'Select District' : 'Select state first'}</option>
+                                                    {[...getDistrictsForState(form.state), 'Other'].map(d => <option key={d}>{d}</option>)}
+                                                </select>
+                                                {form.district === 'Other' && (
+                                                    <input name="districtOther" value={form.districtOther} onChange={handleChange}
+                                                        placeholder="Please specify your district" style={{ ...styles.input, marginTop: '8px' }} />
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {[
                                         {
                                             title: 'Family Details', fields: [
                                                 { name: 'fatherOccupation', label: "Father's Occupation", type: 'text', placeholder: "Father's occupation" },
@@ -780,6 +956,40 @@ const Dashboard = () => {
                                         </div>
                                     </div>
 
+                                    {/* Star/Zodiac/Dosham matching is a standard part of Indian
+                                        matrimony matching, same idea as the Religious block above —
+                                        "Doesn't Matter" fallback since it's a preference. */}
+                                    <div style={styles.formSection}>
+                                        <h3 style={styles.formSectionTitle}>✨ Partner Preferences — Astro</h3>
+                                        <div style={styles.formGrid}>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>Rasi (Zodiac)</label>
+                                                <select name="prefRasi" value={form.prefRasi} onChange={handleChange} style={styles.input}>
+                                                    <option value="">Select</option>
+                                                    <option value="Doesn't Matter">Doesn't Matter</option>
+                                                    {RASI_NAMES.map(r => <option key={r} value={r}>{r}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>Nakshatra (Star)</label>
+                                                <select name="prefNakshatra" value={form.prefNakshatra} onChange={handleChange} style={styles.input}>
+                                                    <option value="">Select</option>
+                                                    <option value="Doesn't Matter">Doesn't Matter</option>
+                                                    {NAKSHATRA_NAMES.map(n => <option key={n} value={n}>{getNakshatraDropdownLabel(n)}</option>)}
+                                                </select>
+                                            </div>
+                                            <div style={styles.formGroup}>
+                                                <label style={styles.label}>Dosham</label>
+                                                <select name="prefDosham" value={form.prefDosham} onChange={handleChange} style={styles.input}>
+                                                    <option value="">Select</option>
+                                                    <option value="No">No</option>
+                                                    <option value="Yes">Yes</option>
+                                                    <option value="Doesn't Matter">Doesn't Matter</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                                                         <div style={styles.formSection}>
                                         <h3 style={styles.formSectionTitle}>About Me</h3>
                                         <textarea name="about" placeholder="Write something about yourself..."
@@ -813,6 +1023,7 @@ const Dashboard = () => {
                                                     { label: 'Annual Income', value: profile.annualIncome },
                                                     { label: 'City', value: profile.city },
                                                     { label: 'District', value: profile.district },
+                                                    { label: 'State', value: profile.state },
                                                     { label: 'Family Type', value: profile.familyType },
                                                 ].filter(i => i.value).map(item => (
                                                     <div key={item.label} style={styles.profileField}>
@@ -851,6 +1062,9 @@ const Dashboard = () => {
                                                         { label: 'Religion', value: profile.prefReligion },
                                                         { label: 'Caste', value: profile.prefCaste },
                                                         { label: 'Sub Caste', value: profile.prefSubCaste },
+                                                        { label: 'Rasi', value: profile.prefRasi },
+                                                        { label: 'Nakshatra', value: profile.prefNakshatra },
+                                                        { label: 'Dosham', value: profile.prefDosham },
                                                         { label: 'Location', value: [profile.prefCity, profile.prefState, profile.prefCountry].filter(Boolean).join(', ') },
                                                     ].filter(i => i.value).map(item => (
                                                         <div key={item.label} style={styles.profileField}>
@@ -1231,6 +1445,12 @@ const styles = {
     interestBtn: { padding: '7px 14px', background: '#B71C1C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
     viewBtn: { padding: '7px 14px', background: 'transparent', color: '#B71C1C', border: '1.5px solid #B71C1C', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' },
     profileHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
+    aadharBox: { background: '#FFFDF4', border: '1px solid #F5BE17', borderRadius: '12px', padding: '18px 20px', marginBottom: '24px' },
+    aadharTitle: { fontSize: '14px', fontWeight: '700', color: '#5F0909', marginBottom: '6px' },
+    aadharDesc: { fontSize: '12.5px', color: '#7A6055', lineHeight: 1.5, marginBottom: '12px' },
+    aadharForm: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
+    aadharInput: { flex: 1, minWidth: '200px', padding: '10px 14px', border: '1.5px solid #F5BE17', borderRadius: '8px', fontSize: '14px', outline: 'none', fontFamily: 'inherit' },
+    aadharBtn: { padding: '10px 22px', background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' },
     editBtn: { padding: '9px 18px', background: '#FFF8E1', color: '#B71C1C', border: '1.5px solid #B71C1C', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
     formSection: { background: '#FFFDF4', border: '1px solid #F5BE17', borderRadius: '12px', padding: '20px', marginBottom: '20px' },
     formSectionTitle: { fontSize: '16px', fontWeight: '700', color: '#B71C1C', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid #F5BE17' },

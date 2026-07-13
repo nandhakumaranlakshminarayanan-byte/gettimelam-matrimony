@@ -111,10 +111,65 @@ const deleteUser = async (req, res) => {
 // Verify profile
 const verifyProfile = async (req, res) => {
     try {
+        const existing = await Profile.findById(req.params.id);
+        if (!existing) return res.status(404).json({ success: false, message: 'Profile not found' });
+        if (existing.aadharStatus !== 'approved') {
+            return res.status(400).json({
+                success: false,
+                message: 'Aadhar must be submitted and approved before this profile can be verified.',
+            });
+        }
         const profile = await Profile.findByIdAndUpdate(
             req.params.id, { isVerified: true }, { new: true }
         );
         res.json({ success: true, message: 'Profile verified!', profile });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Admin reviews a member's submitted Aadhar number — this is the gate that
+// unlocks the "Verify Profile" action above.
+const approveAadhar = async (req, res) => {
+    try {
+        const profile = await Profile.findByIdAndUpdate(
+            req.params.id,
+            { aadharStatus: 'approved', aadharReviewedAt: new Date(), aadharRejectReason: null },
+            { new: true }
+        );
+        if (!profile) return res.status(404).json({ success: false, message: 'Profile not found' });
+        res.json({ success: true, message: 'Aadhar approved', profile });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const rejectAadhar = async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const profile = await Profile.findByIdAndUpdate(
+            req.params.id,
+            { aadharStatus: 'rejected', aadharReviewedAt: new Date(), aadharRejectReason: reason || null },
+            { new: true }
+        );
+        if (!profile) return res.status(404).json({ success: false, message: 'Profile not found' });
+        res.json({ success: true, message: 'Aadhar rejected — member will be asked to resubmit', profile });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Admin editing a member's profile directly — e.g. after a phone
+// verification call reveals something was entered wrong. Unlike the
+// member-facing updateProfile route, this isn't restricted to "your own
+// profile" — it updates by profile ID, any field in the body.
+const adminUpdateProfile = async (req, res) => {
+    try {
+        const profile = await Profile.findByIdAndUpdate(
+            req.params.id, { ...req.body }, { new: true, runValidators: true }
+        );
+        if (!profile) return res.status(404).json({ success: false, message: 'Profile not found' });
+        res.json({ success: true, message: 'Profile updated!', profile });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -309,7 +364,8 @@ const getAnalytics = async (req, res) => {
 };
 
 module.exports = {
-    getStats, getAllUsers, getAllProfiles, togglePremium, deleteUser, verifyProfile,
+    getStats, getAllUsers, getAllProfiles, togglePremium, deleteUser, verifyProfile, adminUpdateProfile,
+    approveAadhar, rejectAadhar,
     getAllBookings, updateBookingStatus,
     getTestimonials, createTestimonial, deleteTestimonial,
     getBanners, createBanner, toggleBanner, deleteBanner,

@@ -2,13 +2,17 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const {
-    getStats, getAllUsers, getAllProfiles, togglePremium, deleteUser, verifyProfile,
+    getStats, getAllUsers, getAllProfiles, togglePremium, deleteUser, verifyProfile, adminUpdateProfile,
+    approveAadhar, rejectAadhar,
     getAllBookings, updateBookingStatus,
     getBanners, createBanner, toggleBanner, deleteBanner,
     getMessages, replyMessage, markMessageRead, deleteMessage,
     getNotifications, createNotification, deleteNotification,
     getAnalytics
 } = require('../controllers/adminController');
+const {
+    adminListOptions, adminPendingCount, adminCreateOption, adminUpdateOption, adminApproveOption, adminDeleteOption,
+} = require('../controllers/masterOptionController');
 const { protect } = require('../middleware/authMiddleware');
 
 // ── Admin guard middleware ──
@@ -112,6 +116,9 @@ router.delete('/vendors/:id', protect, adminOnly, async (req, res) => {
 // ── Matrimony Profiles ──
 router.get('/profiles', protect, adminOnly, getAllProfiles);
 router.put('/profiles/:id/verify', protect, adminOnly, verifyProfile);
+router.put('/profiles/:id/aadhar/approve', protect, adminOnly, approveAadhar);
+router.put('/profiles/:id/aadhar/reject', protect, adminOnly, rejectAadhar);
+router.put('/profiles/:id', protect, adminOnly, adminUpdateProfile);
 
 // ── Bookings ──
 router.get('/bookings', protect, adminOnly, getAllBookings);
@@ -215,5 +222,15 @@ router.put('/services/:id/verify', protect, adminOnly, async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
+// ✅ Profile Options — admin-managed dropdown lists (caste/state/district/
+// religion/job/rasi/nakshatra/dosham/maritalstatus) + the "Other" suggestion
+// review queue
+router.get('/options', protect, adminOnly, adminListOptions);
+router.get('/options/pending-count', protect, adminOnly, adminPendingCount);
+router.post('/options', protect, adminOnly, adminCreateOption);
+router.put('/options/:id', protect, adminOnly, adminUpdateOption);
+router.put('/options/:id/approve', protect, adminOnly, adminApproveOption);
+router.delete('/options/:id', protect, adminOnly, adminDeleteOption);
 
 module.exports = router;

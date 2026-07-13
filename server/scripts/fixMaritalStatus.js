@@ -37,8 +37,7 @@ async function run() {
 
     const oldValues = Object.keys(VALUE_MAP);
     const affected = await Profile.find({ maritalStatus: { $in: oldValues } })
-        .select('name maritalStatus user')
-        .populate('user', 'name mobile');
+        .select('name maritalStatus');
 
     if (affected.length === 0) {
         console.log('No profiles found with the old maritalStatus values. Nothing to do.');
@@ -49,7 +48,7 @@ async function run() {
     console.log(`Found ${affected.length} profile(s) to ${apply ? 'UPDATE' : 'preview'}:\n`);
     for (const p of affected) {
         const newValue = VALUE_MAP[p.maritalStatus];
-        const label = p.name || p.user?.name || p._id;
+        const label = p.name || p._id;
         console.log(`  ${label}: "${p.maritalStatus}" -> "${newValue}"`);
     }
 

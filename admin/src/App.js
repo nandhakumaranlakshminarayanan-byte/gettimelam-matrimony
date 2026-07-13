@@ -17,6 +17,7 @@ import Banners from './pages/Banners/Banners';
 import ServiceCards from './pages/ServiceCards/ServiceCards';
 import Messages from './pages/Messages/Messages';
 import AdminAccess from './pages/AdminAccess/AdminAccess';
+import ProfileOptions from './pages/ProfileOptions/ProfileOptions';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -40,6 +41,7 @@ function App() {
           <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
           <Route path="/profiles" element={<ProtectedRoute><Profiles /></ProtectedRoute>} />
           <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
+          <Route path="/profile-options" element={<ProtectedRoute><ProfileOptions /></ProtectedRoute>} />
           <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
           <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
           <Route path="/testimonials" element={<ProtectedRoute><Testimonials /></ProtectedRoute>} />

@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
+import API from '../utils/api';
 import {
     IconGrid, IconUsers, IconIdCard, IconCalendar, IconCard, IconHeart,
     IconChart, IconBell, IconImage, IconLayers, IconChat, IconStore,
-    IconShield, IconGlobe, IconLogout,
+    IconShield, IconGlobe, IconLogout, IconSliders,
 } from './AdminIcons';
 
 const GOLD = '#E8B84B';
@@ -13,6 +14,20 @@ const Sidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { admin, logout } = useAdmin();
+    const [pendingCount, setPendingCount] = useState(0);
+
+    // Visible from every admin page, not just Profile Options itself —
+    // that page was the whole reason this went unnoticed before.
+    useEffect(() => {
+        const fetchCount = () => {
+            API.get('/admin/options/pending-count')
+                .then(res => setPendingCount(res.data.count || 0))
+                .catch(() => { });
+        };
+        fetchCount();
+        const interval = setInterval(fetchCount, 60000); // refresh every minute
+        return () => clearInterval(interval);
+    }, []);
 
     const menuItems = [
         { path: '/dashboard', Icon: IconGrid, label: 'Dashboard' },
@@ -28,6 +43,7 @@ const Sidebar = () => {
         { path: '/messages', Icon: IconChat, label: 'Messages' },
         { path: '/support-chat', Icon: IconChat, label: 'Support Chat' },
         { path: '/services', Icon: IconStore, label: 'Services' },
+        { path: '/profile-options', Icon: IconSliders, label: 'Profile Options' },
         { path: '/admin-access', Icon: IconShield, label: 'Admin Access' },
     ];
 
@@ -72,6 +88,9 @@ const Sidebar = () => {
                             {active && <span style={styles.activeRail} />}
                             <item.Icon size={17} color={active ? GOLD : 'rgba(243,237,247,0.55)'} />
                             <span>{item.label}</span>
+                            {item.path === '/profile-options' && pendingCount > 0 && (
+                                <span style={styles.pendingBadge}>{pendingCount}</span>
+                            )}
                         </div>
                     );
                 })}
@@ -160,6 +179,11 @@ const styles = {
         color: 'rgba(243,237,247,0.6)',
         marginBottom: '2px', transition: 'all 0.15s ease',
         whiteSpace: 'nowrap',
+    },
+    pendingBadge: {
+        marginLeft: 'auto', background: '#D32F2F', color: '#fff',
+        fontSize: '10.5px', fontWeight: '700', padding: '1px 7px',
+        borderRadius: '10px', lineHeight: 1.5,
     },
     menuItemActive: {
         background: 'linear-gradient(90deg, rgba(232,184,75,0.14), rgba(232,184,75,0.04))',

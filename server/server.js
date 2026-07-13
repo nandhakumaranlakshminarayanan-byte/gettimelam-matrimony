@@ -88,6 +88,7 @@ app.use('/api/subscriptions', require('./routes/subscriptions')); // ✅ plan as
 app.use('/api/support', require('./routes/support'));             // ✅ user-to-admin support chat
 app.use('/api/horoscope', require('./routes/horoscope'));         // ✅ real Rasi/Nakshatra calculation from DOB+TOB
 app.use('/api/payments', require('./routes/payments'));           // ✅ Razorpay order creation + verification
+app.use('/api/options', require('./routes/options'));             // ✅ admin-managed dropdown lists (caste/state/district/etc) + Other-suggestion queue
 app.use('/api/admin', require('./routes/admin'));
 
 app.get('/', (req, res) => {
