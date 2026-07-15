@@ -197,7 +197,12 @@ const Browse = () => {
         if (f.caste) filtered = filtered.filter(p => p.caste === f.caste);
         if (f.subCaste) filtered = filtered.filter(p => p.subCaste === f.subCaste);
         if (f.state) filtered = filtered.filter(p => p.state === f.state);
-        if (f.district) filtered = filtered.filter(p => p.district === f.district);
+        // Only filter by district when state is ALSO set — otherwise a
+        // leftover district value (e.g. from the own-profile auto-default,
+        // if a profile has a district saved but no matching state) would
+        // silently narrow results even though the District dropdown shows
+        // as blank/disabled in the UI.
+        if (f.state && f.district) filtered = filtered.filter(p => p.district === f.district);
         if (f.maritalStatus) filtered = filtered.filter(p => p.maritalStatus === f.maritalStatus);
         if (f.rasi) filtered = filtered.filter(p => p.rasi === f.rasi);
         if (f.nakshatra) filtered = filtered.filter(p => p.nakshatra === f.nakshatra);
@@ -248,7 +253,7 @@ const Browse = () => {
         if (myProfile && (myProfile.religion || myProfile.caste || myProfile.district)) {
             const defaults = {
                 gender: '', religion: myProfile.religion || '', caste: myProfile.caste || '',
-                subCaste: myProfile.subCaste || '', state: myProfile.state || '', district: myProfile.district || '',
+                subCaste: myProfile.subCaste || '', state: myProfile.state || '', district: myProfile.state ? (myProfile.district || '') : '',
                 rasi: myProfile.rasi || '', nakshatra: myProfile.nakshatra || '', dosham: myProfile.dosham || '',
                 maritalStatus: mapMaritalStatusForFilter(myProfile.maritalStatus), minAge: '', maxAge: '',
             };
@@ -263,7 +268,7 @@ const Browse = () => {
         const defaults = myProfile && (myProfile.religion || myProfile.caste || myProfile.district)
             ? {
                 gender: '', religion: myProfile.religion || '', caste: myProfile.caste || '',
-                subCaste: myProfile.subCaste || '', state: myProfile.state || '', district: myProfile.district || '',
+                subCaste: myProfile.subCaste || '', state: myProfile.state || '', district: myProfile.state ? (myProfile.district || '') : '',
                 rasi: myProfile.rasi || '', nakshatra: myProfile.nakshatra || '', dosham: myProfile.dosham || '',
                 maritalStatus: mapMaritalStatusForFilter(myProfile.maritalStatus), minAge: '', maxAge: '',
             }

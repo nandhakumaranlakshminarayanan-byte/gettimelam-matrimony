@@ -109,6 +109,8 @@ const Dashboard = () => {
     const [editing, setEditing] = useState(false);
     const [aadharInput, setAadharInput] = useState('');
     const [aadharSubmitting, setAadharSubmitting] = useState(false);
+    const [aadharDocUploading, setAadharDocUploading] = useState(false);
+    const [horoscopeDocUploading, setHoroscopeDocUploading] = useState(false);
     const [loading, setLoading] = useState(false);
     const [photoUrl, setPhotoUrl] = useState(null);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -361,6 +363,81 @@ const Dashboard = () => {
             toast.error(err.response?.data?.message || 'Failed to submit Aadhar');
         } finally {
             setAadharSubmitting(false);
+        }
+    };
+
+    const handleUploadAadharDoc = async (e) => {
+        const files = Array.from(e.target.files || []).filter(Boolean);
+        if (files.length === 0) return;
+        setAadharDocUploading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const formData = new FormData();
+            files.forEach(f => formData.append('documents', f));
+            const res = await axios.post(`${API}/api/profiles/upload-aadhar-docs`, formData, {
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+            });
+            toast.success('Aadhar document uploaded! ✅');
+            // OCR ran server-side on the image — pre-fill the number field so
+            // the member can review/edit it instead of typing it manually,
+            // but never auto-submit it for them (OCR can misread digits).
+            if (res.data.detectedNumber) {
+                setAadharInput(res.data.detectedNumber);
+                toast.success(`Detected Aadhar number — please check it's correct before submitting`, { duration: 6000 });
+            }
+            fetchProfile();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to upload Aadhar document');
+        } finally {
+            setAadharDocUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    const handleUploadHoroscopeDoc = async (e) => {
+        const files = Array.from(e.target.files || []).filter(Boolean);
+        if (files.length === 0) return;
+        setHoroscopeDocUploading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const formData = new FormData();
+            files.forEach(f => formData.append('documents', f));
+            await axios.post(`${API}/api/profiles/upload-horoscope-docs`, formData, {
+                headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+            });
+            toast.success('Horoscope document uploaded! ✅');
+            fetchProfile();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to upload Horoscope document');
+        } finally {
+            setHoroscopeDocUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    const handleRemoveAadharDoc = async (docUrl) => {
+        if (!window.confirm('Remove this document?')) return;
+        try {
+            const token = localStorage.getItem('token');
+            const filename = docUrl.split('/').pop();
+            await axios.delete(`${API}/api/profiles/aadhar-docs/${filename}`, { headers: { Authorization: `Bearer ${token}` } });
+            toast.success('Removed');
+            fetchProfile();
+        } catch (err) {
+            toast.error('Failed to remove document');
+        }
+    };
+
+    const handleRemoveHoroscopeDoc = async (docUrl) => {
+        if (!window.confirm('Remove this document?')) return;
+        try {
+            const token = localStorage.getItem('token');
+            const filename = docUrl.split('/').pop();
+            await axios.delete(`${API}/api/profiles/horoscope-docs/${filename}`, { headers: { Authorization: `Bearer ${token}` } });
+            toast.success('Removed');
+            fetchProfile();
+        } catch (err) {
+            toast.error('Failed to remove document');
         }
     };
 
@@ -667,6 +744,58 @@ const Dashboard = () => {
                                             </button>
                                         </form>
                                     </>
+                                )}
+
+                                {/* Document upload — separate from the typed number above, this is
+                                    the actual photo/scan of the card. Was captured in Register.jsx
+                                    but never actually uploaded anywhere before this. */}
+                                <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #F5E0A0' }}>
+                                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#7A5C00', marginBottom: '8px' }}>
+                                        Aadhar Card Photo/Scan {profile?.aadharDocuments?.length > 0 && `(${profile.aadharDocuments.length}/2 uploaded)`}
+                                    </div>
+                                    {profile?.aadharDocuments?.length > 0 && (
+                                        <div style={styles.docThumbRow}>
+                                            {profile.aadharDocuments.map((d, i) => (
+                                                <div key={i} style={styles.docThumbWrap}>
+                                                    <a href={`${API}${d}`} target="_blank" rel="noopener noreferrer" style={styles.docThumbLink}>
+                                                        {d.endsWith('.pdf') ? '📄 View PDF' : <img src={`${API}${d}`} alt="" style={styles.docThumb} />}
+                                                    </a>
+                                                    <button type="button" style={styles.docRemoveBtn} onClick={() => handleRemoveAadharDoc(d)} title="Remove">✕</button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {(!profile?.aadharDocuments || profile.aadharDocuments.length < 2) && (
+                                        <label style={styles.docUploadBtn}>
+                                            {aadharDocUploading ? 'Uploading...' : '📎 Upload Aadhar Photo/Scan'}
+                                            <input type="file" accept="image/*,.pdf" multiple hidden disabled={aadharDocUploading} onChange={handleUploadAadharDoc} />
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Horoscope document — same idea, previously had UI in Register.jsx
+                                that captured the file but never uploaded it. */}
+                            <div style={styles.aadharBox}>
+                                <div style={styles.aadharTitle}>🔮 Horoscope Document</div>
+                                <p style={styles.aadharDesc}>Upload a photo or scan of your horoscope, if you have one.</p>
+                                {profile?.horoscopeDocuments?.length > 0 && (
+                                    <div style={styles.docThumbRow}>
+                                        {profile.horoscopeDocuments.map((d, i) => (
+                                            <div key={i} style={styles.docThumbWrap}>
+                                                <a href={`${API}${d}`} target="_blank" rel="noopener noreferrer" style={styles.docThumbLink}>
+                                                    {d.endsWith('.pdf') ? '📄 View PDF' : <img src={`${API}${d}`} alt="" style={styles.docThumb} />}
+                                                </a>
+                                                <button type="button" style={styles.docRemoveBtn} onClick={() => handleRemoveHoroscopeDoc(d)} title="Remove">✕</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {(!profile?.horoscopeDocuments || profile.horoscopeDocuments.length < 2) && (
+                                    <label style={styles.docUploadBtn}>
+                                        {horoscopeDocUploading ? 'Uploading...' : '📎 Upload Horoscope'}
+                                        <input type="file" accept="image/*,.pdf" multiple hidden disabled={horoscopeDocUploading} onChange={handleUploadHoroscopeDoc} />
+                                    </label>
                                 )}
                             </div>
 
@@ -1451,6 +1580,12 @@ const styles = {
     aadharForm: { display: 'flex', gap: '10px', flexWrap: 'wrap' },
     aadharInput: { flex: 1, minWidth: '200px', padding: '10px 14px', border: '1.5px solid #F5BE17', borderRadius: '8px', fontSize: '14px', outline: 'none', fontFamily: 'inherit' },
     aadharBtn: { padding: '10px 22px', background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' },
+    docThumbRow: { display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' },
+    docThumbLink: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600', color: '#7A5C00', textDecoration: 'none' },
+    docThumbWrap: { position: 'relative', display: 'inline-block' },
+    docRemoveBtn: { position: 'absolute', top: '-8px', right: '-8px', width: '22px', height: '22px', borderRadius: '50%', background: '#B71C1C', color: '#fff', border: '2px solid #fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 },
+    docThumb: { width: '70px', height: '70px', objectFit: 'cover', borderRadius: '8px', border: '1.5px solid #F5BE17' },
+    docUploadBtn: { display: 'inline-block', padding: '9px 18px', background: '#fff', color: '#7A5C00', border: '1.5px solid #F5BE17', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
     editBtn: { padding: '9px 18px', background: '#FFF8E1', color: '#B71C1C', border: '1.5px solid #B71C1C', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
     formSection: { background: '#FFFDF4', border: '1px solid #F5BE17', borderRadius: '12px', padding: '20px', marginBottom: '20px' },
     formSectionTitle: { fontSize: '16px', fontWeight: '700', color: '#B71C1C', marginBottom: '16px', paddingBottom: '8px', borderBottom: '1px solid #F5BE17' },
