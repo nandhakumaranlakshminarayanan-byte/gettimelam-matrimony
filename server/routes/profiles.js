@@ -50,6 +50,22 @@ const uploadDoc = multer({
 });
 
 // ── Profile routes ──
+// ✅ Public homepage preview — no login required. Deliberately returns
+// only photo/name/age, nothing else. The client blurs the photo — this
+// just supplies real photos to blur instead of a generic placeholder icon.
+router.get('/public-preview', async (req, res) => {
+    try {
+        const profiles = await Profile.aggregate([
+            { $match: { isVerified: true, photo: { $exists: true, $ne: null, $ne: '' } } },
+            { $sample: { size: 8 } },
+            { $project: { name: 1, dateOfBirth: 1, photo: 1, gender: 1 } },
+        ]);
+        res.json({ success: true, profiles });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 router.get('/', protect, getProfiles);
 router.post('/', protect, createProfile);
 router.get('/my', protect, getMyProfile);

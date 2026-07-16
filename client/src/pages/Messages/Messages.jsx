@@ -40,6 +40,10 @@ const Messages = () => {
             setMessages(prev => [...prev, msg]);
         });
 
+        s.on('messageError', (err) => {
+            toast.error(err?.message || 'Could not send message');
+        });
+
         s.on('userTyping', () => setIsTyping(true));
         s.on('userStopTyping', () => setIsTyping(false));
 
@@ -58,9 +62,14 @@ const Messages = () => {
                     (p.user?._id || p.user)?.toString() === withUser
                 );
                 const name = match?.name || match?.user?.name || 'User';
-                openConversation({ userId: withUser, name });
+                // Profiles only exist for matrimony members (role='member')
+                // — a match here means this is a member-to-member chat,
+                // which is what the premium gate applies to. No match
+                // (e.g. a service provider, who has no Profile) means the
+                // gate doesn't apply.
+                openConversation({ userId: withUser, name, role: match ? 'member' : 'service' });
             }).catch(() => {
-                openConversation({ userId: withUser, name: 'User' });
+                openConversation({ userId: withUser, name: 'User', role: 'member' });
             });
         }
 
@@ -102,6 +111,12 @@ const Messages = () => {
 
     const sendMessage = () => {
         if (!newMessage.trim() || !activeConv || !socket) return;
+        // Only matrimony member-to-member chat requires Premium — messaging
+        // a service provider (wedding vendor etc.) stays free.
+        if (activeConv.role === 'member' && !user?.isPremium) {
+            toast.error('Upgrade to Premium to message! ⭐');
+            return;
+        }
 
         socket.emit('sendMessage', {
             senderId: user.id,

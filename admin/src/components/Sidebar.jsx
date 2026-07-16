@@ -15,6 +15,8 @@ const Sidebar = () => {
     const location = useLocation();
     const { admin, logout } = useAdmin();
     const [pendingCount, setPendingCount] = useState(0);
+    const [newUsersCount, setNewUsersCount] = useState(0);
+    const [unreadSupportCount, setUnreadSupportCount] = useState(0);
 
     // Visible from every admin page, not just Profile Options itself —
     // that page was the whole reason this went unnoticed before.
@@ -27,6 +29,29 @@ const Sidebar = () => {
         fetchCount();
         const interval = setInterval(fetchCount, 60000); // refresh every minute
         return () => clearInterval(interval);
+    }, []);
+
+    // New members registered since this admin last viewed Users, and
+    // support threads with an unread user message — same
+    // always-visible-in-sidebar treatment.
+    useEffect(() => {
+        const fetchCounts = () => {
+            API.get('/admin/new-users-count')
+                .then(res => setNewUsersCount(res.data.count || 0))
+                .catch(() => { });
+            API.get('/support/admin/unread-count')
+                .then(res => setUnreadSupportCount(res.data.count || 0))
+                .catch(() => { });
+        };
+        fetchCounts();
+        const interval = setInterval(fetchCounts, 60000);
+        // Fired by the Users page right after it marks itself seen, so the
+        // badge clears the moment you visit rather than up to 60s later.
+        window.addEventListener('usersSeen', fetchCounts);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('usersSeen', fetchCounts);
+        };
     }, []);
 
     const menuItems = [
@@ -90,6 +115,12 @@ const Sidebar = () => {
                             <span>{item.label}</span>
                             {item.path === '/profile-options' && pendingCount > 0 && (
                                 <span style={styles.pendingBadge}>{pendingCount}</span>
+                            )}
+                            {item.path === '/users' && newUsersCount > 0 && (
+                                <span style={styles.pendingBadge}>{newUsersCount}</span>
+                            )}
+                            {item.path === '/support-chat' && unreadSupportCount > 0 && (
+                                <span style={styles.pendingBadge}>{unreadSupportCount}</span>
                             )}
                         </div>
                     );

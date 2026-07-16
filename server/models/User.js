@@ -30,6 +30,10 @@ const userSchema = new mongoose.Schema({
     dateOfBirth: { type: Date },
     motherTongue: { type: String, default: 'Tamil' },
     isPremium: { type: Boolean, default: false },
+    // Admin-only: when this admin last opened the Users page — the
+    // new-signups sidebar badge counts users created after this, so it
+    // actually clears on visit instead of always showing a rolling 24h count.
+    lastSeenUsersAt: { type: Date, default: null },
     plan: { type: String, default: 'free' },
     isVerified: { type: Boolean, default: false },
     canHandleSupport: { type: Boolean, default: false }, // for admin accounts — can be assigned support chats

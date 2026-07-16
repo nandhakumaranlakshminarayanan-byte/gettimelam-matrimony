@@ -12,7 +12,15 @@ const Users = () => {
 
     const [providers, setProviders] = useState([]);
 
-    useEffect(() => { fetchUsers(); fetchProviders(); }, []);
+    useEffect(() => {
+        fetchUsers();
+        fetchProviders();
+        // Clears the "new signups" sidebar badge, and tells the sidebar to
+        // refresh right away instead of waiting up to 60s for its next poll.
+        API.put('/admin/mark-users-seen').then(() => {
+            window.dispatchEvent(new Event('usersSeen'));
+        }).catch(() => { });
+    }, []);
 
     const fetchUsers = async () => {
         setLoading(true);

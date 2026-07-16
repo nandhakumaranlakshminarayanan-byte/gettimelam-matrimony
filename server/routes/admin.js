@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const {
-    getStats, getAllUsers, getAllProfiles, togglePremium, deleteUser, verifyProfile, adminUpdateProfile,
+    getStats, getNewUsersCount, markUsersSeen, getAllUsers, getAllProfiles, togglePremium, deleteUser, verifyProfile, adminUpdateProfile,
     approveAadhar, rejectAadhar,
     getAllBookings, updateBookingStatus,
     getBanners, createBanner, toggleBanner, deleteBanner,
@@ -26,6 +26,8 @@ const adminOnly = (req, res, next) => {
 
 // ── Stats & Analytics ──
 router.get('/stats', protect, adminOnly, getStats);
+router.get('/new-users-count', protect, adminOnly, getNewUsersCount);
+router.put('/mark-users-seen', protect, adminOnly, markUsersSeen);
 router.get('/analytics', protect, adminOnly, getAnalytics);
 
 // ── Members ──

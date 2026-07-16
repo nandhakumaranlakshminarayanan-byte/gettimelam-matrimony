@@ -31,6 +31,23 @@ io.on('connection', (socket) => {
 
     socket.on('sendMessage', async (data) => {
         try {
+            const User = require('./models/User');
+            // Member-to-member chat requires Premium. Messaging a service
+            // provider (wedding vendor etc.) stays free — only gated when
+            // BOTH sides are matrimony members. This is the check that
+            // actually matters — the client-side checks are just for a
+            // faster, clearer message; this socket path is what the app
+            // really uses to send messages, so it's the one that can't be
+            // bypassed by calling the API directly.
+            const [sender, receiver] = await Promise.all([
+                User.findById(data.senderId).select('role isPremium name businessName ownerName'),
+                User.findById(data.receiverId).select('role'),
+            ]);
+            if (sender?.role === 'member' && receiver?.role === 'member' && !sender.isPremium) {
+                socket.emit('messageError', { message: 'Upgrade to Premium to message other members.' });
+                return;
+            }
+
             const ChatMessage = require('./models/ChatMessage');
             const message = await ChatMessage.create({
                 sender: data.senderId,
@@ -41,6 +58,20 @@ io.on('connection', (socket) => {
             const receiverSocket = onlineUsers.get(data.receiverId);
             if (receiverSocket) io.to(receiverSocket).emit('receiveMessage', populated);
             socket.emit('messageSent', populated);
+
+            // Bell-icon alert for the receiver — the UserAlert model already
+            // supports type:'message', it just was never actually created
+            // anywhere until now.
+            const UserAlert = require('./models/UserAlert');
+            const senderName = sender?.name || sender?.businessName || sender?.ownerName || 'Someone';
+            await UserAlert.create({
+                user: data.receiverId,
+                type: 'message',
+                title: 'New Message',
+                message: `${senderName} sent you a message.`,
+                link: `/messages?with=${data.senderId}`,
+                fromUser: data.senderId,
+            });
         } catch (err) {
             console.error('Message error:', err);
         }

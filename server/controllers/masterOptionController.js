@@ -11,11 +11,14 @@ const getOptions = async (req, res) => {
         const filter = { category, isActive: true };
         // parent=null (as a literal string) is how the frontend asks for
         // top-level flat options; parent omitted entirely means "don't
-        // filter by parent" — only used for categories that don't cascade.
+        // filter by parent" — used when e.g. Religion is "Any" and every
+        // caste across every religion should show. distinct() (rather than
+        // find + select) is what de-dupes a value like "Other" that
+        // legitimately exists once per religion.
         if (parent !== undefined) filter.parent = parent || null;
 
-        const options = await MasterOption.find(filter).select('value -_id').sort('value');
-        res.json({ success: true, options: options.map(o => o.value) });
+        const values = await MasterOption.distinct('value', filter);
+        res.json({ success: true, options: values.sort() });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

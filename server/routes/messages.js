@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const ChatMessage = require('../models/ChatMessage');
+const User = require('../models/User');
+const UserAlert = require('../models/UserAlert');
 const { protect } = require('../middleware/authMiddleware');
 
 // ── Get all conversations ──
@@ -78,12 +80,35 @@ router.get('/:userId', protect, async (req, res) => {
 router.post('/send', protect, async (req, res) => {
     try {
         const { receiverId, content } = req.body;
+
+        // Member-to-member chat requires Premium. Messaging a service
+        // provider (wedding vendor etc.) stays free — only gated when
+        // BOTH sides are matrimony members.
+        const [sender, receiver] = await Promise.all([
+            User.findById(req.user.id).select('role isPremium name businessName ownerName'),
+            User.findById(receiverId).select('role'),
+        ]);
+        if (sender?.role === 'member' && receiver?.role === 'member' && !sender.isPremium) {
+            return res.status(403).json({ success: false, message: 'Upgrade to Premium to message other members.' });
+        }
+
         const message = await ChatMessage.create({
             sender: req.user.id,
             receiver: receiverId,
             content,
         });
         const populated = await message.populate('sender', 'name businessName ownerName');
+
+        const senderName = sender?.name || sender?.businessName || sender?.ownerName || 'Someone';
+        await UserAlert.create({
+            user: receiverId,
+            type: 'message',
+            title: 'New Message',
+            message: `${senderName} sent you a message.`,
+            link: `/messages?with=${req.user.id}`,
+            fromUser: req.user.id,
+        });
+
         res.status(201).json({ success: true, message: populated });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });

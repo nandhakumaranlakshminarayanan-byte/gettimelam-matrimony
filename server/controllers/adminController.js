@@ -8,6 +8,32 @@ const Message = require('../models/Message');
 const Notification = require('../models/Notification');
 
 // Get dashboard stats
+// Count of members who registered since this admin last viewed the Users
+// page — powers a sidebar badge that actually clears on visit, rather
+// than a rolling time window that never goes away.
+const getNewUsersCount = async (req, res) => {
+    try {
+        const admin = await User.findById(req.user.id).select('lastSeenUsersAt');
+        // First time ever checking: don't dump the entire user base as
+        // "new" — start the clock from 24h ago instead.
+        const since = admin?.lastSeenUsersAt || new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const count = await User.countDocuments({ role: { $nin: ['admin'] }, createdAt: { $gt: since } });
+        res.json({ success: true, count });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Called when admin opens the Users page — resets the badge count.
+const markUsersSeen = async (req, res) => {
+    try {
+        await User.findByIdAndUpdate(req.user.id, { lastSeenUsersAt: new Date() });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 const getStats = async (req, res) => {
     try {
         const totalUsers = await User.countDocuments({ role: { $nin: ['admin', 'service'] } });
@@ -364,7 +390,7 @@ const getAnalytics = async (req, res) => {
 };
 
 module.exports = {
-    getStats, getAllUsers, getAllProfiles, togglePremium, deleteUser, verifyProfile, adminUpdateProfile,
+    getStats, getNewUsersCount, markUsersSeen, getAllUsers, getAllProfiles, togglePremium, deleteUser, verifyProfile, adminUpdateProfile,
     approveAadhar, rejectAadhar,
     getAllBookings, updateBookingStatus,
     getTestimonials, createTestimonial, deleteTestimonial,

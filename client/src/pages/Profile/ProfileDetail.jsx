@@ -8,6 +8,7 @@ import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import AvatarPlaceholder from '../../components/AvatarPlaceholder';
 import { getLocalizedNakshatra } from '../../utils/nakshatraData';
 import { getLocalizedRasi } from '../../utils/rasiData';
 
@@ -404,8 +405,8 @@ const ProfileDetail = () => {
                                 </div>
                             ) : (
                                 <div style={{ padding: '32px 20px' }}>
-                                    <div style={styles.profileEmoji}>
-                                        {isFemale ? '👩' : '👨'}
+                                    <div style={{ ...styles.profileEmoji, textAlign: 'center' }}>
+                                        <AvatarPlaceholder gender={profile.gender} size={90} style={{ margin: '0 auto' }} />
                                     </div>
                                     <div style={styles.verifiedBadge}>{t('profile.verified_profile')}</div>
                                     {profile.numberProtected && (

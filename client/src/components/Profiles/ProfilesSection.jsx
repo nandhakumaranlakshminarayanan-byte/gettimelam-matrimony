@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import AvatarPlaceholder from '../AvatarPlaceholder';
 
 const API = 'http://localhost:5000';
 
@@ -250,7 +251,7 @@ const ProfilesSection = ({ onLoginClick }) => {
                                             onClick={() => !isUnverified && navigate(`/profile/${p._id}`)} />
                                     ) : (
                                         <span style={styles.avatar} onClick={() => !isUnverified && navigate(`/profile/${p._id}`)}>
-                                            {p.gender === 'Female' ? '👩' : '👨'}
+                                            <AvatarPlaceholder gender={p.gender} size={150} variant="card" />
                                         </span>
                                     )}
                                     <div style={styles.photoGradient} />

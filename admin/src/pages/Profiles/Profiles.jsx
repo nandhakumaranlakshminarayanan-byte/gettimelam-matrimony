@@ -3,6 +3,7 @@ import Sidebar from '../../components/Sidebar';
 import Navbar from '../../components/Navbar';
 import API from '../../utils/api';
 import toast from 'react-hot-toast';
+import { useOptions } from '../../hooks/useOptions';
 
 const Profiles = () => {
     const [profiles, setProfiles] = useState([]);
@@ -13,6 +14,22 @@ const Profiles = () => {
     const [viewingProfile, setViewingProfile] = useState(null);
     const [rejectReason, setRejectReason] = useState('');
     const [aadharActionLoading, setAadharActionLoading] = useState(false);
+
+    // Live options for the Edit modal — so admin can only pick valid
+    // taxonomy values instead of free-typing something that won't match
+    // member-facing filters (e.g. "Naicker/Vanniya Kula Kshatriyar" typed
+    // instead of the real "Vanniyar" option).
+    const { options: religionOptions } = useOptions('religion');
+    const { options: casteOptions } = useOptions('caste', { parent: editForm?.religion, allowAllWhenNoParent: true });
+    const { options: subCasteOptions } = useOptions('subcaste', {
+        parent: editForm?.religion && editForm?.caste ? `${editForm.religion}|${editForm.caste}` : '',
+        requireParent: true,
+    });
+    const { options: stateOptions } = useOptions('state');
+    const { options: districtOptions } = useOptions('district', { parent: editForm?.state, requireParent: true });
+    const { options: rasiOptions } = useOptions('rasi');
+    const { options: nakshatraOptions } = useOptions('nakshatra');
+    const { options: jobOptions } = useOptions('job');
 
     useEffect(() => { fetchProfiles(); }, []);
 
@@ -225,23 +242,40 @@ const Profiles = () => {
                                 </div>
                                 <div>
                                     <label style={styles.modalLabel}>Religion</label>
-                                    <input style={styles.modalInput} name="religion" value={editForm.religion} onChange={handleEditChange} />
+                                    <select style={styles.modalInput} name="religion" value={editForm.religion}
+                                        onChange={e => setEditForm({ ...editForm, religion: e.target.value, caste: '', subCaste: '' })}>
+                                        <option value="">Select</option>
+                                        {religionOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label style={styles.modalLabel}>Caste</label>
-                                    <input style={styles.modalInput} name="caste" value={editForm.caste} onChange={handleEditChange} />
+                                    <select style={styles.modalInput} name="caste" value={editForm.caste}
+                                        onChange={e => setEditForm({ ...editForm, caste: e.target.value, subCaste: '' })}>
+                                        <option value="">Select</option>
+                                        {casteOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label style={styles.modalLabel}>Sub Caste</label>
-                                    <input style={styles.modalInput} name="subCaste" value={editForm.subCaste} onChange={handleEditChange} />
+                                    <select style={styles.modalInput} name="subCaste" value={editForm.subCaste} onChange={handleEditChange}>
+                                        <option value="">Select</option>
+                                        {subCasteOptions.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label style={styles.modalLabel}>Rasi</label>
-                                    <input style={styles.modalInput} name="rasi" value={editForm.rasi} onChange={handleEditChange} />
+                                    <select style={styles.modalInput} name="rasi" value={editForm.rasi} onChange={handleEditChange}>
+                                        <option value="">Select</option>
+                                        {rasiOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label style={styles.modalLabel}>Nakshatra</label>
-                                    <input style={styles.modalInput} name="nakshatra" value={editForm.nakshatra} onChange={handleEditChange} />
+                                    <select style={styles.modalInput} name="nakshatra" value={editForm.nakshatra} onChange={handleEditChange}>
+                                        <option value="">Select</option>
+                                        {nakshatraOptions.map(n => <option key={n} value={n}>{n}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label style={styles.modalLabel}>Dosham</label>
@@ -256,19 +290,29 @@ const Profiles = () => {
                                 </div>
                                 <div>
                                     <label style={styles.modalLabel}>Occupation</label>
-                                    <input style={styles.modalInput} name="occupation" value={editForm.occupation} onChange={handleEditChange} />
+                                    <select style={styles.modalInput} name="occupation" value={editForm.occupation} onChange={handleEditChange}>
+                                        <option value="">Select</option>
+                                        {jobOptions.map(j => <option key={j} value={j}>{j}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label style={styles.modalLabel}>City</label>
                                     <input style={styles.modalInput} name="city" value={editForm.city} onChange={handleEditChange} />
                                 </div>
                                 <div>
-                                    <label style={styles.modalLabel}>District</label>
-                                    <input style={styles.modalInput} name="district" value={editForm.district} onChange={handleEditChange} />
+                                    <label style={styles.modalLabel}>State</label>
+                                    <select style={styles.modalInput} name="state" value={editForm.state}
+                                        onChange={e => setEditForm({ ...editForm, state: e.target.value, district: '' })}>
+                                        <option value="">Select</option>
+                                        {stateOptions.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
                                 </div>
                                 <div>
-                                    <label style={styles.modalLabel}>State</label>
-                                    <input style={styles.modalInput} name="state" value={editForm.state} onChange={handleEditChange} />
+                                    <label style={styles.modalLabel}>District</label>
+                                    <select style={styles.modalInput} name="district" value={editForm.district} onChange={handleEditChange} disabled={!editForm.state}>
+                                        <option value="">{editForm.state ? 'Select' : 'Select state first'}</option>
+                                        {districtOptions.map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
                                 </div>
                                 <div>
                                     <label style={styles.modalLabel}>Family Type</label>

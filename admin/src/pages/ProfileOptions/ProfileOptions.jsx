@@ -37,6 +37,8 @@ const ProfileOptions = () => {
 
     const [options, setOptions] = useState([]);
     const [newValue, setNewValue] = useState('');
+    const [editingId, setEditingId] = useState(null);
+    const [editingValue, setEditingValue] = useState('');
     const [loading, setLoading] = useState(false);
 
     const [pending, setPending] = useState([]);
@@ -153,6 +155,22 @@ const ProfileOptions = () => {
         }
     };
 
+    const startEdit = (o) => { setEditingId(o._id); setEditingValue(o.value); };
+    const cancelEdit = () => { setEditingId(null); setEditingValue(''); };
+
+    const handleSaveRename = async (id) => {
+        if (!editingValue.trim()) return;
+        try {
+            await API.put(`/admin/options/${id}`, { value: editingValue.trim() });
+            toast.success('Renamed — this takes effect everywhere immediately');
+            setEditingId(null);
+            setEditingValue('');
+            fetchOptions();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Failed to rename');
+        }
+    };
+
     const handleApprove = async (item) => {
         try {
             await API.put(`/admin/options/${item._id}/approve`);
@@ -253,10 +271,31 @@ const ProfileOptions = () => {
                                         <div style={styles.optionsGrid}>
                                             {options.map(o => (
                                                 <div key={o._id} style={styles.optionChip}>
-                                                    <span>{o.value}</span>
-                                                    <button style={styles.chipDelete} onClick={() => handleDelete(o._id, o.value)} title="Remove">
-                                                        <IconTrash size={14} />
-                                                    </button>
+                                                    {editingId === o._id ? (
+                                                        <>
+                                                            <input
+                                                                autoFocus
+                                                                style={styles.chipEditInput}
+                                                                value={editingValue}
+                                                                onChange={e => setEditingValue(e.target.value)}
+                                                                onKeyDown={e => { if (e.key === 'Enter') handleSaveRename(o._id); if (e.key === 'Escape') cancelEdit(); }}
+                                                            />
+                                                            <button style={styles.chipSave} onClick={() => handleSaveRename(o._id)} title="Save">
+                                                                <IconCheck size={14} />
+                                                            </button>
+                                                            <button style={styles.chipDelete} onClick={cancelEdit} title="Cancel">
+                                                                <IconX size={14} />
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>{o.value}</span>
+                                                            <button style={styles.chipEdit} onClick={() => startEdit(o)} title="Rename">✎</button>
+                                                            <button style={styles.chipDelete} onClick={() => handleDelete(o._id, o.value)} title="Remove">
+                                                                <IconTrash size={14} />
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
@@ -328,6 +367,9 @@ const styles = {
     optionsGrid: { display: 'flex', flexWrap: 'wrap', gap: '8px' },
     optionChip: { display: 'flex', alignItems: 'center', gap: '8px', padding: '7px 8px 7px 14px', background: '#F5F5F5', borderRadius: '20px', fontSize: '13px', color: '#333' },
     chipDelete: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', border: 'none', borderRadius: '50%', background: '#fff', color: '#B71C1C', cursor: 'pointer' },
+    chipEdit: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', border: 'none', borderRadius: '50%', background: '#fff', color: '#7A5C00', cursor: 'pointer', fontSize: '12px' },
+    chipSave: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '22px', height: '22px', border: 'none', borderRadius: '50%', background: '#fff', color: '#2E7D32', cursor: 'pointer' },
+    chipEditInput: { border: '1.5px solid #F5BE17', borderRadius: '14px', padding: '4px 10px', fontSize: '13px', width: '140px', outline: 'none' },
     pendingList: { display: 'flex', flexDirection: 'column', gap: '10px' },
     pendingRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: '#FFF8E1', border: '1px solid #F5BE17', borderRadius: '10px', flexWrap: 'wrap', gap: '10px' },
     pendingValue: { fontSize: '14px', fontWeight: '700', color: '#1A0A0A', display: 'flex', alignItems: 'center', gap: '8px' },

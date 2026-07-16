@@ -8,10 +8,8 @@ import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { CASTES, getSubCastes, RELIGIONS } from '../../utils/casteData';
-import { NAKSHATRA_NAMES, getNakshatraDropdownLabel } from '../../utils/nakshatraData';
-import { RASI_NAMES } from '../../utils/rasiData';
-import { STATES_AND_UTS, getDistrictsForState } from '../../utils/indiaLocationData';
+import { getNakshatraDropdownLabel } from '../../utils/nakshatraData';
+import { useOptions } from '../../hooks/useOptions';
 
 const API = 'http://localhost:5000';
 
@@ -36,6 +34,22 @@ const Browse = () => {
     const [myProfile, setMyProfile] = useState(null);
     const [myProfileLoaded, setMyProfileLoaded] = useState(false);
     const [initialFilterApplied, setInitialFilterApplied] = useState(false);
+
+    // Live-fetched from the admin-managed Profile Options system, instead
+    // of static hardcoded lists — so anything admin adds/edits there shows
+    // up in these filters immediately.
+    const { options: religionOptions } = useOptions('religion');
+    const { options: casteOptions } = useOptions('caste', { parent: filters.religion, allowAllWhenNoParent: true });
+    const { options: subCasteOptions } = useOptions('subcaste', {
+        parent: filters.religion && filters.caste ? `${filters.religion}|${filters.caste}` : '',
+        requireParent: true,
+    });
+    const { options: stateOptions } = useOptions('state');
+    const { options: districtOptions } = useOptions('district', { parent: filters.state, requireParent: true });
+    const { options: rasiOptions } = useOptions('rasi');
+    const { options: nakshatraOptions } = useOptions('nakshatra');
+    const { options: doshamOptions } = useOptions('dosham');
+    const { options: maritalStatusOptions } = useOptions('maritalstatus');
 
     useEffect(() => { if (user) fetchProfiles(); else setLoading(false); }, [user]);
     // Guests get the sign-in popup instead of profiles
@@ -195,7 +209,11 @@ const Browse = () => {
         if (f.gender) filtered = filtered.filter(p => p.gender === f.gender);
         if (f.religion) filtered = filtered.filter(p => p.religion === f.religion);
         if (f.caste) filtered = filtered.filter(p => p.caste === f.caste);
-        if (f.subCaste) filtered = filtered.filter(p => p.subCaste === f.subCaste);
+        // Only filter by subCaste when caste is ALSO set — same reasoning
+        // as the state/district fix above: the Sub Caste dropdown can't
+        // render any real options without a Caste selected, so a leftover
+        // subCaste value would silently narrow results while looking unset.
+        if (f.caste && f.subCaste) filtered = filtered.filter(p => p.subCaste === f.subCaste);
         if (f.state) filtered = filtered.filter(p => p.state === f.state);
         // Only filter by district when state is ALSO set — otherwise a
         // leftover district value (e.g. from the own-profile auto-default,
@@ -250,12 +268,22 @@ const Browse = () => {
             return;
         }
 
-        if (myProfile && (myProfile.religion || myProfile.caste || myProfile.district)) {
+        // Default from Partner Preferences, not the member's own profile —
+        // browsing should start from who you're looking for, not who you
+        // are. The old "default from own profile" approach compounded 8+
+        // exact-match criteria (own caste AND subcaste AND district AND
+        // rasi AND nakshatra AND dosham...) which in practice matched
+        // almost no one but the member themselves, showing "0 profiles"
+        // with every dropdown visually appearing blank/"Any". If no
+        // preferences are set yet, this now leaves filters blank instead
+        // of falling back to that same self-matching problem.
+        if (myProfile && (myProfile.prefReligion || myProfile.prefCaste || myProfile.prefState || myProfile.prefRasi || myProfile.prefDosham || myProfile.prefMaritalStatus)) {
             const defaults = {
-                gender: '', religion: myProfile.religion || '', caste: myProfile.caste || '',
-                subCaste: myProfile.subCaste || '', state: myProfile.state || '', district: myProfile.state ? (myProfile.district || '') : '',
-                rasi: myProfile.rasi || '', nakshatra: myProfile.nakshatra || '', dosham: myProfile.dosham || '',
-                maritalStatus: mapMaritalStatusForFilter(myProfile.maritalStatus), minAge: '', maxAge: '',
+                gender: '', religion: myProfile.prefReligion || '', caste: myProfile.prefCaste || '',
+                subCaste: myProfile.prefCaste ? (myProfile.prefSubCaste || '') : '', state: myProfile.prefState || '', district: '',
+                rasi: myProfile.prefRasi || '', nakshatra: myProfile.prefNakshatra || '', dosham: myProfile.prefDosham || '',
+                maritalStatus: mapMaritalStatusForFilter(myProfile.prefMaritalStatus),
+                minAge: myProfile.prefAgeMin || '', maxAge: myProfile.prefAgeMax || '',
             };
             setFilters(defaults);
             applyFilters(defaults);
@@ -265,12 +293,13 @@ const Browse = () => {
     }, [location.search, profilesLoaded, myProfileLoaded, myProfile, initialFilterApplied]);
 
     const resetFilters = () => {
-        const defaults = myProfile && (myProfile.religion || myProfile.caste || myProfile.district)
+        const defaults = myProfile && (myProfile.prefReligion || myProfile.prefCaste || myProfile.prefState || myProfile.prefRasi || myProfile.prefDosham || myProfile.prefMaritalStatus)
             ? {
-                gender: '', religion: myProfile.religion || '', caste: myProfile.caste || '',
-                subCaste: myProfile.subCaste || '', state: myProfile.state || '', district: myProfile.state ? (myProfile.district || '') : '',
-                rasi: myProfile.rasi || '', nakshatra: myProfile.nakshatra || '', dosham: myProfile.dosham || '',
-                maritalStatus: mapMaritalStatusForFilter(myProfile.maritalStatus), minAge: '', maxAge: '',
+                gender: '', religion: myProfile.prefReligion || '', caste: myProfile.prefCaste || '',
+                subCaste: myProfile.prefCaste ? (myProfile.prefSubCaste || '') : '', state: myProfile.prefState || '', district: '',
+                rasi: myProfile.prefRasi || '', nakshatra: myProfile.prefNakshatra || '', dosham: myProfile.prefDosham || '',
+                maritalStatus: mapMaritalStatusForFilter(myProfile.prefMaritalStatus),
+                minAge: myProfile.prefAgeMin || '', maxAge: myProfile.prefAgeMax || '',
             }
             : { gender: '', religion: '', caste: '', subCaste: '', state: '', district: '', maritalStatus: '', rasi: '', nakshatra: '', dosham: '', minAge: '', maxAge: '' };
         setFilters(defaults);
@@ -389,20 +418,17 @@ const Browse = () => {
                                 onChange={e => setFilters({ ...filters, religion: e.target.value, caste: '', subCaste: '' })}
                                 style={styles.filterInput}>
                                 <option value="">{t('browse.all_religions')}</option>
-                                {RELIGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                                {religionOptions.map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
                         </div>
 
-                        {[
-                            { label: t('browse.marital_status'), name: 'maritalStatus', type: 'select', options: [['', t('browse.any')], ['Never Married', t('browse.never_married')], ['Divorced', t('browse.divorced')], ['Widowed', t('browse.widowed')]] },
-                        ].map(f => (
-                            <div key={f.name} style={styles.filterGroup}>
-                                <label style={styles.filterLabel}>{f.label}</label>
-                                <select name={f.name} value={filters[f.name]} onChange={handleFilterChange} style={styles.filterInput}>
-                                    {f.options.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
-                                </select>
-                            </div>
-                        ))}
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>{t('browse.marital_status')}</label>
+                            <select name="maritalStatus" value={filters.maritalStatus} onChange={handleFilterChange} style={styles.filterInput}>
+                                <option value="">{t('browse.any')}</option>
+                                {maritalStatusOptions.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                        </div>
 
                         <div style={styles.filterGroup}>
                             <label style={styles.filterLabel}>{t('browse.caste')}</label>
@@ -410,9 +436,7 @@ const Browse = () => {
                                 onChange={e => setFilters({ ...filters, caste: e.target.value, subCaste: '' })}
                                 style={styles.filterInput}>
                                 <option value="">Any Caste</option>
-                                {(filters.religion ? (CASTES[filters.religion] || []) : Object.values(CASTES).flat())
-                                    .filter((c, i, arr) => arr.indexOf(c) === i) // de-dupe when showing all religions
-                                    .map(c => <option key={c} value={c}>{c}</option>)}
+                                {casteOptions.filter(c => c !== 'Any Caste').map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
 
@@ -421,7 +445,7 @@ const Browse = () => {
                             <select name="subCaste" value={filters.subCaste} onChange={handleFilterChange}
                                 style={styles.filterInput} disabled={!filters.caste}>
                                 <option value="">{filters.caste ? 'Any Sub Caste' : 'Select caste first'}</option>
-                                {getSubCastes(filters.religion, filters.caste).map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                                {subCasteOptions.filter(sc => sc !== 'Any Sub Caste').map(sc => <option key={sc} value={sc}>{sc}</option>)}
                             </select>
                         </div>
 
@@ -431,7 +455,7 @@ const Browse = () => {
                                 onChange={e => setFilters({ ...filters, state: e.target.value, district: '' })}
                                 style={styles.filterInput}>
                                 <option value="">Any</option>
-                                {STATES_AND_UTS.map(s => <option key={s}>{s}</option>)}
+                                {stateOptions.filter(s => s !== 'Any').map(s => <option key={s}>{s}</option>)}
                             </select>
                         </div>
 
@@ -440,7 +464,7 @@ const Browse = () => {
                             <select name="district" value={filters.district} onChange={handleFilterChange}
                                 style={styles.filterInput} disabled={!filters.state}>
                                 <option value="">{filters.state ? t('browse.all') : 'Select state first'}</option>
-                                {getDistrictsForState(filters.state).map(d => (
+                                {districtOptions.map(d => (
                                     <option key={d}>{d}</option>
                                 ))}
                             </select>
@@ -450,7 +474,7 @@ const Browse = () => {
                             <label style={styles.filterLabel}>Zodiac (Rasi)</label>
                             <select name="rasi" value={filters.rasi} onChange={handleFilterChange} style={styles.filterInput}>
                                 <option value="">Any</option>
-                                {RASI_NAMES.map(r => <option key={r} value={r}>{r}</option>)}
+                                {rasiOptions.filter(r => r !== 'Any').map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
                         </div>
 
@@ -458,7 +482,7 @@ const Browse = () => {
                             <label style={styles.filterLabel}>Star (Nakshatra)</label>
                             <select name="nakshatra" value={filters.nakshatra} onChange={handleFilterChange} style={styles.filterInput}>
                                 <option value="">Any</option>
-                                {NAKSHATRA_NAMES.map(n => <option key={n} value={n}>{getNakshatraDropdownLabel(n)}</option>)}
+                                {nakshatraOptions.filter(n => n !== 'Any').map(n => <option key={n} value={n}>{getNakshatraDropdownLabel(n)}</option>)}
                             </select>
                         </div>
 
@@ -466,8 +490,7 @@ const Browse = () => {
                             <label style={styles.filterLabel}>Dosham</label>
                             <select name="dosham" value={filters.dosham} onChange={handleFilterChange} style={styles.filterInput}>
                                 <option value="">Any</option>
-                                <option value="No">No</option>
-                                <option value="Yes">Yes</option>
+                                {doshamOptions.filter(d => d !== 'Any').map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
                         </div>
 
@@ -486,10 +509,10 @@ const Browse = () => {
                     <div style={styles.quickFilters}>
                         <h4 style={styles.quickTitle}>{t('browse.quick_filters')}</h4>
                         {[
-                            { label: 'Hindu', filter: { religion: 'Hindu' } },
-                            { label: 'Muslim', filter: { religion: 'Muslim' } },
-                            { label: 'Christian', filter: { religion: 'Christian' } },
-                            { label: 'Puducherry', filter: { district: 'Puducherry' } },
+                            { label: 'Hindu', filter: { religion: 'Hindu', caste: '', subCaste: '' } },
+                            { label: 'Muslim', filter: { religion: 'Muslim', caste: '', subCaste: '' } },
+                            { label: 'Christian', filter: { religion: 'Christian', caste: '', subCaste: '' } },
+                            { label: 'Puducherry', filter: { state: 'Puducherry', district: 'Puducherry' } },
                         ].map(q => (
                             <span key={q.label} style={styles.quickTag}
                                 onClick={() => {

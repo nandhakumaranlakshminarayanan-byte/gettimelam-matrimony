@@ -9,6 +9,9 @@ import LoginModal from '../../components/Modals/LoginModal';
 import RegisterModal from '../../components/Modals/RegisterModal';
 import BannerSlider from '../../components/BannerSlider/BannerSlider';
 import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
+
+const API = 'http://localhost:5000';
 
 // Gold person silhouette (replaces 👩/👨 emoji)
 const Silhouette = ({ tint }) => (
@@ -32,6 +35,15 @@ const Home = () => {
     const { user } = useAuth();
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
+    const [previewProfiles, setPreviewProfiles] = useState([]);
+
+    React.useEffect(() => {
+        if (!user) {
+            axios.get(`${API}/api/profiles/public-preview`)
+                .then(res => setPreviewProfiles(res.data.profiles || []))
+                .catch(() => setPreviewProfiles([]));
+        }
+    }, [user]);
 
     return (
         <div>
@@ -69,26 +81,36 @@ const Home = () => {
                             thousands of verified profiles across Tamil Nadu.
                         </p>
                         <div style={styles.teaserCards}>
-                            {[0, 1, 2, 3, 4, 5].map(i => (
-                                <div key={i} style={styles.glassCard}>
-                                    {/* profile visual */}
-                                    <div style={styles.cardPhoto}>
-                                        <div style={styles.photoGlow} />
-                                        <Silhouette tint={i % 2 === 0 ? 'rgba(241,210,137,0.75)' : 'rgba(232,184,75,0.6)'} />
-                                    </div>
-                                    {/* skeleton detail lines */}
-                                    <div style={styles.cardBody}>
-                                        <div style={styles.line} />
-                                        <div style={styles.lineShort} />
-                                    </div>
-                                    {/* frosted lock overlay */}
-                                    <div style={styles.frost}>
-                                        <div style={styles.lockChip}>
-                                            <LockIcon />
+                            {[0, 1, 2, 3, 4, 5, 6, 7].map(i => {
+                                const p = previewProfiles[i];
+                                return (
+                                    <div key={i} style={{ ...styles.glassCard, cursor: 'pointer' }} onClick={() => setShowRegister(true)}>
+                                        {/* profile visual — real photo, blurred, if we have one */}
+                                        <div style={styles.cardPhoto}>
+                                            {p?.photo ? (
+                                                <img src={`${API}${p.photo}`} alt=""
+                                                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(9px)', transform: 'scale(1.1)' }} />
+                                            ) : (
+                                                <>
+                                                    <div style={styles.photoGlow} />
+                                                    <Silhouette tint={i % 2 === 0 ? 'rgba(241,210,137,0.75)' : 'rgba(232,184,75,0.6)'} />
+                                                </>
+                                            )}
+                                        </div>
+                                        {/* skeleton detail lines */}
+                                        <div style={styles.cardBody}>
+                                            <div style={styles.line} />
+                                            <div style={styles.lineShort} />
+                                        </div>
+                                        {/* frosted lock overlay */}
+                                        <div style={styles.frost}>
+                                            <div style={styles.lockChip}>
+                                                <LockIcon />
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </section>
@@ -150,7 +172,7 @@ const styles = {
         margin: '0 auto 44px', lineHeight: 1.7,
     },
     teaserCards: {
-        display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '18px',
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 240px))', gap: '18px', justifyContent: 'center',
     },
     glassCard: {
         position: 'relative',
@@ -164,7 +186,7 @@ const styles = {
         userSelect: 'none',
     },
     cardPhoto: {
-        position: 'relative', height: '110px',
+        position: 'relative', height: '290px',
         background: 'linear-gradient(160deg, #3A1020, #22060E)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden',

@@ -25,6 +25,17 @@ router.get('/my', protect, async (req, res) => {
     }
 });
 
+// ── User: check for an unread admin reply WITHOUT clearing it — used to
+// show a badge on the chat toggle button before the widget is opened ──
+router.get('/my/unread-status', protect, async (req, res) => {
+    try {
+        const chat = await SupportChat.findOne({ user: req.user.id }).select('unreadByUser');
+        res.json({ success: true, unread: chat?.unreadByUser || false });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // ── User: send a message to support ──
 router.post('/my/send', protect, async (req, res) => {
     try {
@@ -54,6 +65,16 @@ router.get('/admin/all', protect, adminOnly, async (req, res) => {
             .populate('assignedTo', 'name')
             .sort({ lastMessageAt: -1 });
         res.json({ success: true, chats });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ── Admin: count of threads with an unread user message (sidebar badge) ──
+router.get('/admin/unread-count', protect, adminOnly, async (req, res) => {
+    try {
+        const count = await SupportChat.countDocuments({ unreadByAdmin: true });
+        res.json({ success: true, count });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
