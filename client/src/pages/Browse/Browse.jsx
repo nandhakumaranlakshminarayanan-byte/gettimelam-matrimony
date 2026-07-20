@@ -384,10 +384,16 @@ const Browse = () => {
                     You are logged in as a service provider.<br />
                     Member profiles are only visible to matrimony members.
                 </p>
-                <button style={{ padding: '12px 28px', background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
-                    onClick={() => navigate('/service-provider')}>
-                    Go to My Business →
-                </button>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button style={{ padding: '12px 28px', background: 'linear-gradient(135deg, #B71C1C, #D32F2F)', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+                        onClick={() => navigate('/services')}>
+                        Browse Wedding Services →
+                    </button>
+                    <button style={{ padding: '12px 28px', background: 'transparent', color: '#B71C1C', border: '1.5px solid #B71C1C', borderRadius: '10px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+                        onClick={() => navigate('/service-provider')}>
+                        Go to My Business →
+                    </button>
+                </div>
             </div>
             <Footer />
         </div>

@@ -9,15 +9,6 @@ const imgUrl = (p) => (p && p.startsWith('/') ? `${SERVER_URL}${p}` : p);
 
 const GLOW_COLORS = ['#DF9B08', '#C97B2E', '#8FAE5A', '#B5471B', '#C9668E', '#7B5CC9'];
 
-// Must match the category IDs on the client Services page exactly
-const SERVICE_CATEGORIES = [
-    'Wedding Hall/Venue', 'Photography', 'Videography', 'Catering',
-    'Event Decoration', 'Wedding Rentals', 'DJ & Entertainment', 'Choreography',
-    'Bridal Makeup & Hair', 'Mehndi Artist', 'Bridal Styling', 'Wedding Planner',
-    'Travel & Accommodation', 'Officiant/Priest', 'Security & Valet', 'Wedding Cake',
-    'Favors & Gifts', 'Stationery & Cards', 'Other',
-];
-
 const emptyForm = { name: '', description: '', glow: '#DF9B08', order: 0, category: '' };
 
 const ServiceCards = () => {
@@ -28,6 +19,14 @@ const ServiceCards = () => {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
     const [saving, setSaving] = useState(false);
+    const usedCategories = new Set(cards.map(c => c.category).filter(Boolean));
+    const [serviceCategories, setServiceCategories] = useState([]);
+
+    useEffect(() => {
+        API.get('/admin/options', { params: { category: 'servicecategory', status: 'active' } })
+            .then(res => setServiceCategories((res.data.options || []).map(o => o.value)))
+            .catch(() => setServiceCategories([]));
+    }, []);
 
     useEffect(() => { fetchCards(); }, []);
 
@@ -222,10 +221,13 @@ const ServiceCards = () => {
                                         value={form.category}
                                         onChange={e => setForm({ ...form, category: e.target.value })}>
                                         <option value="">All services (no filter)</option>
-                                        {SERVICE_CATEGORIES.map(c => (
-                                            <option key={c} value={c}>{c}</option>
+                                        {serviceCategories.map(c => (
+                                            <option key={c} value={c}>{usedCategories.has(c) ? `🔴 ${c}` : c}</option>
                                         ))}
                                     </select>
+                                    <p style={{ fontSize: '11px', color: '#9E9E9E', marginTop: '4px' }}>
+                                        🔴 = a card already links to this category
+                                    </p>
                                 </div>
                                 <div style={styles.formGroup}>
                                     <label style={styles.label}>Glow Color</label>

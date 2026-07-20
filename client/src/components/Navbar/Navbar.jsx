@@ -119,7 +119,7 @@ const Navbar = ({ onLoginClick, onRegisterClick }) => {
 
 const styles = {
     nav: { background: 'linear-gradient(135deg, #5F0909, #3D0606)', borderBottom: '1px solid rgba(245,190,23,0.3)', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 4px 20px rgba(0,0,0,0.35)' },
-    inner: { maxWidth: '1200px', margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '92px' },
+    inner: { width: '100%', boxSizing: 'border-box', padding: '0 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '92px' },
     logo: { cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 },
     logoImg: { height: '130px', maxWidth: '240px', objectFit: 'contain', display: 'block' },
     links: { display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'nowrap' },

@@ -253,12 +253,12 @@
         }
     },
     "service_provider": {
-        "my_business": "🏪 என் வணிகம்",
-        "overview": "🏠 மேலோட்டம்",
-        "my_services": "🏪 என் சேவைகள்",
-        "bookings": "📅 முன்பதிவுகள்",
-        "settings": "⚙️ அமைப்புகள்",
-        "logout": "🚪 வெளியேறு",
+        "my_business": "என் வணிகம்",
+        "overview": "மேலோட்டம்",
+        "my_services": "என் சேவைகள்",
+        "bookings": "முன்பதிவுகள்",
+        "settings": "அமைப்புகள்",
+        "logout": "வெளியேறு",
         "my_services_stat": "என் சேவைகள்",
         "total_bookings": "மொத்த முன்பதிவுகள்",
         "welcome": "வரவேற்கிறோம்"

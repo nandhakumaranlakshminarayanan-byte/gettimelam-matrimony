@@ -45,7 +45,7 @@ const getStats = async (req, res) => {
         const unreadMessages = await Message.countDocuments({ isRead: false });
         const totalTestimonials = await Testimonial.countDocuments();
 
-        const recentUsers = await User.find({ role: { $ne: 'admin' } })
+        const recentUsers = await User.find({ role: 'member' })
             .select('-password')
             .sort({ createdAt: -1 })
             .limit(5);

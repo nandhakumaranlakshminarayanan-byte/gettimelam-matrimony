@@ -315,6 +315,7 @@ const Register = () => {
         if (s2.profileFor !== 'Myself' && !s2.profileName) { toast.error('Enter ' + getProfileForLabel(s2.profileFor)); return false; }
         if (!s2.dateOfBirth) { toast.error('Select date of birth'); return false; }
         if (!s2.email) { toast.error('Enter email address'); return false; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(s2.email)) { toast.error('Enter a valid email address'); return false; }
         if (!s2.password || s2.password.length < 6) { toast.error('Password must be at least 6 characters'); return false; }
         if (s2.password !== s2.confirmPassword) { toast.error('Passwords do not match'); return false; }
         if (!s2.religion) { toast.error('Select religion'); return false; }

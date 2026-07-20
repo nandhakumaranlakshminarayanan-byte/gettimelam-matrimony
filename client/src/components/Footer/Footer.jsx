@@ -48,7 +48,7 @@ const Footer = () => {
                         ))}
                         {/* Opens the live support chat instead of navigating */}
                         <a href="/" onClick={handleSupportClick} style={{ ...styles.link, ...styles.supportLink }}>
-                            💬 Chat with Support Team
+                            Chat with Support Team
                             {user && supportUnread && <span style={styles.supportDot} />}
                         </a>
                         {['Plans & Pricing', 'Blog', 'Privacy Policy', 'Terms & Conditions'].map(l => (

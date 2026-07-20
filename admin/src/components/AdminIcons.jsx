@@ -34,10 +34,13 @@ export const IconTrash = (p) => (<I {...p}><path d="M4 6.5h16M9.5 6V4.5A1.5 1.5 
 export const IconClock = (p) => (<I {...p}><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.5 2.5"/></I>);
 export const IconBan = (p) => (<I {...p}><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></I>);
 export const IconSliders = (p) => (<I {...p}><path d="M4 6.5h9M17 6.5h3M4 17.5h3M11 17.5h9"/><circle cx="15" cy="6.5" r="2"/><circle cx="7" cy="17.5" r="2"/></I>);
+export const IconTag = (p) => (<I {...p}><path d="M11.5 3.5H6a2.5 2.5 0 00-2.5 2.5v5.5a2.5 2.5 0 00.7 1.7l8 8a2.5 2.5 0 003.5 0l5.3-5.3a2.5 2.5 0 000-3.5l-8-8a2.5 2.5 0 00-1.5-.9z"/><circle cx="8.2" cy="8.2" r="1.6"/></I>);
 
-export default {
+const AdminIcons = {
     IconGrid, IconUsers, IconIdCard, IconCalendar, IconCard, IconHeart,
     IconChart, IconBell, IconImage, IconLayers, IconChat, IconStore,
     IconShield, IconGlobe, IconLogout, IconCheck, IconX, IconTrash,
     IconClock, IconBan,
 };
+
+export default AdminIcons;

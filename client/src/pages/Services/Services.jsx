@@ -8,6 +8,9 @@ import RegisterModal from '../../components/Modals/RegisterModal';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { useOptions } from '../../hooks/useOptions';
+import Icon from '../../components/Icon';
+import BusinessPlaceholder from '../../components/BusinessPlaceholder';
 
 const API = 'http://localhost:5000';
 
@@ -161,55 +164,26 @@ const Services = () => {
     const { user } = useAuth();
     const { t } = useTranslation();
 
-    const ALL_CATEGORIES = [
-        { id: 'all', label: t('services.categories.all'), icon: '✨' },
-        { id: 'Wedding Hall/Venue', label: t('services.categories.wedding_hall'), icon: '🏛️' },
-        { id: 'Photography', label: t('services.categories.photography'), icon: '📸' },
-        { id: 'Videography', label: t('services.categories.videography'), icon: '🎥' },
-        { id: 'Catering', label: t('services.categories.catering'), icon: '🍽️' },
-        { id: 'Event Decoration', label: t('services.categories.event_decoration'), icon: '🌸' },
-        { id: 'Wedding Rentals', label: t('services.categories.wedding_rentals'), icon: '🪑' },
-        { id: 'DJ & Entertainment', label: t('services.categories.dj_entertainment'), icon: '🎵' },
-        { id: 'Choreography', label: t('services.categories.choreography'), icon: '💃' },
-        { id: 'Bridal Makeup & Hair', label: t('services.categories.bridal_makeup'), icon: '💄' },
-        { id: 'Mehndi Artist', label: t('services.categories.mehndi'), icon: '🌿' },
-        { id: 'Bridal Styling', label: t('services.categories.bridal_styling'), icon: '👗' },
-        { id: 'Wedding Planner', label: t('services.categories.wedding_planner'), icon: '📋' },
-        { id: 'Travel & Accommodation', label: t('services.categories.travel'), icon: '🚌' },
-        { id: 'Officiant/Priest', label: t('services.categories.priest'), icon: '🙏' },
-        { id: 'Security & Valet', label: t('services.categories.security'), icon: '🔒' },
-        { id: 'Wedding Cake', label: t('services.categories.wedding_cake'), icon: '🎂' },
-        { id: 'Favors & Gifts', label: t('services.categories.favors'), icon: '🎁' },
-        { id: 'Stationery & Cards', label: t('services.categories.stationery'), icon: '💌' },
-        { id: 'Other', label: t('services.categories.other'), icon: '🌟' },
-    ];
     const [showLogin, setShowLogin] = useState(false);
     const [showRegister, setShowRegister] = useState(false);
-    // Categories that actually have a Service Card created in admin.
-    // Only these are shown as filter pills; null = not yet loaded.
-    const [cardCategories, setCardCategories] = useState(null);
-
-    useEffect(() => {
-        axios.get(`${API}/api/service-cards`)
-            .then(res => {
-                const cats = (res.data.cards || [])
-                    .map(c => c.category)
-                    .filter(Boolean);
-                setCardCategories([...new Set(cats)]);
-            })
-            .catch(() => setCardCategories([]));
-    }, []);
-
-    // 'All Services' always shows; other pills only appear if a service
-    // card with that category actually exists — no fallback to the full
-    // list, so this strictly reflects what's been created in admin.
+    // The category list now comes straight from admin (Service Categories
+    // page) — every category admin has added shows here, whether or not
+    // a listing or homepage card exists for it yet; picking one with no
+    // listings just shows the "no service provider yet" empty state.
+    const { options: liveCategories } = useOptions('servicecategory');
     const visibleCategories = [
-        ALL_CATEGORIES[0],
-        ...ALL_CATEGORIES.slice(1).filter(c => (cardCategories || []).includes(c.id)),
+        { id: 'all', label: t('services.categories.all') },
+        ...liveCategories.map(c => ({ id: c, label: c })),
     ];
     const [activeCategory, setActiveCategory] = useState(
         () => new URLSearchParams(window.location.search).get('category') || 'all'
     );
+    const [filterState, setFilterState] = useState('');
+    const [filterDistrict, setFilterDistrict] = useState('');
+    const [minBudget, setMinBudget] = useState('');
+    const [maxBudget, setMaxBudget] = useState('');
+    const { options: stateOptions } = useOptions('state');
+    const { options: districtOptions } = useOptions('district', { parent: filterState, requireParent: true });
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedService, setSelectedService] = useState(null);
@@ -227,7 +201,7 @@ const Services = () => {
     const [selectedPackage, setSelectedPackage] = useState(null);
     const [showPackages, setShowPackages] = useState(false);
 
-    useEffect(() => { fetchServices(); }, [activeCategory, searchCity, searchDate]);
+    useEffect(() => { fetchServices(); }, [activeCategory, searchCity, searchDate, filterState, filterDistrict, minBudget, maxBudget]);
 
     const fetchServices = async () => {
         setLoading(true);
@@ -236,6 +210,10 @@ const Services = () => {
             if (activeCategory !== 'all') params.category = activeCategory;
             if (searchCity) params.city = searchCity;
             if (searchDate) params.date = searchDate;
+            if (filterState) params.state = filterState;
+            if (filterDistrict) params.district = filterDistrict;
+            if (minBudget) params.minPrice = minBudget;
+            if (maxBudget) params.maxPrice = maxBudget;
             const res = await axios.get(`${API}/api/services`, { params });
             setServices(res.data.services || []);
         } catch (err) { toast.error('Failed to load services'); }
@@ -335,22 +313,67 @@ const Services = () => {
             </div>
 
             <div style={styles.container}>
-                <div style={styles.categoryRow}>
-                    {visibleCategories.map(cat => (
-                        <button key={cat.id}
-                            style={{ ...styles.catBtn, ...(activeCategory === cat.id ? styles.catBtnActive : {}) }}
-                            onClick={() => setActiveCategory(cat.id)}>
-                            {cat.icon} {cat.label}
+                <div style={styles.filterSidebar}>
+                    <div style={styles.filterCard}>
+                        <h3 style={styles.filterTitle}>Filter Services</h3>
+
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Category</label>
+                            <select style={styles.filterInput} value={activeCategory}
+                                onChange={e => setActiveCategory(e.target.value)}>
+                                {visibleCategories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>{cat.label}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>State</label>
+                            <select style={styles.filterInput} value={filterState}
+                                onChange={e => { setFilterState(e.target.value); setFilterDistrict(''); }}>
+                                <option value="">Any</option>
+                                {stateOptions.map(s => <option key={s}>{s}</option>)}
+                            </select>
+                        </div>
+
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>District</label>
+                            <select style={styles.filterInput} value={filterDistrict} disabled={!filterState}
+                                onChange={e => setFilterDistrict(e.target.value)}>
+                                <option value="">{filterState ? 'Any' : 'Select state first'}</option>
+                                {districtOptions.map(d => <option key={d}>{d}</option>)}
+                            </select>
+                        </div>
+
+                        <div style={styles.filterGroup}>
+                            <label style={styles.filterLabel}>Budget (₹)</label>
+                            <div style={styles.ageRow}>
+                                <input style={styles.filterInput} type="number" placeholder="Min"
+                                    value={minBudget} onChange={e => setMinBudget(e.target.value)} />
+                                <input style={styles.filterInput} type="number" placeholder="Max"
+                                    value={maxBudget} onChange={e => setMaxBudget(e.target.value)} />
+                            </div>
+                        </div>
+
+                        <button style={styles.resetBtn} onClick={() => {
+                            setActiveCategory('all'); setFilterState(''); setFilterDistrict('');
+                            setMinBudget(''); setMaxBudget(''); setSearchCity(''); setSearchDate('');
+                        }}>
+                            Reset Filters
                         </button>
-                    ))}
+                    </div>
                 </div>
 
+                <div style={styles.servicesArea}>
                 <div style={styles.resultsRow}>
                     <span style={styles.resultsCount}>
                         {loading ? t('services.loading') : <><strong>{services.length}</strong> {t('services.services_found')}</>}
                     </span>
-                    {(searchCity || searchDate) && (
-                        <button style={styles.clearBtn} onClick={() => { setSearchCity(''); setSearchDate(''); }}>
+                    {(searchCity || searchDate || filterState || filterDistrict || minBudget || maxBudget || activeCategory !== 'all') && (
+                        <button style={styles.clearBtn} onClick={() => {
+                            setSearchCity(''); setSearchDate(''); setActiveCategory('all');
+                            setFilterState(''); setFilterDistrict(''); setMinBudget(''); setMaxBudget('');
+                        }}>
                             {t('services.clear_filters')}
                         </button>
                     )}
@@ -364,13 +387,16 @@ const Services = () => {
                 ) : services.length === 0 ? (
                     <div style={styles.emptyBox}>
                         <div style={{ fontSize: '52px', marginBottom: '16px' }}>🔍</div>
-                        <h3 style={{ color: '#5F0909', marginBottom: '8px' }}>No Services Found</h3>
+                        <h3 style={{ color: '#5F0909', marginBottom: '8px' }}>No Service Provider Found</h3>
                         <p style={{ color: '#7A5C00', marginBottom: '20px' }}>
                             {activeCategory !== 'all'
-                                ? `No "${activeCategory}" services are listed yet. Please check back soon!`
-                                : 'No services match your filters. Try adjusting your search.'}
+                                ? `No service provider in the "${activeCategory}" category yet. Please check back soon!`
+                                : 'No service provider matches your filters. Try adjusting your search.'}
                         </p>
-                        <button style={styles.clearBtn2} onClick={() => { setActiveCategory('all'); setSearchCity(''); setSearchDate(''); }}>
+                        <button style={styles.clearBtn2} onClick={() => {
+                            setActiveCategory('all'); setSearchCity(''); setSearchDate('');
+                            setFilterState(''); setFilterDistrict(''); setMinBudget(''); setMaxBudget('');
+                        }}>
                             Show All Services
                         </button>
                     </div>
@@ -379,35 +405,43 @@ const Services = () => {
                         {services.map(service => (
                             <div key={service._id} style={styles.serviceCard}>
                                 <div style={styles.servicePhoto}>
+                                    <div style={styles.servicePhotoSheen} />
+                                    <div style={styles.servicePhotoGlow} />
                                     {service.photos && service.photos.length > 0 ? (
-                                        <img src={`${API}${service.photos[0]}`} alt={service.businessName} style={styles.serviceImg} />
+                                        <img src={`${API}${service.photos[0]}`} alt={service.businessName} style={{ ...styles.serviceImg, position: 'relative' }} />
                                     ) : (
-                                        <div style={styles.serviceEmoji}>{getCategoryIcon(service.category)}</div>
+                                        <BusinessPlaceholder variant="card" size={72} style={{ position: 'relative' }} />
                                     )}
                                     {service.isVerified && <span style={styles.verifiedBadge}>Verified</span>}
                                     {service.isFeatured && <span style={styles.featuredBadge}>Featured</span>}
                                     <span style={styles.categoryBadge}>{service.category}</span>
-                                    <div style={styles.ratingBadge}>⭐ {service.rating > 0 ? service.rating : 'New'}</div>
+                                    <div style={styles.ratingBadge}><Icon name="star" size={11} /> {service.rating > 0 ? service.rating : 'New'}</div>
+                                    <div style={styles.servicePhotoLine} />
                                 </div>
                                 <div style={styles.serviceInfo}>
-                                    <div style={styles.serviceName}>{service.businessName}</div>
-                                    <div style={styles.serviceMeta}>👤 {service.ownerName}</div>
-                                    <div style={styles.serviceMeta}>📍 {service.city}{service.district ? `, ${service.district}` : ''}</div>
-                                    {service.capacity && <div style={styles.serviceMeta}>👥 {service.capacity}</div>}
-                                    <div style={styles.servicePrice}>{getPrice(service)}</div>
-                                    {service.description && (
-                                        <p style={styles.serviceDesc}>{service.description.substring(0, 80)}...</p>
-                                    )}
+                                    <div>
+                                        <div style={styles.serviceName}>{service.businessName}</div>
+                                        <div style={styles.serviceMeta}><Icon name="user" size={11} style={styles.serviceMetaIcon} /> {service.ownerName}</div>
+                                        <div style={styles.serviceMeta}><Icon name="mapPin" size={11} style={styles.serviceMetaIcon} /> {service.city}{service.district ? `, ${service.district}` : ''}</div>
+                                        {service.capacity && <div style={styles.serviceMeta}><Icon name="users" size={11} style={styles.serviceMetaIcon} /> {service.capacity}</div>}
+                                        <div style={styles.servicePrice}>{getPrice(service)}</div>
+                                        {service.description && (
+                                            <p style={styles.serviceDesc}>{service.description.substring(0, 80)}...</p>
+                                        )}
+                                    </div>
                                     <div style={styles.serviceActions}>
                                         <button style={styles.bookBtn} onClick={() => handleBook(service)}>{t('services.book_now')}</button>
-                                        <button style={styles.viewBtn} onClick={() => window.open(`/services/${service._id}`, '_blank')}>View</button>
+                                        <button style={styles.viewBtn} onClick={() => navigate(`/services/${service._id}`)}>View</button>
                                     </div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
+                </div>
+            </div>
 
+            <div style={styles.ctaWrap}>
                 <div style={styles.listCta}>
                     <div>
                         <h3 style={styles.listCtaTitle}>{t('services.are_you_provider')}</h3>
@@ -661,7 +695,17 @@ const styles = {
     searchInput: { border: 'none', outline: 'none', fontSize: '14px', color: '#5F0909', background: 'transparent', width: '100%', padding: '14px 0' },
     searchDivider: { width: '1px', background: '#F5BE17', margin: '10px 0' },
     searchBtn: { padding: '0 24px', background: '#B71C1C', color: '#fff', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
-    container: { maxWidth: '1200px', margin: '0 auto', padding: '36px 24px' },
+    container: { maxWidth: '1200px', margin: '0 auto', padding: '36px 24px', display: 'grid', gridTemplateColumns: '240px 1fr', gap: '20px', alignItems: 'start' },
+    ctaWrap: { maxWidth: '1200px', margin: '0 auto', padding: '0 24px 36px' },
+    filterSidebar: {},
+    filterCard: { background: '#fff', borderRadius: '12px', padding: '16px', boxShadow: '0 2px 8px rgba(223,155,8,0.1)', border: '1px solid #F5BE17' },
+    filterTitle: { fontSize: '15px', fontWeight: '700', color: '#5F0909', marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid #F5BE17' },
+    filterGroup: { marginBottom: '12px' },
+    filterLabel: { display: 'block', fontSize: '10px', fontWeight: '700', color: '#7A5C00', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    filterInput: { width: '100%', padding: '8px 10px', border: '1.5px solid #F5BE17', borderRadius: '7px', fontSize: '12px', color: '#5F0909', background: '#FFFDF4', outline: 'none', boxSizing: 'border-box' },
+    ageRow: { display: 'flex', gap: '6px' },
+    resetBtn: { width: '100%', padding: '9px', background: 'transparent', color: '#7A5C00', border: '1.5px solid #F5BE17', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', marginTop: '4px' },
+    servicesArea: {},
     categoryRow: { display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '24px' },
     catBtn: { padding: '7px 14px', border: '1.5px solid #F5BE17', borderRadius: '50px', fontSize: '12px', fontWeight: '500', cursor: 'pointer', background: '#fff', color: '#7A5C00', whiteSpace: 'nowrap' },
     catBtnActive: { background: '#B71C1C', color: '#fff', border: '1.5px solid #B71C1C' },
@@ -671,23 +715,27 @@ const styles = {
     loadingBox: { textAlign: 'center', padding: '80px 20px' },
     emptyBox: { textAlign: 'center', padding: '80px 20px', background: '#fff', borderRadius: '16px' },
     clearBtn2: { padding: '10px 24px', background: '#B71C1C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
-    servicesGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '48px' },
-    serviceCard: { background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(223,155,8,0.12)', border: '1px solid #F5E6A0' },
-    servicePhoto: { height: '160px', background: 'linear-gradient(135deg, #FFF8E1, #F5BE17)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' },
+    servicesGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '24px', marginBottom: '48px' },
+    serviceCard: { background: 'linear-gradient(160deg, #14100F, #0A0808)', borderRadius: '18px', overflow: 'hidden', border: '1px solid rgba(245,190,23,0.25)', boxShadow: '0 0 0 1px rgba(216,73,46,0.1), 0 16px 40px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', height: '100%' },
+    servicePhoto: { height: '160px', background: 'linear-gradient(140deg, #B8267A 0%, #6B1B6B 45%, #2E1065 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', borderBottom: '1px solid rgba(245,190,23,0.25)', flexShrink: 0 },
+    servicePhotoSheen: { position: 'absolute', inset: 0, background: 'radial-gradient(circle at 25% 25%, rgba(255,255,255,0.18), transparent 45%)', pointerEvents: 'none' },
+    servicePhotoGlow: { position: 'absolute', width: '160px', height: '160px', background: 'radial-gradient(circle, rgba(245,190,23,0.32), transparent 70%)', filter: 'blur(10px)', pointerEvents: 'none' },
+    servicePhotoLine: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(90deg, transparent, #F5BE17, transparent)' },
     serviceImg: { width: '100%', height: '100%', objectFit: 'cover' },
     serviceEmoji: { fontSize: '52px' },
-    verifiedBadge: { position: 'absolute', top: '10px', right: '10px', background: '#1E6B3C', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px' },
-    featuredBadge: { position: 'absolute', top: '10px', left: '10px', background: '#DF9B08', color: '#fff', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px' },
-    categoryBadge: { position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(255,255,255,0.92)', color: '#5F0909', fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '20px' },
-    ratingBadge: { position: 'absolute', bottom: '10px', right: '10px', background: '#fff', color: '#5F0909', fontSize: '12px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
-    serviceInfo: { padding: '16px' },
-    serviceName: { fontFamily: "'Playfair Display', serif", fontSize: '16px', fontWeight: '700', color: '#5F0909', marginBottom: '4px' },
-    serviceMeta: { fontSize: '12px', color: '#7A5C00', marginBottom: '2px' },
-    servicePrice: { fontSize: '13px', fontWeight: '700', color: '#B71C1C', margin: '6px 0' },
-    serviceDesc: { fontSize: '12px', color: '#7A5C00', lineHeight: 1.5, marginBottom: '12px' },
-    serviceActions: { display: 'flex', gap: '8px' },
-    bookBtn: { flex: 1, padding: '10px', background: '#B71C1C', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
-    viewBtn: { flex: 1, padding: '10px', background: 'transparent', color: '#B71C1C', border: '1.5px solid #B71C1C', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' },
+    verifiedBadge: { position: 'absolute', top: '10px', right: '10px', background: 'rgba(30,107,60,0.9)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: '10px', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase', padding: '4px 10px', borderRadius: '4px' },
+    featuredBadge: { position: 'absolute', bottom: '10px', left: '10px', background: 'rgba(223,155,8,0.9)', backdropFilter: 'blur(6px)', color: '#fff', fontSize: '10px', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase', padding: '4px 10px', borderRadius: '4px' },
+    categoryBadge: { position: 'absolute', top: '10px', left: '10px', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.3)', color: '#FFE9C9', fontSize: '10px', fontWeight: '600', letterSpacing: '1px', textTransform: 'uppercase', padding: '4px 10px', borderRadius: '4px' },
+    ratingBadge: { position: 'absolute', bottom: '10px', right: '10px', display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', border: '1px solid rgba(245,190,23,0.4)', color: '#F5D98B', fontSize: '11px', fontWeight: '700', padding: '4px 9px', borderRadius: '20px' },
+    serviceInfo: { padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', flex: 1 },
+    serviceName: { fontFamily: "'DM Sans', sans-serif", fontSize: '16px', fontWeight: '700', color: '#fff', marginBottom: '9px', letterSpacing: '0.2px' },
+    serviceMeta: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    serviceMetaIcon: { color: '#D8497A', flexShrink: 0 },
+    servicePrice: { fontFamily: "'DM Sans', sans-serif", fontSize: '14px', fontWeight: '700', color: '#F5D98B', margin: '9px 0' },
+    serviceDesc: { fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: 1.5, marginBottom: '4px' },
+    serviceActions: { display: 'flex', gap: '8px', marginTop: '14px' },
+    bookBtn: { flex: 1, padding: '11px', background: 'linear-gradient(135deg, #B8267A, #6B1B6B)', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '11.5px', fontWeight: '600', letterSpacing: '0.5px', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 4px 16px rgba(184,38,122,0.35)' },
+    viewBtn: { flex: 1, padding: '11px', background: 'transparent', color: '#F5D98B', border: '1px solid rgba(245,190,23,0.4)', borderRadius: '8px', fontSize: '11.5px', fontWeight: '600', letterSpacing: '0.5px', textTransform: 'uppercase', cursor: 'pointer' },
     listCta: { background: 'linear-gradient(135deg, #5F0909, #B71C1C)', borderRadius: '16px', padding: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px' },
     listCtaTitle: { fontFamily: "'Playfair Display', serif", fontSize: '22px', color: '#fff', marginBottom: '8px' },
     listCtaDesc: { fontSize: '14px', color: 'rgba(255,255,255,0.7)', maxWidth: '500px' },

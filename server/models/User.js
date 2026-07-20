@@ -52,7 +52,13 @@ const userSchema = new mongoose.Schema({
         required: function () { return this.role === 'service'; }
     },
     city: { type: String },
+    state: { type: String },
     district: { type: String },
+    description: { type: String, default: '' },
+    // Business logo/profile photo shown on the dashboard and (once verified)
+    // the public listing — separate from a Service document's own `photos`,
+    // which are per-listing gallery images.
+    logo: { type: String, default: null },
     isApproved: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
 

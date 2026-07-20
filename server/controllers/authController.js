@@ -1,7 +1,9 @@
 const User = require('../models/User');
 const Profile = require('../models/Profile');
+const Service = require('../models/Service');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const otpCache = require('../utils/otpCache');
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -34,6 +36,16 @@ const registerUser = async (req, res) => {
     try {
         const { role = 'member' } = req.body;
 
+        // Format checks that hold regardless of what the client validated —
+        // client-side checks can be skipped by calling this endpoint
+        // directly, so this is the check that actually matters.
+        if (req.body.mobile && !/^\d{10}$/.test(req.body.mobile)) {
+            return res.status(400).json({ success: false, message: 'Mobile number must be exactly 10 digits' });
+        }
+        if (req.body.email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(req.body.email)) {
+            return res.status(400).json({ success: false, message: 'Please enter a valid email address' });
+        }
+
         const userExists = await User.findOne({
             $or: [{ email: req.body.email }, { mobile: req.body.mobile }]
         });
@@ -58,14 +70,14 @@ const registerUser = async (req, res) => {
             // name = Nandhu (account creator), profileName = Gopi (profile person)
             userData = { ...userData, name, email, mobile, gender, profileFor, profileName, dateOfBirth, motherTongue };
         } else if (role === 'service') {
-            const { businessName, ownerName, email, mobile, category, city, district } = req.body;
+            const { businessName, ownerName, email, mobile, category, city, state, district } = req.body;
             if (!businessName || !ownerName || !email || !mobile || !category) {
                 return res.status(400).json({
                     success: false,
                     message: 'Business name, owner name, email, mobile and category are required'
                 });
             }
-            userData = { ...userData, businessName, ownerName, email, mobile, category, city, district };
+            userData = { ...userData, businessName, ownerName, email, mobile, category, city, state, district };
         } else {
             return res.status(400).json({ success: false, message: 'Invalid role' });
         }
@@ -166,7 +178,10 @@ const registerUser = async (req, res) => {
             responseUser.category = user.category;
             responseUser.isApproved = user.isApproved;
             responseUser.city = user.city;
+            responseUser.state = user.state;
             responseUser.district = user.district;
+            responseUser.description = user.description;
+            responseUser.logo = user.logo;
         }
 
         res.status(201).json({
@@ -237,7 +252,10 @@ const loginUser = async (req, res) => {
             responseUser.category = user.category;
             responseUser.isApproved = user.isApproved;
             responseUser.city = user.city;
+            responseUser.state = user.state;
             responseUser.district = user.district;
+            responseUser.description = user.description;
+            responseUser.logo = user.logo;
         } else if (user.role === 'admin') {
             responseUser.name = user.name;
         }
@@ -279,7 +297,10 @@ const getMe = async (req, res) => {
             responseUser.category = user.category;
             responseUser.isApproved = user.isApproved;
             responseUser.city = user.city;
+            responseUser.state = user.state;
             responseUser.district = user.district;
+            responseUser.description = user.description;
+            responseUser.logo = user.logo;
         } else if (user.role === 'admin') {
             responseUser.name = user.name;
         }
@@ -290,4 +311,62 @@ const getMe = async (req, res) => {
     }
 };
 
-module.exports = { registerUser, loginUser, getMe, getCreatedByLabel };
+// @route PUT /api/auth/business-profile
+// Updates the service-provider's own account (business name, owner name,
+// location, description, logo) — this is account-level identity, distinct
+// from a Service listing's own fields, which stay editable per-listing
+// under /api/services/:id.
+const updateBusinessProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user) return res.status(404).json({ success: false, message: 'Account not found' });
+        if (user.role !== 'service') {
+            return res.status(403).json({ success: false, message: 'Only service provider accounts have a business profile' });
+        }
+
+        const { businessName, ownerName, city, state, district, description, mobile, removeLogo } = req.body;
+        if (businessName !== undefined) user.businessName = businessName;
+        if (ownerName !== undefined) user.ownerName = ownerName;
+        if (city !== undefined) user.city = city;
+        if (state !== undefined) user.state = state;
+        if (district !== undefined) user.district = district;
+        if (description !== undefined) user.description = description;
+        if (req.file) user.logo = `/uploads/${req.file.filename}`;
+        else if (removeLogo === 'true') user.logo = null;
+
+        if (mobile !== undefined && mobile !== user.mobile) {
+            if (!/^\d{10}$/.test(mobile)) {
+                return res.status(400).json({ success: false, message: 'Mobile number must be exactly 10 digits' });
+            }
+            if (!otpCache.get('verified:' + mobile)) {
+                return res.status(400).json({ success: false, message: 'Please verify this number with OTP before saving' });
+            }
+            const taken = await User.findOne({ mobile, _id: { $ne: user._id } });
+            if (taken) {
+                return res.status(400).json({ success: false, message: 'This number is already registered to another account' });
+            }
+            user.mobile = mobile;
+            otpCache.del('verified:' + mobile);
+            // Every listing under this account shares the account's contact
+            // number, not an independently-set one — keep them in sync.
+            await Service.updateMany({ vendor: user._id }, { mobile });
+        }
+
+        await user.save();
+
+        res.json({
+            success: true,
+            message: 'Business profile updated!',
+            user: {
+                id: user._id, role: user.role, email: user.email, mobile: user.mobile,
+                businessName: user.businessName, ownerName: user.ownerName, category: user.category,
+                isApproved: user.isApproved, city: user.city, state: user.state, district: user.district,
+                description: user.description, logo: user.logo,
+            },
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+module.exports = { registerUser, loginUser, getMe, updateBusinessProfile, getCreatedByLabel };

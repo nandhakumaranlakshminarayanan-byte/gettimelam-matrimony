@@ -23,9 +23,7 @@ const upload = multer({
     storage,
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: function (req, file, cb) {
-        const types = /jpeg|jpg|png|webp/;
-        const valid = types.test(path.extname(file.originalname).toLowerCase());
-        if (valid) cb(null, true);
+        if (file.mimetype.startsWith('image/')) cb(null, true);
         else cb(new Error('Only image files allowed!'));
     }
 });
@@ -42,9 +40,7 @@ const uploadDoc = multer({
     storage: docStorage,
     limits: { fileSize: 8 * 1024 * 1024 },
     fileFilter: function (req, file, cb) {
-        const types = /jpeg|jpg|png|webp|pdf/;
-        const valid = types.test(path.extname(file.originalname).toLowerCase());
-        if (valid) cb(null, true);
+        if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') cb(null, true);
         else cb(new Error('Only image or PDF files allowed!'));
     }
 });

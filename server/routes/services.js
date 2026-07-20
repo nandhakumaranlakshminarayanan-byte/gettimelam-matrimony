@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const Service = require('../models/Service');
+const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
 
 // ── Photo upload config ──
@@ -15,8 +16,7 @@ const upload = multer({
     storage,
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        const valid = /jpeg|jpg|png|webp/.test(path.extname(file.originalname).toLowerCase());
-        if (valid) cb(null, true);
+        if (file.mimetype.startsWith('image/')) cb(null, true);
         else cb(new Error('Only images allowed!'));
     }
 });
@@ -84,7 +84,11 @@ router.get('/:id', async (req, res) => {
 router.post('/', protect, upload.array('photos', 5), async (req, res) => {
     try {
         const photoUrls = req.files ? req.files.map(f => `/uploads/${f.filename}`) : [];
-        const service = await Service.create({ ...req.body, vendor: req.user.id, photos: photoUrls });
+        const vendorUser = await User.findById(req.user.id);
+        const service = await Service.create({
+            ...req.body, vendor: req.user.id, photos: photoUrls,
+            mobile: vendorUser?.mobile, // always the account's number, never client-supplied
+        });
         res.status(201).json({ success: true, message: 'Service listed successfully!', service });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -111,9 +115,10 @@ router.put('/my/update', protect, upload.array('photos', 5), async (req, res) =>
 // ── UPDATE service ──
 router.put('/:id', protect, async (req, res) => {
     try {
+        const { mobile, ...updates } = req.body; // mobile always mirrors the account — see authController.updateBusinessProfile
         const service = await Service.findOneAndUpdate(
             { _id: req.params.id, vendor: req.user.id },
-            req.body,
+            updates,
             { new: true, runValidators: true }
         );
         if (!service) return res.status(404).json({ success: false, message: 'Service not found or unauthorized' });

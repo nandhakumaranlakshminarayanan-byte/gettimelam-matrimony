@@ -24,32 +24,12 @@ const serviceSchema = new mongoose.Schema({
 
     category: {
         type: String,
-        enum: [
-            'Wedding Hall/Venue',
-            'Event Decoration',
-            'Catering',
-            'Wedding Rentals',
-            'Stationery & Cards',
-            'Photography',
-            'Videography',
-            'DJ & Entertainment',
-            'Choreography',
-            'Bridal Makeup & Hair',
-            'Mehndi Artist',
-            'Bridal Styling',
-            'Wedding Planner',
-            'Travel & Accommodation',
-            'Officiant/Priest',
-            'Security & Valet',
-            'Wedding Cake',
-            'Favors & Gifts',
-            'Other'
-        ],
         required: true
     },
 
     description: { type: String },
     city: { type: String, required: true },
+    state: { type: String },
     district: { type: String },
     address: { type: String },
     price: { type: String },

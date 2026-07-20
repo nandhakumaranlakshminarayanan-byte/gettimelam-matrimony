@@ -4,6 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import AvatarPlaceholder from '../AvatarPlaceholder';
+import BusinessPlaceholder from '../BusinessPlaceholder';
+import Icon from '../Icon';
 
 const API = 'http://localhost:5000';
 
@@ -15,8 +17,26 @@ const ProfilesSection = ({ onLoginClick }) => {
     const [shortlistedIds, setShortlistedIds] = useState([]);
     const [likedIds, setLikedIds] = useState([]);
     const [sentInterestIds, setSentInterestIds] = useState([]);
+    const [vendorServices, setVendorServices] = useState([]);
+    const [loadingVendors, setLoadingVendors] = useState(true);
 
-    useEffect(() => { fetchProfiles(); }, [user]);
+    useEffect(() => {
+        if (user?.role === 'service') fetchVendorServices();
+    }, [user]);
+
+    const fetchVendorServices = async () => {
+        try {
+            const res = await axios.get(`${API}/api/services`);
+            const others = (res.data.services || []).filter(s => String(s.vendor) !== String(user.id));
+            setVendorServices(others.slice(0, 6));
+        } catch (err) {
+            setVendorServices([]);
+        } finally {
+            setLoadingVendors(false);
+        }
+    };
+
+    useEffect(() => { if (user?.role !== 'service') fetchProfiles(); else setLoading(false); }, [user]);
     useEffect(() => { if (user) { fetchShortlistedIds(); fetchLikedIds(); fetchSentInterestIds(); } }, [user]);
 
     const fetchProfiles = async () => {
@@ -158,20 +178,71 @@ const ProfilesSection = ({ onLoginClick }) => {
     // ✅ Check if user is unverified member
     const isUnverified = user && user.role === 'member' && !user.isVerified;
 
-    // ✅ Block service accounts from seeing member profiles
+    // ✅ Service accounts see other vendors here instead of member profiles
+    // (member profiles are private to matrimony members) — with its own
+    // heading, since "Find Your Perfect Match" doesn't fit a vendor.
     if (user && user.role === 'service') return (
         <section style={styles.section}>
             <div style={styles.inner}>
                 <div style={styles.header}>
-                    <p style={styles.label}>✨ Browse Profiles</p>
-                    <h2 style={styles.title}>Find Your Perfect Match</h2>
+                    <p style={styles.label}>✨ Fellow Vendors</p>
+                    <h2 style={styles.title}>Discover Other Wedding Vendors</h2>
+                    <p style={styles.desc}>See who else is listed on Gettimelam Matrimony</p>
                 </div>
-                <div style={{ textAlign: 'center', padding: '40px', background: '#FFF8E1', borderRadius: '16px', border: '1px solid #F5BE17' }}>
-                    <div style={{ fontSize: '48px', marginBottom: '12px' }}>🏪</div>
-                    <h3 style={{ color: '#B71C1C', marginBottom: '8px' }}>Service Provider Account</h3>
-                    <p style={{ color: '#7A6055', fontSize: '14px' }}>
-                        You are logged in as a service provider. Member profiles are only visible to matrimony members.
-                    </p>
+
+                {loadingVendors ? (
+                    <div style={{ textAlign: 'center', padding: '60px' }}>
+                        <div style={{ fontSize: '40px', marginBottom: '12px' }}>⏳</div>
+                        <p style={{ color: '#7A6055' }}>Loading vendors...</p>
+                    </div>
+                ) : vendorServices.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px', background: '#FFF8E1', borderRadius: '16px', border: '1px solid #F5BE17' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                            <BusinessPlaceholder variant="badge" size={64} />
+                        </div>
+                        <p style={{ color: '#7A6055', fontSize: '14px' }}>No other vendors listed yet — check back soon.</p>
+                    </div>
+                ) : (
+                    <div style={styles.grid}>
+                        {vendorServices.map(s => (
+                            <div key={s._id} style={styles.vendorCardWrap}>
+                                <div style={styles.vendorPhoto} onClick={() => navigate(`/services/${s._id}`)}>
+                                    <div style={styles.vendorPhotoSheen} />
+                                    <div style={styles.vendorPhotoGlow} />
+                                    {s.photos?.[0] ? (
+                                        <img src={`${API}${s.photos[0]}`} alt={s.businessName} style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'relative' }} />
+                                    ) : (
+                                        <BusinessPlaceholder variant="card" size={80} style={{ position: 'relative' }} />
+                                    )}
+                                    <span style={styles.vendorCategoryBadge}>{s.category}</span>
+                                    <div style={styles.vendorPhotoLine} />
+                                </div>
+                                <div style={styles.vendorBody}>
+                                    <div style={styles.vendorName} onClick={() => navigate(`/services/${s._id}`)}>{s.businessName}</div>
+                                    <div style={styles.vendorMetaRow}><Icon name="user" size={12} style={styles.vendorMetaIcon} /> {s.ownerName || 'Owner'}</div>
+                                    <div style={styles.vendorMetaRow}><Icon name="mapPin" size={12} style={styles.vendorMetaIcon} /> {[s.city, s.district].filter(Boolean).join(', ')}</div>
+                                    <div style={styles.vendorPrice}>
+                                        {s.priceMin && s.priceMax ? `₹${s.priceMin.toLocaleString()} - ₹${s.priceMax.toLocaleString()}` : 'Contact for price'}
+                                    </div>
+                                    <div style={styles.vendorActions}>
+                                        <a style={styles.vendorBtnPrimary} href={s.mobile ? `tel:${s.mobile}` : undefined}
+                                            onClick={e => { e.stopPropagation(); if (!s.mobile) e.preventDefault(); }}>
+                                            Contact
+                                        </a>
+                                        <button style={styles.vendorBtnOutline} onClick={() => navigate(`/services/${s._id}`)}>
+                                            Message
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div style={styles.center}>
+                    <button style={styles.viewAll} onClick={() => navigate('/services')}>
+                        View All Wedding Services →
+                    </button>
                 </div>
             </div>
         </section>
@@ -345,6 +416,20 @@ const styles = {
         width: '100%',
     },
     photo: { height: '290px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', cursor: 'pointer', overflow: 'hidden' },
+    vendorCardWrap: { background: 'linear-gradient(160deg, #14100F, #0A0808)', borderRadius: '18px', overflow: 'hidden', position: 'relative', border: '1px solid rgba(245,190,23,0.25)', boxShadow: '0 0 0 1px rgba(216,73,46,0.1), 0 16px 40px rgba(0,0,0,0.5)' },
+    vendorPhoto: { height: '190px', background: 'linear-gradient(140deg, #B8267A 0%, #6B1B6B 45%, #2E1065 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', cursor: 'pointer', overflow: 'hidden', borderBottom: '1px solid rgba(245,190,23,0.25)' },
+    vendorPhotoGlow: { position: 'absolute', width: '180px', height: '180px', background: 'radial-gradient(circle, rgba(245,190,23,0.35), transparent 70%)', filter: 'blur(10px)', pointerEvents: 'none' },
+    vendorPhotoSheen: { position: 'absolute', inset: 0, background: 'radial-gradient(circle at 25% 25%, rgba(255,255,255,0.18), transparent 45%)', pointerEvents: 'none' },
+    vendorPhotoLine: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(90deg, transparent, #F5BE17, transparent)' },
+    vendorCategoryBadge: { position: 'absolute', top: '12px', left: '12px', background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.3)', color: '#FFE9C9', fontSize: '10px', fontWeight: '600', letterSpacing: '1px', textTransform: 'uppercase', padding: '5px 12px', borderRadius: '4px' },
+    vendorBody: { padding: '20px' },
+    vendorName: { fontFamily: "'DM Sans', sans-serif", fontSize: '17px', fontWeight: '700', color: '#fff', marginBottom: '10px', cursor: 'pointer', letterSpacing: '0.3px' },
+    vendorMetaRow: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+    vendorMetaIcon: { color: '#D8497A' },
+    vendorPrice: { fontFamily: "'DM Sans', sans-serif", fontSize: '15px', fontWeight: '700', color: '#F5D98B', margin: '10px 0 16px' },
+    vendorActions: { display: 'flex', gap: '8px' },
+    vendorBtnPrimary: { flex: 1, textAlign: 'center', padding: '11px 0', background: 'linear-gradient(135deg, #B8267A, #6B1B6B)', color: '#fff', borderRadius: '8px', fontSize: '11.5px', fontWeight: '600', letterSpacing: '0.5px', textTransform: 'uppercase', cursor: 'pointer', textDecoration: 'none', display: 'block', boxShadow: '0 4px 16px rgba(184,38,122,0.35)' },
+    vendorBtnOutline: { flex: 1, padding: '11px 0', background: 'transparent', border: '1px solid rgba(245,190,23,0.4)', color: '#F5D98B', borderRadius: '8px', fontSize: '11.5px', fontWeight: '600', letterSpacing: '0.5px', textTransform: 'uppercase', cursor: 'pointer' },
     avatar: { fontSize: '56px', cursor: 'pointer' },
     photoGradient: { position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, transparent 35%, transparent 55%, rgba(0,0,0,0.85) 100%)', pointerEvents: 'none' },
     verified: { position: 'absolute', top: '10px', left: '10px', background: 'rgba(30,107,60,0.92)', color: '#fff', fontSize: '10.5px', fontWeight: '700', padding: '3px 9px', borderRadius: '20px' },

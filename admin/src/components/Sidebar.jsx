@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAdmin } from '../context/AdminContext';
 import API from '../utils/api';
 import {
     IconGrid, IconUsers, IconIdCard, IconCalendar, IconCard, IconHeart,
     IconChart, IconBell, IconImage, IconLayers, IconChat, IconStore,
-    IconShield, IconGlobe, IconLogout, IconSliders,
+    IconShield, IconGlobe, IconLogout, IconSliders, IconTag,
 } from './AdminIcons';
 
 const GOLD = '#E8B84B';
@@ -14,6 +14,20 @@ const Sidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { admin, logout } = useAdmin();
+    const scrollRef = useRef(null);
+
+    // Every page mounts its own <Sidebar />, so without this it snaps back
+    // to the top on every single navigation — this remembers where you
+    // were scrolled to (per tab, via sessionStorage) and restores it right
+    // after mount, before the browser has a chance to paint the reset.
+    useEffect(() => {
+        const saved = sessionStorage.getItem('adminSidebarScroll');
+        if (saved && scrollRef.current) scrollRef.current.scrollTop = Number(saved);
+    }, []);
+
+    const handleSidebarScroll = (e) => {
+        sessionStorage.setItem('adminSidebarScroll', e.currentTarget.scrollTop);
+    };
     const [pendingCount, setPendingCount] = useState(0);
     const [newUsersCount, setNewUsersCount] = useState(0);
     const [unreadSupportCount, setUnreadSupportCount] = useState(0);
@@ -64,6 +78,7 @@ const Sidebar = () => {
         { path: '/analytics', Icon: IconChart, label: 'Analytics' },
         { path: '/notifications', Icon: IconBell, label: 'Notifications' },
         { path: '/banners', Icon: IconImage, label: 'Banners' },
+        { path: '/service-categories', Icon: IconTag, label: 'Service Categories' },
         { path: '/service-cards', Icon: IconLayers, label: 'Service Cards' },
         { path: '/messages', Icon: IconChat, label: 'Messages' },
         { path: '/support-chat', Icon: IconChat, label: 'Support Chat' },
@@ -73,7 +88,7 @@ const Sidebar = () => {
     ];
 
     return (
-        <div style={styles.sidebar}>
+        <div style={styles.sidebar} ref={scrollRef} onScroll={handleSidebarScroll}>
             {/* Brand */}
             <div style={styles.logo}>
                 <div style={styles.logoMark}>

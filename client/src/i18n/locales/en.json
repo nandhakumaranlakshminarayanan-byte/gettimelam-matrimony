@@ -253,12 +253,12 @@
         }
     },
     "service_provider": {
-        "my_business": "🏪 My Business",
-        "overview": "🏠 Overview",
-        "my_services": "🏪 My Services",
-        "bookings": "📅 Bookings",
-        "settings": "⚙️ Settings",
-        "logout": "🚪 Logout",
+        "my_business": "My Business",
+        "overview": "Overview",
+        "my_services": "My Services",
+        "bookings": "Bookings",
+        "settings": "Settings",
+        "logout": "Logout",
         "my_services_stat": "My Services",
         "total_bookings": "Total Bookings",
         "welcome": "Welcome"

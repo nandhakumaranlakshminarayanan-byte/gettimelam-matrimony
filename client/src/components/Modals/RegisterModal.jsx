@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
+import { STATES_AND_UTS, getDistrictsForState } from '../../utils/indiaLocationData';
+import { useOptions } from '../../hooks/useOptions';
 
 const RegisterModal = ({ onClose, onSwitchToLogin }) => {
     const { register } = useAuth();
@@ -11,7 +13,7 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
 
     const [form, setForm] = useState({
         businessName: '', ownerName: '', mobile: '', email: '',
-        password: '', category: 'Wedding Hall/Venue', city: '', district: '',
+        password: '', category: 'Wedding Hall/Venue', city: '', state: '', district: '',
     });
 
     const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -23,6 +25,14 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (form.mobile.length !== 10) {
+            toast.error('Enter a valid 10-digit mobile number');
+            return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email)) {
+            toast.error('Enter a valid email address');
+            return;
+        }
         if (form.password.length < 6) {
             toast.error('Password must be at least 6 characters!');
             return;
@@ -40,13 +50,7 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
         }
     };
 
-    const serviceCategories = [
-        'Wedding Hall/Venue', 'Event Decoration', 'Catering', 'Wedding Rentals',
-        'Photography', 'Videography', 'DJ & Entertainment', 'Choreography',
-        'Bridal Makeup & Hair', 'Mehndi Artist', 'Bridal Styling', 'Wedding Planner',
-        'Travel & Accommodation', 'Officiant/Priest', 'Security & Valet',
-        'Wedding Cake', 'Favors & Gifts', 'Stationery & Cards',
-    ];
+    const { options: serviceCategories } = useOptions('servicecategory');
 
     return (
         <div style={styles.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -158,17 +162,29 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
                                     </select>
                                 </div>
 
+                                <div style={styles.formGroup}>
+                                    <label style={styles.label}>State *</label>
+                                    <select name="state" value={form.state}
+                                        onChange={(e) => setForm({ ...form, state: e.target.value, district: '' })}
+                                        style={styles.input} required>
+                                        <option value="">Select State</option>
+                                        {STATES_AND_UTS.map(s => <option key={s}>{s}</option>)}
+                                    </select>
+                                </div>
+
                                 <div style={styles.grid2}>
+                                    <div style={styles.formGroup}>
+                                        <label style={styles.label}>District *</label>
+                                        <select name="district" value={form.district} onChange={handleChange}
+                                            style={styles.input} required disabled={!form.state}>
+                                            <option value="">{form.state ? 'Select District' : 'Select state first'}</option>
+                                            {getDistrictsForState(form.state).map(d => <option key={d}>{d}</option>)}
+                                        </select>
+                                    </div>
                                     <div style={styles.formGroup}>
                                         <label style={styles.label}>City *</label>
                                         <input name="city" type="text" placeholder="e.g. Puducherry" autoComplete="off"
                                             value={form.city} onChange={handleChange}
-                                            style={styles.input} required />
-                                    </div>
-                                    <div style={styles.formGroup}>
-                                        <label style={styles.label}>District *</label>
-                                        <input name="district" type="text" placeholder="e.g. Puducherry" autoComplete="off"
-                                            value={form.district} onChange={handleChange}
                                             style={styles.input} required />
                                     </div>
                                 </div>
@@ -177,8 +193,8 @@ const RegisterModal = ({ onClose, onSwitchToLogin }) => {
                                     <label style={styles.label}>📱 Mobile Number *</label>
                                     <div style={styles.inputWrapper}>
                                         <span style={styles.inputPrefix}>+91</span>
-                                        <input name="mobile" type="tel" placeholder="Enter mobile number" autoComplete="off"
-                                            value={form.mobile} onChange={handleChange}
+                                        <input name="mobile" type="tel" placeholder="Enter mobile number" autoComplete="off" maxLength={10}
+                                            value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                                             style={styles.inputWithPrefix} required />
                                     </div>
                                 </div>
